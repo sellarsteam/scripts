@@ -1,16 +1,14 @@
-from os import getenv
 from io import BytesIO
+from os import getenv
 
 import telegram
 import telegram.utils
 from dotenv import load_dotenv
-
 from requests import get
 
 from core import __copyright__, __version__
 from core import api
 from core.api import SSuccess, SFail
-
 from .constructor import build
 
 

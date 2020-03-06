@@ -32,4 +32,3 @@ def build(item: Result) -> str:
                 footer_items += (f'<a href="{i[1]}">{i[0]}</a>',)
         compiled += '|'.join(footer_items)
     return compiled
-
