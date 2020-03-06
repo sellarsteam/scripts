@@ -20,17 +20,18 @@ class Parser(api.Parser):
     channel: str = '010794e5-35fe-4e32-aaff-cd2c74f89d61'
     pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
     interval: float = 1
+    name: str = 'nike-snkrs'
 
     def index(self) -> IndexType:
-        return api.IndexInterval('nike_snkrs', 120)
+        return api.IInterval(self.name, 120)
 
     def targets(self) -> List[TargetType]:  # TODO: Error handling support
-        return list(
-            api.IntervalTarget('nike_snkrs', i.current_value, self.interval, '')
+        return [
+            api.TInterval(self.name, i.current_value, self.interval, '')
             for i in Path.parse_str('$.objects[*][?(@.productInfo[0].availability.available = true)].id').match(
                 loads(get(self.catalog, headers={'user-agent': generate_user_agent()}).text)
             )
-        )
+        ]
 
     def execute(self, data: Any) -> StatusType:
         try:
@@ -50,22 +51,24 @@ class Parser(api.Parser):
                                      self.pattern).timestamp() < datetime.utcnow().timestamp():
                     available = True
             else:
-                return api.StatusFail('Unknown "publishType"')
+                return api.SFail(self.name, 'Unknown "publishType"')
         except JSONDecodeError:
-            return api.StatusFail('Exception JSONDecodeError')
+            return api.SFail(self.name, 'Exception JSONDecodeError')
         except KeyError:
-            return api.StatusFail('Wrong scheme')
+            return api.SFail(self.name, 'Wrong scheme')
         if available:
-            return api.StatusSuccess(
+            skus = [i.current_value for i in Path.parse_str('$.productInfo[0].availableSkus[*].id').match(content)]
+            return api.SSuccess(
+                self.name,
                 api.Result(
-                    content['productInfo'][0]['productContent']['fullTitle'],
+                    content['productInfo'][0]['productContent']['title'],
                     f'https://nike.com/ru/launch/t/{content["publishedContent"]["properties"]["seo"]["slug"]}',
                     content['productInfo'][0]['imageUrls']['productImageUrl'],
                     content['productInfo'][0]['productContent']['descriptionHeading'],
                     content['productInfo'][0]['merchPrice']['currentPrice'],
+                    tuple(i['countrySpecifications'][0]['localizedSize'].split(' ')[-1][:-1] for i in content['productInfo'][0]['skus'] if i['id'] in skus),
                     ()
-                ),
-                api.IntervalTarget('nike_snkrs', data, self.interval, '')
+                )
             )
         else:
-            return api.StatusWaiting(api.IntervalTarget('nike_snkrs', data, self.interval, ''))
+            return api.SWaiting(api.TInterval(self.name, data, self.interval, ''))
