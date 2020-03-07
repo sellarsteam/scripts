@@ -12,6 +12,9 @@ from core.api import SSuccess, SFail
 from .constructor import build
 
 
+# TODO: Check for None
+
+
 class EventsExecutor(api.EventsExecutor):
     def __init__(self):
         load_dotenv()
