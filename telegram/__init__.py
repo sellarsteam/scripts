@@ -2,6 +2,7 @@ from io import BytesIO
 from os import getenv
 
 import telegram
+import telegram.ext
 import telegram.utils
 from dotenv import load_dotenv
 from requests import get
@@ -18,13 +19,27 @@ from .constructor import build
 class EventsExecutor(api.EventsExecutor):
     def __init__(self):
         load_dotenv()
-        if getenv('TELEGRAM_PROXY'):
-            self.bot = telegram.Bot(
-                getenv('TELEGRAM_BOT_TOKEN'),
-                request=telegram.utils.request.Request(proxy_url=getenv('TELEGRAM_PROXY'))
-            )
-        else:
-            self.bot = telegram.Bot(getenv('TELEGRAM_BOT_TOKEN'))
+        request_kwargs = {}
+        proxy = getenv('TELEGRAM_PROXY')
+        if proxy:
+            if proxy.split('://')[0] == 'https':
+                request_kwargs['proxy_url'] = proxy
+            elif proxy.split('://')[0] == 'socks5':
+                request_kwargs['proxy_url'] = proxy
+                if getenv('PROXY_USER') and getenv('PROXY_PASS'):
+                    request_kwargs['urllib3_proxy_kwargs'] = {
+                        'username': getenv('PROXY_USER'),
+                        'password': getenv('PROXY_PASS')
+                    }
+            elif proxy.split('://')[0] == 'http':
+                raise api.EventsExecutorError('HTTP proxy is not supported')
+            else:
+                raise api.EventsExecutorError('Unknown proxy')
+        self.bot = telegram.ext.Updater(
+            token=getenv('TELEGRAM_BOT_TOKEN'),
+            request_kwargs=request_kwargs,
+            use_context=True
+        ).bot
 
     def e_monitor_turning_on(self) -> None:
         self.bot.send_message(
