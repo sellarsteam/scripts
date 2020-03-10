@@ -10,6 +10,7 @@ from requests import get
 from core import __copyright__, __version__
 from core import api
 from core.api import SSuccess, SFail
+from core.logger import Logger
 from .constructor import build
 
 
@@ -17,7 +18,8 @@ from .constructor import build
 
 
 class EventsExecutor(api.EventsExecutor):
-    def __init__(self):
+    def __init__(self, name: str, log: Logger):
+        super().__init__(name, log)
         load_dotenv()
         request_kwargs = {}
         proxy = getenv('TELEGRAM_PROXY')

@@ -1,4 +1,3 @@
-from datetime import datetime
 from json import loads, JSONDecodeError
 from typing import List
 
@@ -8,20 +7,26 @@ from user_agent import generate_user_agent
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
+from core.logger import Logger
+
 
 class Parser(api.Parser):
-    catalog: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/55379e776636b417f47acd68/?&categoryIds=56&categoryPaths=&session=5e67c3c66116160001f6cdaf&pvid=953289517825957&isDebug=false&format=json'
-    pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
-    interval: float = 1
-    name: str = 'sneakerhead_ru'
+    def __init__(self, name: str, log: Logger):
+        super().__init__(name, log)
+        self.catalog: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/55379e776636b417f47acd68/?&categoryIds=56&categoryPaths=&session=5e67c3c66116160001f6cdaf&pvid=953289517825957&isDebug=false&format=json'
+        self.pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
+        self.interval: float = 1
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 120)
 
     def targets(self) -> List[TargetType]:
         return [
-            api.TInterval(i.current_value['Model'], self.name,
-                          i.current_value, self.interval)
+            api.TInterval(
+                i.current_value['Model'],
+                self.name,
+                i.current_value, self.interval
+            )
             for i in Path.parse_str('$[*]').match(
                 loads(get(self.catalog, headers={'user-agent': generate_user_agent()}).text)
             )
@@ -46,6 +51,7 @@ class Parser(api.Parser):
                 api.Result(
                     content['Model'],
                     content['Url'],
+                    'sneakerhead',
                     content['PictureUrl'],
                     content['Description'],
                     content['Price'],
