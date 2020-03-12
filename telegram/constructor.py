@@ -2,6 +2,8 @@ from typing import Tuple
 
 from core.api import Result
 
+currencies: tuple = ('£', '$', '€', '₽')
+
 
 def build(item: Result) -> str:
     compiled: str = ''
@@ -11,24 +13,32 @@ def build(item: Result) -> str:
         else:
             compiled += f'<b>{item.name}</b>\n'
     if item.description:
+        if item.description.__len__() > 512:
+            item.description = item.description[:512] + '...'
         compiled += f'{item.description}\n'
     if item.price:
-        if isinstance(item.price, float) or isinstance(item.price, int):
-            compiled += f'Цена: {item.price} руб.\n'
-        elif isinstance(item.price, tuple) or isinstance(item.price, list) and item.price.__len__() == 2:
-            compiled += f'Цена: <s>{item.price[1]}</s>{item.price[0]} руб.\n'
+        if isinstance(item.price, (tuple, list)):
+            if item.price.__len__() == 2 and isinstance(item.price[0], int) and isinstance(item.price[1], (float, int)):
+                compiled += f'Цена: {item.price[1]}{currencies[item.price[0]]}\n'
+            elif item.price.__len__() == 3:
+                compiled += f'Цена: <s>{item.price[2]}{currencies[item.price[0]]}</s> {item.price[1]}{currencies[item.price[0]]}\n'
+    if item.fields:
+        if isinstance(item.fields, dict):
+            for k, v in item.fields.items():
+                if isinstance(k, str) and isinstance(v, (str, int, float)):
+                    compiled += f'{k}: {v}\n'
     if item.sizes and isinstance(item.sizes, tuple):
         compiled += 'Размеры:\n'
         for i in item.sizes:
             if isinstance(i, tuple) and i.__len__() == 2:
-                compiled += f'<a href="{i[1]}">{i[0]:<13}</a>'
+                compiled += f'<a href="{i[1]}">{i[0]}</a>\n'
             else:
-                compiled += f'{i:<13}'
+                compiled += f'{i}\n'
         compiled += '\n'
-    if item.footer and isinstance(item.footer, tuple) or isinstance(item.footer, list):
+    if item.footer and isinstance(item.footer, (tuple, list)):
         footer_items: Tuple[str] = ()
         for i in item.footer:
             if i.__len__() == 2:
                 footer_items += (f'<a href="{i[1]}">{i[0]}</a>',)
-        compiled += '|'.join(footer_items)
+        compiled += ' | '.join(footer_items)
     return compiled

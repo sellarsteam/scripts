@@ -1,11 +1,9 @@
-from io import BytesIO
 from os import getenv
 
 import telegram
 import telegram.ext
 import telegram.utils
 from dotenv import load_dotenv
-from requests import get
 
 from core import __copyright__, __version__
 from core import api
@@ -74,8 +72,9 @@ class EventsExecutor(api.EventsExecutor):
         if status.result.image:
             self.bot.send_photo(
                 getenv('TELEGRAM_CHAT_ID'),
-                BytesIO(get(status.result.image).content),
-                build(status.result), parse_mode='HTML'
+                status.result.image,
+                build(status.result),
+                parse_mode='HTML'
             )
         else:
             self.bot.send_message(getenv('TELEGRAM_CHAT_ID'), build(status.result), parse_mode='HTML')

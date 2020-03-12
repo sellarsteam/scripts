@@ -72,9 +72,10 @@ class Parser(api.Parser):
                     content['productInfo'][0]['imageUrls']['productImageUrl'],
                     content['productInfo'][0]['productContent']['descriptionHeading'],
                     content['productInfo'][0]['merchPrice']['currentPrice'],
+                    {},
                     tuple(
                         (
-                            i['countrySpecifications'][0]['localizedSize'].split(' ')[-1][:-1],
+                            i['countrySpecifications'][0]['localizedSize'],
                             f'https://www.nike.com/ru/launch/t/{content["productInfo"][0]["productContent"]["slug"]}'
                             f'/?productId={content["productInfo"][0]["merchPrice"]["productId"]}'
                             f'&size={i["countrySpecifications"][0]["localizedSize"].split(" ")[0]}'
