@@ -71,7 +71,7 @@ class Parser(api.Parser):
                     'nike-snkrs',
                     content['productInfo'][0]['imageUrls']['productImageUrl'],
                     content['productInfo'][0]['productContent']['descriptionHeading'],
-                    (api.currencies['rubles'], content['productInfo'][0]['merchPrice']['currentPrice']),
+                    (api.currencies['ruble'], content['productInfo'][0]['merchPrice']['currentPrice']),
                     {},
                     tuple(
                         (

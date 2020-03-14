@@ -1,4 +1,4 @@
-from json import loads, JSONDecodeError
+from json import loads
 from typing import List
 
 from jsonpath2 import Path
@@ -40,7 +40,7 @@ class Parser(api.Parser):
                 available: bool = False
                 content: etree.Element = etree.HTML(
                     get(target.data, self.user_agent).content)
-                if content.xpapth('//div[@class="sizes-chart-item selected"]') != () and content.xpath('//a[@class="size_range_name "]') != []:
+                if content.xpath('//div[@class="sizes-chart-item selected"]') != () and content.xpath('//a[@class="size_range_name "]') != []:
                     available = True
             else:
                 return api.SFail(self.name, 'Unknown target type')
@@ -55,9 +55,11 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//meta[@itemprop="name"]')[0].get('content'),
                     target.data,
+                    'russian-retailers',
                     content.xpath('//meta[@itemprop="image"]')[0].get('content'),
                     content.xpath('//meta[@itemprop="description"]')[0].get('content'),
-                    (api.currencies['rubles'],float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
+                    (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
+                    {},
                     tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
                         '//div[@class="flex-row sizes-chart-items-tab"]'))[0].xpath(
                         'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')),

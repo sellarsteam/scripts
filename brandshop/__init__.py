@@ -1,5 +1,5 @@
 from typing import List
-from json import loads, JSONDecodeError
+from json import loads
 
 from lxml import etree
 from requests import get
@@ -22,6 +22,11 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 120)
 
     def targets(self) -> List[TargetType]:
+        for element in etree.HTML(get(
+                self.catalog,
+                headers={'user-agent': self.user_agent}
+        ).content).xpath('//div[@class="product-container"]'):
+            print(element.xpath('//h2/span')[0].text)
         return [
             api.TInterval(element.xpath('div[@class="product"]')[0].get('data-product-id'),
                           self.name, element.xpath('div[@class="product"]')[0].xpath('a[@href]')[0].get('href'), self.interval)
@@ -29,42 +34,34 @@ class Parser(api.Parser):
                 self.catalog,
                 headers={'user-agent': self.user_agent}
             ).content).xpath('//div[@class="product-container"]')
+            if 'Кроссовки' in element.xpath('//h2/span')[0].text or 'кроссовки' in element.xpath('//h2/span')[0].text
+               and element.xpath('div[@class="product"]')[0].xpath('a[@href]')[0].get('href') != 'javascript:void(0);'
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = False
-                if target.data == 'javascript:void(0);':
-                    content = 'soon'
+                content = etree.HTML(get(target.data, self.user_agent).content)
+                if content.xpath('//button[@title="Добавить в корзину"]') is not None:
+                    return api.SSuccess(
+                        self.name,
+                        api.Result(
+                            content.xpath('//span[@itemprop="brand"]')[0].text,
+                            target.data,
+                            'brandshop',
+                            content.xpath('//img[@itemprop="image"]')[0].get('src'),
+                            '',
+                            (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
+                            {},
+                            tuple(size.current_value for size in Path.parse_str('$.*.name').match(loads(
+                                get(f'https://brandshop.ru/getproductsize/{target.data.split("/")[4]}/',
+                                    headers={'user-agent': generate_user_agent(), 'referer': target.data}).content))),
+                            ()
+                        )
+                    )
                 else:
-                    content: etree.Element = etree.HTML(
-                    get(target.data, self.user_agent).content)
-                    if content.xpath('//button[@title="Добавить в корзину"]') != None:
-                        available = True
-                    else:
-                        return api.SFail(self.name, 'Unknown "publishType"')
+                    return api.SFail(self.name, 'Unknown "publishType"')
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
-        if available:
-            type_of_item = content.xpath('//span[@itemprop="name"]')[0].text
-            if type_of_item.find('Кроссовки') != -1 or type_of_item.find('кроссовки') != -1:
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        content.xpath('//span[@itemprop="brand"]')[0].text,
-                        target.data,
-                        'brandshop',
-                        content.xpath('//img[@itemprop="image"]')[0].get('src'),
-                        '',
-                        (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
-                        tuple(size.current_value for size in Path.parse_str('$.*.name').match(loads(
-                            get(f'https://brandshop.ru/getproductsize/{target.data.split("/")[4]}/',
-                                headers={'user-agent': generate_user_agent(), 'referer': target.data}).content))),
-                        ()
-                    )
-                )
-        else:
-            return api.SWaiting(target)

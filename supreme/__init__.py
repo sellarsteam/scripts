@@ -35,7 +35,7 @@ class Parser(api.Parser):
                 available: bool = False
                 content: etree.Element = etree.HTML(
                     get(self.catalog.replace('/shop/all', '') + target.data, self.user_agent).content)
-                if content.xpath('//input[@value="add to basket"]') != None:
+                if content.xpath('//input[@value="add to basket"]') is not None:
                     available = True
                 else:
                     return api.SFail(self.name, 'Unknown "publishType"')
@@ -49,7 +49,7 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//h1[@itemprop="name"]')[0].text,
                     self.catalog.replace('/shop/all', '') + target.data,
-                    'supreme_nyc',
+                    'supreme-nyc',
                     'https://' + content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//', ''),
                     content.xpath('//p[@itemprop="description"]')[0].text,
                     (api.currencies['euro'], float(content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
