@@ -1,5 +1,5 @@
-name: sneakerhead-ru
-core: ^0.5.9
+name: sneakerhead_ru
 version: 1.0rc1
-important: no
+important: yes
 keep: yes
+core: =0.6

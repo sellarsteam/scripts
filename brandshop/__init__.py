@@ -1,5 +1,5 @@
 from typing import List
-from json import loads
+from json import loads, JSONDecodeError
 
 from lxml import etree
 from requests import get
@@ -22,20 +22,14 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 120)
 
     def targets(self) -> List[TargetType]:
-        for element in etree.HTML(get(
-                self.catalog,
-                headers={'user-agent': self.user_agent}
-        ).content).xpath('//div[@class="product-container"]'):
-            print(element.xpath('//h2/span')[0].text)
         return [
-            api.TInterval(element.xpath('div[@class="product"]')[0].get('data-product-id'),
-                          self.name, element.xpath('div[@class="product"]')[0].xpath('a[@href]')[0].get('href'), self.interval)
+            api.TInterval(element.xpath('div[@class="product" or @class="product outofstock"]')[0].get('data-product-id'),
+                          self.name, element.xpath('div[@class="product" or @class="product outofstock"]')[0].xpath('a[@href]')[0].get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
                 headers={'user-agent': self.user_agent}
-            ).content).xpath('//div[@class="product-container"]')
-            if 'Кроссовки' in element.xpath('//h2/span')[0].text or 'кроссовки' in element.xpath('//h2/span')[0].text
-               and element.xpath('div[@class="product"]')[0].xpath('a[@href]')[0].get('href') != 'javascript:void(0);'
+            ).text).xpath('//div[@class="product-container"]')
+            if 'krossovki' in element.xpath('div[@class="product" or @class="product outofstock"]')[0].xpath('a[@href]')[0].get('href')
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -65,3 +59,7 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+
+
+
+

@@ -1,5 +1,5 @@
 name: brandshop
-core: =0.6
 version: 1.0rc1
-important: yes
+important: no
 keep: yes
+core: =0.6

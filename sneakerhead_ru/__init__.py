@@ -1,4 +1,4 @@
-from json import loads
+from json import loads, JSONDecodeError
 from typing import List
 
 from jsonpath2 import Path
@@ -31,7 +31,7 @@ class Parser(api.Parser):
             )
             for i in Path.parse_str('$[*]').match(
                 loads(get(self.catalog, headers={'user-agent': self.user_agent}).text)
-            )
+            ) if i.current_value['CategoryNames'][2] == 'Кроссовки'
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -49,13 +49,12 @@ class Parser(api.Parser):
         except KeyError:
             return api.SFail(self.name, 'Wrong scheme')
         if available:
-            # TODO check snickers
             return api.SSuccess(
                 self.name,
                 api.Result(
                     content.xpath('//meta[@itemprop="name"]')[0].get('content'),
                     target.data,
-                    'russian-retailers',
+                    'russian-retailer',
                     content.xpath('//meta[@itemprop="image"]')[0].get('content'),
                     content.xpath('//meta[@itemprop="description"]')[0].get('content'),
                     (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),

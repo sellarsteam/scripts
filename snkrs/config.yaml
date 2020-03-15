@@ -1,5 +1,5 @@
 name: nike-snkrs
-core: ^0.5.9
 version: 1.0rc2
-important: no
+important: yes
 keep: yes
+core: =0.6
