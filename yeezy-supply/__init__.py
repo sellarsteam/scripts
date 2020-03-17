@@ -113,23 +113,3 @@ class Parser(api.Parser):
             )
         else:
             return api.SWaiting(target)
-#
-# if __name__ == '__main__':
-#     while True:
-#         try:
-#             sizes_json = Path.parse_str('$.variation_list[*]').match(loads(
-#                 get(f'https://www.yeezysupply.com/api/products/FX9035/availability',
-#                     headers={'user-agent': generate_user_agent(),
-#                              'referer': f'https://www.yeezysupply.com/product/FX9035',
-#                              'connection': 'keep-alive', 'cache-control': 'max-age=0',
-#                              'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-#                              'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-#                              'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-#                              'sec-fetch-user': '?1',
-#                              'accept-language': 'en-US,en;q=0.9'}, timeout=3).text))
-#             break
-#         except ReadTimeout:
-#             pass
-#
-#     s = tuple(size.current_value for size in sizes_json)
-#     print(s == ())
