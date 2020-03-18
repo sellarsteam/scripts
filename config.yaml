@@ -1,2 +1,9 @@
 ignore:
-  - example
+  folders:
+    - __pycache__
+    - .git
+  scripts:
+    - example
+    - footpatrol
+    - yeezysupply
+    - net-a-porter
