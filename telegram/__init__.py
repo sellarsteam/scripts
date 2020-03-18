@@ -49,7 +49,7 @@ class EventsExecutor(api.EventsExecutor):
         self.active = True
         self.chat = getenv('TELEGRAM_CHAT_ID')
         self.messages = queue.Queue(2048)
-        self.thread = Thread(target=self.loop)
+        self.thread = Thread(name='Telegram-Bot', target=self.loop, daemon=True)
         self.thread.start()
         self.log.info('Thread started')
 
@@ -73,7 +73,7 @@ class EventsExecutor(api.EventsExecutor):
         self.messages.put(
             lambda: self.bot.send_message(
                 self.chat,
-                f'INFO\nServer turning on\nMonitor {__version__} ({__copyright__})',
+                f'INFO\nMonitor turning on\nMonitor {__version__} ({__copyright__})',
                 parse_mode='HTML',
                 timeout=16
             )
@@ -81,23 +81,26 @@ class EventsExecutor(api.EventsExecutor):
 
     def e_monitor_turned_on(self) -> None:
         self.messages.put(
-            lambda: self.bot.send_message(self.chat, 'INFO\nServer online', parse_mode='HTML', timeout=16)
+            lambda: self.bot.send_message(self.chat, 'INFO\nMonitor online', parse_mode='HTML', timeout=16)
         )
 
     def e_monitor_turning_off(self) -> None:
         self.messages.put(
-            lambda: self.bot.send_message(self.chat, 'INFO\nServer turning off', parse_mode='HTML', timeout=16)
+            lambda: self.bot.send_message(self.chat, 'INFO\nMonitor turning off', parse_mode='HTML', timeout=16)
         )
 
     def e_monitor_turned_off(self) -> None:
-        self.messages.put(
-            lambda: self.bot.send_message(self.chat, 'INFO\nServer turned off', timeout=16)
-        )
-        self.log.info('Waiting for messages to sent')
-        self.messages.join()
-        self.log.info('All messages sent')
-        self.active = False
-        self.thread.join()
+        if self.thread.is_alive():
+            self.messages.put(
+                lambda: self.bot.send_message(self.chat, 'INFO\nMonitor offline', timeout=16)
+            )
+            self.log.info(f'Waiting for messages ({self.messages.task_done()}) to sent')
+            self.messages.join()
+            self.log.info('All messages sent')
+            self.active = False
+            self.thread.join()
+        else:
+            self.log.warn('Bot offline (due to raised exception)')
 
     def e_error(self, message: str, thread: str) -> None:
         self.messages.put(

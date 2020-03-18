@@ -1,6 +1,7 @@
-user_agent==0.1.9
-requests==2.23.0
 lxml==4.5.0
+requests==2.23.0
 jsonpath2==0.4.3
+user_agent==0.1.9
+cfscrape==2.1.1
 python-dotenv==0.12.0
 python-telegram-bot==12.4.2
