@@ -22,46 +22,38 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 120)
 
     def targets(self) -> List[TargetType]:
-                while True:
-                    try:
-                        return [
-                            api.TInterval(element.get('href').split('/')[3],
-                                          self.name, element.get('href'), self.interval)
-                            for element in etree.HTML(get(
-                                self.catalog,
-                                headers={'user-agent': self.user_agent,
-                                         'connection': 'keep-alive', 'cache-control': 'max-age=0',
-                                         'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                                         'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-                                         'sec-fetch-user': '?1',
-                                         'accept-language': 'en-US,en;q=0.9'}, timeout=3
-                            ).text).xpath('//a[@class="name-link"]')
-                        ]
-                    except ReadTimeout:
-                        pass
+        return [
+            api.TInterval(element.get('href').split('/')[3],
+                          self.name, element.get('href'), self.interval)
+            for element in etree.HTML(get(
+                self.catalog,
+                headers={'user-agent': self.user_agent,
+                         'connection': 'keep-alive', 'cache-control': 'max-age=0',
+                         'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
+                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                         'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
+                         'sec-fetch-user': '?1',
+                         'accept-language': 'en-US,en;q=0.9'}
+            ).text).xpath('//a[@class="name-link"]')
+        ]
 
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                while True:
-                    try:
-                        content: etree.Element = etree.HTML(get(
-                            target.data,
-                            headers={'user-agent': generate_user_agent(),
-                                     'connection': 'keep-alive', 'cache-control': 'max-age=0',
-                                     'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                                     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                                     'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-                                     'sec-fetch-user': '?1',
-                                     'accept-language': 'en-US,en;q=0.9',
-                                     'referer': self.catalog
-                                     }, timeout=3).text)
-                        break
-                    except ReadTimeout:
-                        pass
+                content: etree.Element = etree.HTML(get(
+                    target.data,
+                    headers={'user-agent': generate_user_agent(),
+                             'connection': 'keep-alive', 'cache-control': 'max-age=0',
+                             'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
+                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                             'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
+                             'sec-fetch-user': '?1',
+                             'accept-language': 'en-US,en;q=0.9',
+                             'referer': self.catalog
+                             }, timeout=3).text)
+                
 
                 if len(content.xpath('//a[@class="swatchanchor"]')) > 0:
                     available = True

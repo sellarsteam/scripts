@@ -31,7 +31,7 @@ class Parser(api.Parser):
             )
             for i in Path.parse_str('$[*]').match(
                 loads(get(self.catalog, headers={'user-agent': self.user_agent}).text)
-            ) if i.current_value['CategoryNames'][2] == 'Кроссовки'
+            ) if i.current_value['CategoryNames'][0] == 'Обувь' or i.current_value['CategoryNames'][1] == 'Обувь'
         ]
 
     def execute(self, target: TargetType) -> StatusType:
