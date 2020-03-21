@@ -67,7 +67,7 @@ class Parser(api.Parser):
                     content.xpath('//meta[@name="keywords"]')[0].get('content'),
                     target.data,
                     'traektoria_ru',
-                    'https://www.traektoria.ru' + content.xpath('//img[@style]')[0].get('src'),
+                    'https://www.traektoria.ru' + content.xpath('//a[@class="jqzoom"]')[0].get('href').replace('\'', ''),
                     '',
                     (api.currencies['ruble'], float(content.xpath('//div[@class="price"]')[0].text.replace('\t', '').replace('\n', '').replace('\xa0', ''))),
                     {},

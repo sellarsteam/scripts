@@ -1,0 +1,5 @@
+name: vk_merchants
+core: ^0.6.1
+version: 1.0.0rc2
+important: no
+keep: yes

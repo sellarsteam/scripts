@@ -52,7 +52,7 @@ class Parser(api.Parser):
                              'sec-fetch-user': '?1',
                              'accept-language': 'en-US,en;q=0.9',
                              'referer': self.catalog
-                             }, timeout=3).text)
+                             }).text)
                 
 
                 if len(content.xpath('//a[@class="swatchanchor"]')) > 0:
