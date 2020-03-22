@@ -1,7 +1,8 @@
 import queue
 import time
-from os import getenv
-from threading import Thread
+import inspect
+import os
+import threading
 
 import telegram
 import telegram.ext
@@ -24,16 +25,16 @@ class EventsExecutor(api.EventsExecutor):
 
         load_dotenv()
         request_kwargs = {}
-        proxy = getenv('TELEGRAM_PROXY')
+        proxy = os.getenv('TELEGRAM_PROXY')
         if proxy:
             if proxy.split('://')[0] == 'https':
                 request_kwargs['proxy_url'] = proxy
             elif proxy.split('://')[0] == 'socks5':
                 request_kwargs['proxy_url'] = proxy
-                if getenv('PROXY_USER') and getenv('PROXY_PASS'):
+                if os.getenv('PROXY_USER') and os.getenv('PROXY_PASS'):
                     request_kwargs['urllib3_proxy_kwargs'] = {
-                        'username': getenv('PROXY_USER'),
-                        'password': getenv('PROXY_PASS')
+                        'username': os.getenv('PROXY_USER'),
+                        'password': os.getenv('PROXY_PASS')
                     }
             elif proxy.split('://')[0] == 'http':
                 raise api.EventsExecutorError('HTTP proxy is not supported')
@@ -41,35 +42,44 @@ class EventsExecutor(api.EventsExecutor):
                 raise api.EventsExecutorError('Unknown proxy')
 
         self.bot = telegram.ext.Updater(
-            token=getenv('TELEGRAM_BOT_TOKEN'),
+            token=os.getenv('TELEGRAM_BOT_TOKEN'),
             request_kwargs=request_kwargs,
             use_context=True
         ).bot
 
-        self.active = True
-        self.chat = getenv('TELEGRAM_CHAT_ID')
+        self.state = 1
+        self.chat = os.getenv('TELEGRAM_CHAT_ID')
         self.messages = queue.PriorityQueue(2048)
-        self.thread = Thread(name='Telegram-Bot', target=self.loop, daemon=True)
+        self.thread = threading.Thread(name='Telegram-Bot', target=self.loop, daemon=True)
         self.thread.start()
         self.log.info('Thread started')
 
     def loop(self):
+        errors = 0
         while True:
             start: float = time.time()
-            if self.active:
+            if self.state >= 1:
                 try:
                     msg = self.messages.get_nowait().content
                     try:
                         msg()
+                    except (telegram.error.TimedOut, telegram.error.NetworkError) as e:
+                        if self.state == 2:
+                            self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message'
+                                           f' ({inspect.getsource(msg)})')
+                            errors += 1
+                        else:
+                            self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message')
+                        self.messages.put(library.PrioritizedItem(1, msg), timeout=16)
+                    finally:
                         self.messages.task_done()
-                    except telegram.error.TimedOut as e:
-                        self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message')
-                        self.messages.put(library.PrioritizedItem(1, msg), timeout=16)
-                    except telegram.error.NetworkError as e:
-                        self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message')
-                        self.messages.put(library.PrioritizedItem(1, msg), timeout=16)
                 except queue.Empty:
                     pass
+                if errors >= 3:
+                    self.log.warn('Max retries reached. Turning off')
+                    self.messages.unfinished_tasks = 1
+                    self.messages.task_done()
+                    self.state = 0
             else:
                 self.log.info('Thread closed')
                 break
@@ -113,10 +123,11 @@ class EventsExecutor(api.EventsExecutor):
                     lambda: self.bot.send_message(self.chat, 'INFO\nMonitor offline', timeout=16)
                 )
             )
-            self.log.info(f'Waiting for messages ({self.messages.task_done()}) to sent')
+            self.log.info(f'Waiting for messages ({self.messages.unfinished_tasks}) to sent')
+            self.state = 2
             self.messages.join()
-            self.log.info('All messages sent')
-            self.active = False
+            self.log.info('All messages sent') if self.state == 2 else None
+            self.state = 0
             self.thread.join()
         else:
             self.log.warn('Bot offline (due to raised exception)')
