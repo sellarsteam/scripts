@@ -36,9 +36,7 @@ vk_merchants = (
 )
 
 key_words = (
-    'надо', 'дай', 'беру', 'куплю', 'need', 'ищу', 'есть', 'пиши',
-    'Надо', 'Дай', 'Беру', 'Куплю', 'Need', 'Ищу', 'Есть', 'Пиши',
-    'НАДО', 'ДАЙ', 'БЕРУ', 'КУПЛЮ', 'NEED', 'ИЩУ', 'ЕСТЬ', 'ПИШИ'
+    'надо', 'дай', 'беру', 'куплю', 'need', 'ищу', 'есть', 'пиши'
 )
 
 
@@ -82,7 +80,7 @@ class Parser(api.Parser):
                 except IndexError:
                     return api.SWaiting(target)
 
-                for key_word in key_words:
+                for key_word in key_word in text or key_word.capitalize() in text or key_word.upper() in text:
                     if key_word in text:
                         available = True
                         break
