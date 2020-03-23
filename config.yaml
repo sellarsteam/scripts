@@ -4,6 +4,7 @@ ignore:
     - .git
   scripts:
     - example
-    - footpatrol
-    - yeezysupply
+    - footpatrol-us
+    - yeezy-supply
+    - vk-merchants
     - net-a-porter

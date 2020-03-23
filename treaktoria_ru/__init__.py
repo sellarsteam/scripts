@@ -1,10 +1,9 @@
 from typing import List
 
 from lxml import etree
-from requests import get
 import re
+from requests import get
 from user_agent import generate_user_agent
-from requests.exceptions import ReadTimeout
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -14,7 +13,7 @@ from core.logger import Logger
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://www.hibbett.com/launch-calendar/?prefn1=dtLaunch&prefv1=-120&srule=launch-date-desc'
+        self.catalog: str = 'https://www.traektoria.ru/wear/keds/brand-nike/?price__from=6000&THING_TYPE=%D0%92%D0%AB%D0%A1%D0%9E%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%A0%D0%9E%D0%A1%D0%A1%D0%9E%D0%92%D0%9A%D0%98%7E%D0%9D%D0%98%D0%97%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB'
         self.interval: float = 1
         self.user_agent = generate_user_agent()
 
@@ -23,8 +22,8 @@ class Parser(api.Parser):
 
     def targets(self) -> List[TargetType]:
         return [
-            api.TInterval(element.get('href').split('/')[3],
-                          self.name, element.get('href'), self.interval)
+            api.TInterval(element.get('href').split('/')[2],
+                          self.name, 'https://www.traektoria.ru' + element.get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
                 headers={'user-agent': self.user_agent,
@@ -34,9 +33,8 @@ class Parser(api.Parser):
                          'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                          'sec-fetch-user': '?1',
                          'accept-language': 'en-US,en;q=0.9'}
-            ).text).xpath('//a[@class="name-link"]')
+            ).text).xpath('//a[@class="p_link"]')
         ]
-
 
     def execute(self, target: TargetType) -> StatusType:
         try:
@@ -53,10 +51,11 @@ class Parser(api.Parser):
                              'accept-language': 'en-US,en;q=0.9',
                              'referer': self.catalog
                              }).text)
-                
 
-                if len(content.xpath('//a[@class="swatchanchor"]')) > 0:
+                if content.xpath('//input[@class="btn buy kdxAddToCart"]') != []:
                     available = True
+                else:
+                    return api.SFail(self.name, 'Item is sold out')
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -67,17 +66,14 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//meta[@name="keywords"]')[0].get('content'),
                     target.data,
-                    'hibbet',
-                    content.xpath('//a[@class="swatchanchor"]')[0].get('data-thumb').split('"')[3].replace(' ', ''),
+                    'traektoria_ru',
+                    'https://www.traektoria.ru' + content.xpath('//a[@class="jqzoom"]')[0].get('href').replace('\'', ''),
                     '',
-                    (api.currencies['dollar'], float(content.xpath('//span[@class="price-sales"]')[0].get('content'))),
+                    (api.currencies['ruble'], float(content.xpath('//div[@class="price"]')[0].text.replace('\t', '').replace('\n', '').replace('\xa0', ''))),
                     {},
-                    tuple((str(int(re.findall(r'size=....', size.get('href'))[0].split('=')[1]) / 10) + ' US',
-                           size.get('href'))
-                           for size in content.xpath('//a[@class="swatchanchor"]') if 'size' in size.get('href')),
+                    tuple(size.text + ' US' for size in content.xpath('//span[@class="choose_size"]')),
                     ()
                 )
             )
         else:
             return api.SWaiting(target)
-
