@@ -2,6 +2,7 @@ from typing import List
 
 from lxml import etree
 from requests import get
+from requests.exceptions import SSLError
 from user_agent import generate_user_agent
 
 from core import api
@@ -20,43 +21,40 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 120)
 
     def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(element.get('href').split('/')[4],
-                          self.name, element.get('href'), self.interval)
-            for element in etree.HTML(get(
-                self.catalog,
-                headers={'user-agent': self.user_agent}
-            ).content).xpath('//a[@style="height:81px;"]')
-        ]
+        try:
+            return [
+                api.TInterval(element.get('href').split('/')[4],
+                              self.name, element.get('href'), self.interval)
+                for element in etree.HTML(get(
+                    self.catalog,
+                    headers={'user-agent': self.user_agent}
+                ).content).xpath('//a[@style="height:81px;"]') if len(element.xpath('div[@class="sold_out_tag"]')) == 0
+            ]
+        except SSLError:
+            raise api.ScriptError('Site is down')
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = False
                 content: etree.Element = etree.HTML(
                     get(self.catalog.replace('/shop/all', '') + target.data, self.user_agent).content)
-                if content.xpath('//input[@value="add to basket"]') != None:
-                    available = True
-                else:
-                    return api.SFail(self.name, 'Unknown "publishType"')
             else:
                 return api.SFail(self.name, 'Unknown target type')
+        except SSLError:
+            return api.SFail(self.name, 'Site is down')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
-        if available:
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    content.xpath('//h1[@itemprop="name"]')[0].text,
-                    self.catalog.replace('/shop/all', '') + target.data,
-                    'supreme_nyc',
-                    'https://' + content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//', ''),
-                    content.xpath('//p[@itemprop="description"]')[0].text,
-                    (api.currencies['euro'], float(content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
-                    {'Цвет': content.xpath('//p[@itemprop="model"]')[0].text},
-                    tuple(size.text for size in content.xpath('//option[@value]')),
-                    ()
-                )
+        return api.SSuccess(
+            self.name,
+            api.Result(
+                content.xpath('//h1[@itemprop="name"]')[0].text,
+                self.catalog.replace('/shop/all', '') + target.data,
+                'supreme_nyc',
+                'https://' + content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//', ''),
+                content.xpath('//p[@itemprop="description"]')[0].text,
+                (api.currencies['euro'], float(content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
+                {'Цвет': content.xpath('//p[@itemprop="model"]')[0].text},
+                tuple(size.text for size in content.xpath('//option[@value]')),
+                (('StockX', 'https://stockx.com/search?s=' + content.xpath('//h1[@itemprop="name"]')[0].text.replace(' ', '%20').replace('®', '')))
             )
-        else:
-            return api.SWaiting(target)
+        )
