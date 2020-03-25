@@ -34,9 +34,16 @@ vk_merchants = (
     'https://vk.com/niggazzwithattitude',
 )
 
-key_words = (
-    'надо', 'дай', 'беру', 'куплю', 'need', 'ищу', 'есть', 'пиши'
-)
+
+def key_words():
+    for i in 'надо', 'дай', 'беру', 'куплю', 'need', 'ищу', 'есть', 'пиши':
+        for j in range(3):
+            if j == 0:
+                yield i
+            elif j == 1:
+                yield i.capitalize()
+            elif j == 2:
+                yield i.upper()
 
 
 def first_not_fixed_post(merchant_link):
@@ -79,7 +86,7 @@ class Parser(api.Parser):
                 except IndexError:
                     return api.SWaiting(target)
 
-                for key_word in key_word in text or key_word.capitalize() in text or key_word.upper() in text:
+                for key_word in key_words():
                     if key_word in text:
                         available = True
                         break
