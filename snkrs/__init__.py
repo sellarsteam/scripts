@@ -80,7 +80,8 @@ class Parser(api.Parser):
                             f'/?productId={content["productInfo"][0]["merchPrice"]["productId"]}'
                             f'&size={i["countrySpecifications"][0]["localizedSize"].split(" ")[0]}'
                         ) for i in content['productInfo'][0]['skus'] if i['id'] in skus),
-                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content['publishedContent']['nodes'][0]['properties']['altText'].replace(' ', '%20').replace('\'', '').replace('‘', '')))
+                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content['publishedContent']['nodes'][0]['properties']['altText'].replace(' ', '%20').replace('\'', '').replace('‘', '')), 
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:

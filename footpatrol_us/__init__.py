@@ -73,7 +73,8 @@ class Parser(api.Parser):
                     (api.currencies['pound'], float(content.xpath('//span[@class="pri"]')[0].get('content').replace('£', ''))),
                     {},
                     tuple(size.replace('"', '') + ' UK' for size in re.findall(r'("\d.\d"|"\d{1}"|"\d\d.\d"|"\d\d")',content.xpath('//script[@type="text/javascript"]')[2].text)),
-                    ()
+                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//h1[@itemprop="name"]')[0].text.replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:

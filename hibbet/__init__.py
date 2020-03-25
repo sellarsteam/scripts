@@ -75,7 +75,9 @@ class Parser(api.Parser):
                     tuple((str(int(re.findall(r'size=....', size.get('href'))[0].split('=')[1]) / 10) + ' US',
                            size.get('href'))
                            for size in content.xpath('//a[@class="swatchanchor"]') if 'size' in size.get('href')),
-                    ()
+                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@name="keywords"]')[0]
+                            .get('content').replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:

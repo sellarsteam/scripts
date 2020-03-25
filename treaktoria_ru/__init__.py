@@ -87,7 +87,9 @@ class Parser(api.Parser):
                     (api.currencies['ruble'], float(content.xpath('//div[@class="price"]')[0].text.replace('\t', '').replace('\n', '').replace('\xa0', ''))),
                     {},
                     tuple(available_sizes),
-                    ()
+                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@name="keywords"]')[0]
+                            .get('content').replace(' ', '%20').replace('кеды', '').replace('Высокие', '').replace('Низкие', '')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:

@@ -56,10 +56,11 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        name = content.xpath('//title')[0].text.replace('Кроссовки ', '').replace(' - Farfetch', '')
         return api.SSuccess(
             self.name,
             api.Result(
-                str(content.xpath('//span[@itemprop="name"]')[0].text) + ' ' + str(content.xpath('//span[@data-tstid="cardInfo-description"]')[0].text),
+                name,
                 target.data,
                 'farfetch_ru',
                 re.findall(r'(https?://[\S]+jpg)', str(for_content.content))[19].split('"600":"')[-1],
@@ -67,7 +68,8 @@ class Parser(api.Parser):
                 (api.currencies['ruble'], float(content.xpath('//span[@data-tstid="priceInfo-original"]')[0].text.replace('₽', '').replace('\xa0', ''))),
                 {},
                 tuple(size.text + 'US' for size in content.xpath('//span[@data-tstid="sizeDescription"]')),
-                ()
+                (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
             )
         )
 

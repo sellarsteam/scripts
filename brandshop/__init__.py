@@ -40,7 +40,7 @@ class Parser(api.Parser):
                     return api.SSuccess(
                         self.name,
                         api.Result(
-                            content.xpath('//span[@itemprop="brand"]')[0].text,
+                            content.xpath('//span[@itemprop="brand"]')[0].text + content.xpath('//span[@itemprop="name"]/text()[2]')[0],
                             target.data,
                             'brandshop',
                             content.xpath('//img[@itemprop="image"]')[0].get('src'),
@@ -50,7 +50,9 @@ class Parser(api.Parser):
                             tuple(size.current_value for size in Path.parse_str('$.*.name').match(loads(
                                 get(f'https://brandshop.ru/getproductsize/{target.data.split("/")[4]}/',
                                     headers={'user-agent': generate_user_agent(), 'referer': target.data}).content))),
-                            ()
+                            (('StockX', 'https://stockx.com/search/sneakers?s=' + (content.xpath('//span[@itemprop="brand"]')[0].text + content.xpath('//span[@itemprop="name"]/text()[2]')[0])
+                                .replace(' ', '%20').replace('\xa0', '%20')), 
+                            ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                         )
                     )
                 else:

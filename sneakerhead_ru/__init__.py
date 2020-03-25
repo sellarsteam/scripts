@@ -62,7 +62,9 @@ class Parser(api.Parser):
                     tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
                         '//div[@class="flex-row sizes-chart-items-tab"]'))[0].xpath(
                         'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')),
-                    ()
+                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@itemprop="name"]')[0]
+                            .get('content').replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:

@@ -79,7 +79,8 @@ class Parser(api.Parser):
                     (api.currencies['pound'], float(target.data[4])),
                     {},
                     (),
-                    ()
+                    (('StockX', 'https://stockx.com/search/sneakers?s=' + target.data[1].replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:
