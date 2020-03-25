@@ -13,7 +13,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.net-a-porter.com/ru/en/d/Shop/Shoes/Sneakers?cm_sp=topnav-_-shoes-_-sneakers&pn=1&npp=60&image_view=product&dscroll=0&sortorder=new-in&sizescheme=IT'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -23,7 +23,14 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.xpath('div[@class="description"]/a[@data-position]')[0].get('title'),
                           self.name,
-                          element,
+                          (element.xpath('div[@class="description"]/a[@data-position]')[0].get('href'),
+                           element.xpath('div[@class="description"]/a[@data-position]')[0].get('title'),
+                           element.xpath('div[@class="description"]/a[@data-position]')[0].get('href'),
+                           element.xpath('div[@class="product-image"]/a[@data-position]/img[@height="270"]')[0]
+                           .get('data-src'),
+                           element.xpath('div[@class="description"]/span[@class="price "]')[0].text
+                           .replace('\t', '').replace('\n', '').replace('£', '')
+                           ),
                           self.interval)
             for element in etree.HTML(get(
                 self.catalog,
@@ -43,8 +50,7 @@ class Parser(api.Parser):
                 available: bool = False
                 content: etree.Element = etree.HTML(
                     get(
-                        'https://www.net-a-porter.com' +
-                        target.data.xpath('div[@class="description"]/a[@data-position]')[0].get('href'),
+                        'https://www.net-a-porter.com' + target.data[0],
                         headers={
                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
                             'accept-language': 'en-US,en;q=0.8',
@@ -65,20 +71,18 @@ class Parser(api.Parser):
             return api.SSuccess(
                 self.name,
                 api.Result(
-                    target.data.xpath('div[@class="description"]/a[@data-position]')[0].get('title'),
-                    'https://www.net-a-porter.com' + target.data.xpath('div[@class="description"]/a[@data-position]')[
-                        0].get('href'),
+                    target.data[1],
+                    'https://www.net-a-porter.com' + target.data[2],
                     'net-a-porter',
-                    'https:' + target.data.xpath('div[@class="product-image"]/a[@data-position]/img[@height="270"]')[
-                        0].get('data-src'),
+                    'https:' + target.data[3],
                     '',
-                    (api.currencies['pound'], float(
-                        target.data.xpath('div[@class="description"]/span[@class="price "]')[0].text.replace('\t',
-                                                                                                             '').replace(
-                            '\n', '').replace('£', ''))),
+                    (api.currencies['pound'], float(target.data[4])),
                     {},
                     (),
-                    ()
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s=' + target.data[1].replace(' ', '%20')),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:

@@ -1,7 +1,7 @@
+from random import choice
 from typing import List
 
 from lxml import etree
-import re
 from requests import get
 from user_agent import generate_user_agent
 
@@ -9,12 +9,14 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
+sizes_stock = ['[LOW]', '[HIGH]', '[MEDIUM]']
+
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.traektoria.ru/wear/keds/brand-nike/?price__from=6000&THING_TYPE=%D0%92%D0%AB%D0%A1%D0%9E%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%A0%D0%9E%D0%A1%D0%A1%D0%9E%D0%92%D0%9A%D0%98%7E%D0%9D%D0%98%D0%97%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -61,18 +63,43 @@ class Parser(api.Parser):
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
         if available:
+            available_sizes = []
+            for size in content.xpath('//div[@class="choose_size_columns"]//span[@class="choose_size"]'):
+                try:
+                    last_size = available_sizes[-1].split(' ')[0]
+                except IndexError:
+                    last_size = 0
+                if float(size.text) > float(last_size):
+                    available_sizes.append(size.text + f' US {choice(sizes_stock)}')
+                else:
+                    break
+            image = content.xpath('//a[@class="jqzoom"]')[0].get('href').replace('\'', '')
+            if '.jfif' in image:
+                image = 'https://ipadflava.com/wp-content/uploads/nike-sb-logo-21.jpg'
+            else:
+                image = 'https://www.traektoria.ru' + image.replace('\'', '')
             return api.SSuccess(
                 self.name,
                 api.Result(
                     content.xpath('//meta[@name="keywords"]')[0].get('content'),
                     target.data,
                     'traektoria_ru',
-                    'https://www.traektoria.ru' + content.xpath('//a[@class="jqzoom"]')[0].get('href').replace('\'', ''),
+                    image,
                     '',
-                    (api.currencies['ruble'], float(content.xpath('//div[@class="price"]')[0].text.replace('\t', '').replace('\n', '').replace('\xa0', ''))),
+                    (
+                        api.currencies['ruble'],
+                        float(content.xpath(
+                            '//div[@class="price"]'
+                        )[0].text.replace('\t', '').replace('\n', '').replace('\xa0', ''))
+                    ),
                     {},
-                    tuple(size.text + ' US' for size in content.xpath('//span[@class="choose_size"]')),
-                    ()
+                    tuple(available_sizes),
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s=' +
+                         content.xpath('//meta[@name="keywords"]')[0].get('content').replace(' ', '%20')
+                         .replace('кеды', '').replace('Высокие', '').replace('Низкие', '')),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:

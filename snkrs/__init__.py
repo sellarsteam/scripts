@@ -21,7 +21,7 @@ class Parser(api.Parser):
         self.catalog: str = 'https://api.nike.com/product_feed/threads/v2/?count=24&filter=marketplace%28RU%29&filter=language%28ru%29&filter=upcoming%28true%29&filter=channelId%28010794e5-35fe-4e32-aaff-cd2c74f89d61%29&filter=exclusiveAccess%28true%2Cfalse%29&sort=effectiveStartSellDateAsc&fields=active&fields=id&fields=productInfo'
         self.channel: str = '010794e5-35fe-4e32-aaff-cd2c74f89d61'
         self.pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
-        self.interval: float = 1
+        self.interval: int = 1
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 120)
@@ -80,7 +80,12 @@ class Parser(api.Parser):
                             f'/?productId={content["productInfo"][0]["merchPrice"]["productId"]}'
                             f'&size={i["countrySpecifications"][0]["localizedSize"].split(" ")[0]}'
                         ) for i in content['productInfo'][0]['skus'] if i['id'] in skus),
-                    ()
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s=' +
+                         content['publishedContent']['nodes'][0]['properties']['altText']
+                         .replace(' ', '%20').replace('\'', '').replace('‘', '')),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:

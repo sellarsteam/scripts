@@ -18,9 +18,10 @@ def build(item: Result) -> str:
         compiled += f'{item.description}\n'
     if item.price:
         if isinstance(item.price, (tuple, list)):
-            if item.price.__len__() == 2 and isinstance(item.price[0], int) and isinstance(item.price[1], (float, int)):
+            if item.price.__len__() == 2 and isinstance(item.price[0], int) and \
+                    isinstance(item.price[1], (float, int)) and item.price[0] != 0:
                 compiled += f'Цена: {item.price[1]}{currencies[item.price[0]]}\n'
-            elif item.price.__len__() == 3:
+            elif item.price.__len__() == 3 and item.price[0] != 0:
                 compiled += f'Цена: <s>{item.price[2]}{currencies[item.price[0]]}</s> {item.price[1]}{currencies[item.price[0]]}\n'
     if item.fields:
         if isinstance(item.fields, dict):

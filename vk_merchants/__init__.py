@@ -1,9 +1,8 @@
-from json import loads, JSONDecodeError
 from typing import List
 
+from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
-from lxml import etree
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -35,11 +34,16 @@ vk_merchants = (
     'https://vk.com/niggazzwithattitude',
 )
 
-key_words = (
-    'надо', 'дай', 'беру', 'куплю', 'need', 'ищу', 'есть', 'пиши',
-    'Надо', 'Дай', 'Беру', 'Куплю', 'Need', 'Ищу', 'Есть', 'Пиши',
-    'НАДО', 'ДАЙ', 'БЕРУ', 'КУПЛЮ', 'NEED', 'ИЩУ', 'ЕСТЬ', 'ПИШИ'
-)
+
+def key_words():
+    for i in 'надо', 'дай', 'беру', 'куплю', 'need', 'ищу', 'есть', 'пиши':
+        for j in range(3):
+            if j == 0:
+                yield i
+            elif j == 1:
+                yield i.capitalize()
+            elif j == 2:
+                yield i.upper()
 
 
 def first_not_fixed_post(merchant_link):
@@ -59,7 +63,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.user_agent = generate_user_agent()
-        self.interval: float = 45
+        self.interval: int = 45
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 1200)
@@ -82,7 +86,7 @@ class Parser(api.Parser):
                 except IndexError:
                     return api.SWaiting(target)
 
-                for key_word in key_words:
+                for key_word in key_words():
                     if key_word in text:
                         available = True
                         break
@@ -99,8 +103,9 @@ class Parser(api.Parser):
                         content.xpath('//a[@class="pi_author"]')[0].text,
                         target.data,
                         'vk_merchants',
-                        content.xpath('//div[@style]')[2].get('style').split('url(')[-1].replace(')', '').replace(';',
-                                                                                                                  ''),
+                        content.xpath(
+                            '//div[@style]'
+                        )[2].get('style').split('url(')[-1].replace(')', '').replace(';', ''),
                         text,
                         (api.currencies['dollar'], 0),
                         {},

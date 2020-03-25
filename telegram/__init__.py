@@ -1,8 +1,10 @@
-import queue
-import time
-import inspect
 import os
+import queue
 import threading
+import time
+from dataclasses import dataclass, field
+from types import FunctionType
+from typing import Dict, Any
 
 import telegram
 import telegram.ext
@@ -17,6 +19,22 @@ from .constructor import build
 
 
 # TODO: Check for None
+
+
+@dataclass(order=True)
+class Message:
+    priority: int = field(repr=False)
+    func: FunctionType = field(compare=False)
+    args: tuple = field(compare=False)
+    kwargs: Dict[str, Any] = field(compare=False)
+    tries: int = field(default=5, repr=False)
+
+    def retry(self) -> bool:
+        if self.tries == 0:
+            return False
+        else:
+            self.tries -= 1
+            return True
 
 
 class EventsExecutor(api.EventsExecutor):
@@ -49,7 +67,7 @@ class EventsExecutor(api.EventsExecutor):
 
         self.state = 1
         self.chat = os.getenv('TELEGRAM_CHAT_ID')
-        self.messages = queue.PriorityQueue(2048)
+        self.messages = queue.PriorityQueue(1024)
         self.thread = threading.Thread(name='Telegram-Bot', target=self.loop, daemon=True)
         self.thread.start()
         self.log.info('Thread started')
@@ -60,17 +78,20 @@ class EventsExecutor(api.EventsExecutor):
             start: float = time.time()
             if self.state >= 1:
                 try:
-                    msg = self.messages.get_nowait().content
+                    msg: Message = self.messages.get_nowait()
                     try:
-                        msg()
+                        if msg.retry():
+                            msg.func(*msg.args, **msg.kwargs)
+                        else:
+                            self.log.warn(f'Max retries reached for message: {msg}')
                     except (telegram.error.TimedOut, telegram.error.NetworkError) as e:
                         if self.state == 2:
-                            self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message'
-                                           f' ({inspect.getsource(msg)})')
+                            self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message: {msg}')
                             errors += 1
                         else:
                             self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message')
-                        self.messages.put(library.PrioritizedItem(1, msg), timeout=16)
+                        msg.priority = 1
+                        self.messages.put_nowait(msg)
                     finally:
                         self.messages.task_done()
                 except queue.Empty:
@@ -88,39 +109,42 @@ class EventsExecutor(api.EventsExecutor):
 
     def e_monitor_turning_on(self) -> None:
         self.messages.put(
-            library.PrioritizedItem(
+            Message(
                 5,
-                lambda: self.bot.send_message(
-                    self.chat,
-                    f'INFO\nMonitor turning on\nMonitor {__version__} ({__copyright__})',
-                    parse_mode='HTML',
-                    timeout=16
-                )
+                self.bot.send_message,
+                (self.chat, f'INFO\nMonitor turning on\nMonitor {__version__} ({__copyright__})'),
+                {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
     def e_monitor_turned_on(self) -> None:
         self.messages.put(
-            library.PrioritizedItem(
+            Message(
                 5,
-                lambda: self.bot.send_message(self.chat, 'INFO\nMonitor online', parse_mode='HTML', timeout=16)
+                self.bot.send_message,
+                (self.chat, 'INFO\nMonitor online'),
+                {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
     def e_monitor_turning_off(self) -> None:
         self.messages.put(
-            library.PrioritizedItem(
+            Message(
                 5,
-                lambda: self.bot.send_message(self.chat, 'INFO\nMonitor turning off', parse_mode='HTML', timeout=16)
+                self.bot.send_message,
+                (self.chat, 'INFO\nMonitor turning off'),
+                {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
     def e_monitor_turned_off(self) -> None:
         if self.thread.is_alive():
             self.messages.put(
-                library.PrioritizedItem(
+                Message(
                     5,
-                    lambda: self.bot.send_message(self.chat, 'INFO\nMonitor offline', timeout=16)
+                    self.bot.send_message,
+                    (self.chat, 'INFO\nMonitor offline'),
+                    {'timeout': 16}
                 )
             )
             self.log.info(f'Waiting for messages ({self.messages.unfinished_tasks}) to sent')
@@ -134,61 +158,57 @@ class EventsExecutor(api.EventsExecutor):
 
     def e_error(self, message: str, thread: str) -> None:
         self.messages.put(
-            library.PrioritizedItem(
+            Message(
                 4,
-                lambda: self.bot.send_message(
-                    self.chat,
-                    f'<u><b>Alert [ERROR]</b></u>\n{message}\nThread: {thread}',
-                    parse_mode='HTML',
-                    timeout=16
-                )
+                self.bot.send_message,
+                (self.chat, f'<u><b>Alert [ERROR]</b></u>\n{message}\nThread: {thread}'),
+                {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
     def e_fatal(self, e: Exception, thread: str) -> None:
         self.messages.put(
-            library.PrioritizedItem(
+            Message(
                 3,
-                lambda: self.bot.send_message(
-                    self.chat,
-                    f'<u><b>Alert [FATAL]</b></u>\n{e.__class__.__name__}: {e.__str__()}\nThread: {thread}',
-                    parse_mode='HTML',
-                    timeout=16
-                )
+                self.bot.send_message,
+                (self.chat, f'<u><b>Alert [FATAL]</b></u>\n{e.__class__.__name__}: {e.__str__()}\nThread: {thread}'),
+                {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
     def e_success_status(self, status: SSuccess) -> None:
         if status.result.image:
             self.messages.put(
-                library.PrioritizedItem(
+                Message(
                     10,
-                    lambda: self.bot.send_photo(
+                    self.bot.send_photo,
+                    (
                         self.chat,
-                        status.result.image,
-                        build(status.result) + f'\n*Source: {status.script}\n*Date: {library.get_time()} UTC',
-                        parse_mode='HTML',
-                        timeout=16
-                    )
+                        status.result.image, build(status.result) +
+                        f'\n*Source: {status.script}\n*Date: {library.get_time()} UTC'
+                    ),
+                    {'parse_mode': 'HTML', 'timeout': 16}
                 )
             )
         else:
             self.messages.put(
-                library.PrioritizedItem(
+                Message(
                     10,
-                    lambda: self.bot.send_message(self.chat, build(status.result), parse_mode='HTML', timeout=16)
+                    self.bot.send_message,
+                    (self.chat, build(status.result)),
+                    {'parse_mode': 'HTML', 'timeout': 16}
                 )
             )
 
     def e_fail_status(self, status: SFail) -> None:
         self.messages.put(
-            library.PrioritizedItem(
+            Message(
                 5,
-                lambda: self.bot.send_message(
+                self.bot.send_message,
+                (
                     self.chat,
-                    f'<b>Alert [WARN]</b>\n<u>Target Lost</u>\nMessage: {status.message}\nScript: {status.script}',
-                    parse_mode='HTML',
-                    timeout=16
-                )
+                    f'<b>Alert [WARN]</b>\n<u>Target Lost</u>\nMessage: {status.message}\nScript: {status.script}'
+                ),
+                {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
