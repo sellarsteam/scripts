@@ -11,14 +11,15 @@ from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
 
-# TODO: Optimize execute url
-# TODO: Checking for discount
-
-
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://api.nike.com/product_feed/threads/v2/?count=24&filter=marketplace%28RU%29&filter=language%28ru%29&filter=upcoming%28true%29&filter=channelId%28010794e5-35fe-4e32-aaff-cd2c74f89d61%29&filter=exclusiveAccess%28true%2Cfalse%29&sort=effectiveStartSellDateAsc&fields=active&fields=id&fields=productInfo'
+        self.url = 'https://api.nike.com/product_feed/threads/v2'
+        self.catalog: str = self.url + '/?count=24&filter=marketplace%28RU%29&filter=language%28ru%29' \
+                                       '&filter=upcoming%28true%29' \
+                                       '&filter=channelId%28010794e5-35fe-4e32-aaff-cd2c74f89d61%29' \
+                                       '&filter=exclusiveAccess%28true%2Cfalse%29&sort=effectiveStartSellDateAsc' \
+                                       '&fields=active&fields=id&fields=productInfo'
         self.channel: str = '010794e5-35fe-4e32-aaff-cd2c74f89d61'
         self.pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
         self.interval: int = 1
@@ -41,7 +42,7 @@ class Parser(api.Parser):
                 available: bool = False
                 content: dict = loads(
                     get(
-                        f'https://api.nike.com/product_feed/threads/v2/{target.data}?channelId={self.channel}&marketplace=RU&language=ru',
+                        f'{self.url}/{target.data}?channelId={self.channel}&marketplace=RU&language=ru',
                         headers={'user-agent': generate_user_agent()}
                     ).text
                 )
@@ -71,7 +72,12 @@ class Parser(api.Parser):
                     'nike-snkrs',
                     content['productInfo'][0]['imageUrls']['productImageUrl'],
                     content['productInfo'][0]['productContent']['descriptionHeading'],
-                    (api.currencies['ruble'], content['productInfo'][0]['merchPrice']['currentPrice']),
+                    (
+                        api.currencies['ruble'],
+                        content['productInfo'][0]['merchPrice']['currentPrice'],
+                        content['productInfo'][0]['merchPrice']['fullPrice'] if
+                        content['productInfo'][0]['merchPrice']['discounted'] else 0
+                    ),
                     {},
                     tuple(
                         (
