@@ -1,11 +1,10 @@
-from json import loads, JSONDecodeError
+from json import loads
 from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
-
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -17,7 +16,7 @@ class Parser(api.Parser):
         super().__init__(name, log)
         self.catalog: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/55379e776636b417f47acd68/?&categoryIds=56&categoryPaths=&session=5e67c3c66116160001f6cdaf&pvid=953289517825957&isDebug=false&format=json'
         self.user_agent = generate_user_agent()
-        self.interval: float = 1
+        self.interval: int = 1
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 120)
@@ -40,7 +39,8 @@ class Parser(api.Parser):
                 available: bool = False
                 content: etree.Element = etree.HTML(
                     get(target.data, self.user_agent).content)
-                if content.xpath('//div[@class="sizes-chart-item selected"]') != () and content.xpath('//a[@class="size_range_name "]') != []:
+                if content.xpath('//div[@class="sizes-chart-item selected"]') != () and \
+                        content.xpath('//a[@class="size_range_name "]') != []:
                     available = True
             else:
                 return api.SFail(self.name, 'Unknown target type')
@@ -62,9 +62,15 @@ class Parser(api.Parser):
                     tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
                         '//div[@class="flex-row sizes-chart-items-tab"]'))[0].xpath(
                         'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')),
-                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@itemprop="name"]')[0]
-                            .get('content').replace(' ', '%20')),
-                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                    (
+                        (
+                            'StockX',
+                            'https://stockx.com/search/sneakers?s=' + content.xpath(
+                                '//meta[@itemprop="name"]'
+                            )[0].get('content').replace(' ', '%20')
+                        ),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:

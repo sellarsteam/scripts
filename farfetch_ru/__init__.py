@@ -1,10 +1,9 @@
+import re
 from typing import List
 
 from lxml import etree
-import re
 from requests import get
 from user_agent import generate_user_agent
-from requests.exceptions import ReadTimeout
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -15,7 +14,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.farfetch.com/ru/sets/men/new-in-this-week-eu-men.aspx?view=180&scale=284&category=136361&designer=214504|1664|1205035'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -65,11 +64,17 @@ class Parser(api.Parser):
                 'farfetch_ru',
                 re.findall(r'(https?://[\S]+jpg)', str(for_content.content))[19].split('"600":"')[-1],
                 '',
-                (api.currencies['ruble'], float(content.xpath('//span[@data-tstid="priceInfo-original"]')[0].text.replace('₽', '').replace('\xa0', ''))),
+                (
+                    api.currencies['ruble'],
+                    float(content.xpath(
+                        '//span[@data-tstid="priceInfo-original"]'
+                    )[0].text.replace('₽', '').replace('\xa0', ''))
+                ),
                 {},
                 tuple(size.text + 'US' for size in content.xpath('//span[@data-tstid="sizeDescription"]')),
-                (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                (
+                    ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                )
             )
         )
-

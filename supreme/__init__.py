@@ -14,7 +14,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.supremenewyork.com/shop/all'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -55,8 +55,12 @@ class Parser(api.Parser):
                 (api.currencies['euro'], float(content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
                 {'Цвет': content.xpath('//p[@itemprop="model"]')[0].text},
                 tuple(size.text for size in content.xpath('//option[@value]')),
-                (('StockX', 'https://stockx.com/search?s=' + content.xpath('//h1[@itemprop="name"]')[0].text.replace(' ', '%20').replace('®', '')),
-                ('Mobile', 'https://www.supremenewyork.com/mobile#products/' + content.xpath('//form[@class="add"]')[0].get('action').split('/')[2]),
-                ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                (
+                    ('StockX', 'https://stockx.com/search?s=' +
+                     content.xpath('//h1[@itemprop="name"]')[0].text.replace(' ', '%20').replace('®', '')),
+                    ('Mobile', 'https://www.supremenewyork.com/mobile#products/' +
+                     content.xpath('//form[@class="add"]')[0].get('action').split('/')[2]),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                )
             )
         )

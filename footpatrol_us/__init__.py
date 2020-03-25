@@ -1,10 +1,9 @@
+import re
 from typing import List
 
 from lxml import etree
-import re
 from requests import get
 from user_agent import generate_user_agent
-from requests.exceptions import ReadTimeout
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -15,7 +14,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.footpatrol.com/campaign/New+In/brand/nike,jordan,adidas-originals/latest/?facet-new=latest&fp_sort_order=latest'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -70,13 +69,21 @@ class Parser(api.Parser):
                     'footpatrol',
                     content.xpath('//img[@id=""]')[0].get('src'),
                     '',
-                    (api.currencies['pound'], float(content.xpath('//span[@class="pri"]')[0].get('content').replace('£', ''))),
+                    (
+                        api.currencies['pound'],
+                        float(content.xpath('//span[@class="pri"]')[0].get('content').replace('£', ''))
+                    ),
                     {},
-                    tuple(size.replace('"', '') + ' UK' for size in re.findall(r'("\d.\d"|"\d{1}"|"\d\d.\d"|"\d\d")',content.xpath('//script[@type="text/javascript"]')[2].text)),
-                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//h1[@itemprop="name"]')[0].text.replace(' ', '%20')),
-                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                    tuple(size.replace('"', '') + ' UK' for size in re.findall(
+                        r'("\d.\d"|"\d{1}"|"\d\d.\d"|"\d\d")',
+                        content.xpath('//script[@type="text/javascript"]')[2].text)),
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath(
+                            '//h1[@itemprop="name"]'
+                        )[0].text.replace(' ', '%20')),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:
             return api.SWaiting(target)
-

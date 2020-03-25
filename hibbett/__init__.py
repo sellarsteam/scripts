@@ -1,10 +1,9 @@
+import re
 from typing import List
 
 from lxml import etree
 from requests import get
-import re
 from user_agent import generate_user_agent
-from requests.exceptions import ReadTimeout
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -15,7 +14,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.hibbett.com/launch-calendar/?prefn1=dtLaunch&prefv1=-120&srule=launch-date-desc'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -37,7 +36,6 @@ class Parser(api.Parser):
             ).text).xpath('//a[@class="name-link"]')
         ]
 
-
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
@@ -53,7 +51,6 @@ class Parser(api.Parser):
                              'accept-language': 'en-US,en;q=0.9',
                              'referer': self.catalog
                              }).text)
-                
 
                 if len(content.xpath('//a[@class="swatchanchor"]')) > 0:
                     available = True
@@ -74,12 +71,11 @@ class Parser(api.Parser):
                     {},
                     tuple((str(int(re.findall(r'size=....', size.get('href'))[0].split('=')[1]) / 10) + ' US',
                            size.get('href'))
-                           for size in content.xpath('//a[@class="swatchanchor"]') if 'size' in size.get('href')),
+                          for size in content.xpath('//a[@class="swatchanchor"]') if 'size' in size.get('href')),
                     (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@name="keywords"]')[0]
-                            .get('content').replace(' ', '%20')),
-                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                      .get('content').replace(' ', '%20')),
+                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
         else:
             return api.SWaiting(target)
-

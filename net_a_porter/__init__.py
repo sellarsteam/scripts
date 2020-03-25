@@ -13,7 +13,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.net-a-porter.com/ru/en/d/Shop/Shoes/Sneakers?cm_sp=topnav-_-shoes-_-sneakers&pn=1&npp=60&image_view=product&dscroll=0&sortorder=new-in&sizescheme=IT'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -27,9 +27,9 @@ class Parser(api.Parser):
                            element.xpath('div[@class="description"]/a[@data-position]')[0].get('title'),
                            element.xpath('div[@class="description"]/a[@data-position]')[0].get('href'),
                            element.xpath('div[@class="product-image"]/a[@data-position]/img[@height="270"]')[0]
-                                .get('data-src'),
+                           .get('data-src'),
                            element.xpath('div[@class="description"]/span[@class="price "]')[0].text
-                                .replace('\t','').replace('\n', '').replace('£', '')
+                           .replace('\t', '').replace('\n', '').replace('£', '')
                            ),
                           self.interval)
             for element in etree.HTML(get(
@@ -79,8 +79,10 @@ class Parser(api.Parser):
                     (api.currencies['pound'], float(target.data[4])),
                     {},
                     (),
-                    (('StockX', 'https://stockx.com/search/sneakers?s=' + target.data[1].replace(' ', '%20')),
-                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s=' + target.data[1].replace(' ', '%20')),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:
