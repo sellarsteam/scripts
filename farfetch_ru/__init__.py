@@ -61,7 +61,7 @@ class Parser(api.Parser):
             api.Result(
                 name,
                 target.data,
-                'farfetch_ru',
+                'farfetch-ru',
                 re.findall(r'(https?://[\S]+jpg)', str(for_content.content))[19].split('"600":"')[-1],
                 '',
                 (

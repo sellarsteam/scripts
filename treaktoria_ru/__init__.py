@@ -83,7 +83,7 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//meta[@name="keywords"]')[0].get('content'),
                     target.data,
-                    'traektoria_ru',
+                    'traektoria-ru',
                     image,
                     '',
                     (
