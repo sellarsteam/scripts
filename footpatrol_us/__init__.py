@@ -66,7 +66,7 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//h1[@itemprop="name"]')[0].text,
                     target.data,
-                    'footpatrol',
+                    'footsites',
                     content.xpath('//img[@id=""]')[0].get('src'),
                     '',
                     (

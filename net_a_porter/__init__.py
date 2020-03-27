@@ -73,7 +73,7 @@ class Parser(api.Parser):
                 api.Result(
                     target.data[1],
                     'https://www.net-a-porter.com' + target.data[2],
-                    'net-a-porter',
+                    'porter',
                     'https:' + target.data[3],
                     '',
                     (api.currencies['pound'], float(target.data[4])),
