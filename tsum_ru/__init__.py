@@ -1,4 +1,3 @@
-##https://www.tsum.ru/catalog/krossovki-19014/?brand=2030075,3982509,2518495,2129333,2165673,1912018&sort=date
 from typing import List
 
 from lxml import etree
@@ -6,7 +5,6 @@ from requests import get
 from user_agent import generate_user_agent
 
 from core import api
-from random import choice
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
