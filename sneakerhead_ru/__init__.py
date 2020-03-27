@@ -54,7 +54,7 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//meta[@itemprop="name"]')[0].get('content'),
                     target.data,
-                    'russian-retailer',
+                    'russian-retailers',
                     content.xpath('//meta[@itemprop="image"]')[0].get('content'),
                     content.xpath('//meta[@itemprop="description"]')[0].get('content'),
                     (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),

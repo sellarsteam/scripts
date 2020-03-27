@@ -102,7 +102,7 @@ class Parser(api.Parser):
                     api.Result(
                         content.xpath('//a[@class="pi_author"]')[0].text,
                         target.data,
-                        'vk_merchants',
+                        'vk-merchants',
                         content.xpath(
                             '//div[@style]'
                         )[2].get('style').split('url(')[-1].replace(')', '').replace(';', ''),

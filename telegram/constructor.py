@@ -22,7 +22,10 @@ def build(item: Result) -> str:
                     isinstance(item.price[1], (float, int)) and item.price[0] != 0:
                 compiled += f'Цена: {item.price[1]}{currencies[item.price[0]]}\n'
             elif item.price.__len__() == 3 and item.price[0] != 0:
-                compiled += f'Цена: <s>{item.price[2]}{currencies[item.price[0]]}</s> {item.price[1]}{currencies[item.price[0]]}\n'
+                if item.price[2]:
+                    compiled += f'Цена: <s>{item.price[2]}{currencies[item.price[0]]}</s> {item.price[1]}{currencies[item.price[0]]}\n'
+                else:
+                    compiled += f'Цена: {item.price[1]}{currencies[item.price[0]]}\n'
     if item.fields:
         if isinstance(item.fields, dict):
             for k, v in item.fields.items():
