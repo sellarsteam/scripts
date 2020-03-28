@@ -8,12 +8,10 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
-sizes_stock = ['[LOW]', '[HIGH]', '[MEDIUM]']
-
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://www.tsum.ru/catalog/krossovki-19014/?brand=2030075,3982509,2518495,2129333,2165673,1912018&sort=date'
+        self.catalog: str = 'https://www.tsum.ru/catalog/search/?q=yeezy'
         self.interval: float = 1
         self.user_agent = generate_user_agent()
 
