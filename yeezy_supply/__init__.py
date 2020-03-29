@@ -105,7 +105,7 @@ class Parser(api.Parser):
                 api.Result(
                     content['name'],
                     'https://www.yeezysupply.com/product/' + content['id'],
-                    'yeezy-supply',
+                    'yeezysupply',
                     content['view_list'][0]['image_url'],
                     content['meta_data']['description'],
                     (api.currencies['dollar'], float(content['pricing_information']['standard_price'])),

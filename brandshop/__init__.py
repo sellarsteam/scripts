@@ -51,7 +51,7 @@ class Parser(api.Parser):
                             content.xpath('//span[@itemprop="brand"]')[0].text +
                             content.xpath('//span[@itemprop="name"]/text()[2]')[0],
                             target.data,
-                            'brandshop',
+                            'russian-retailers',
                             content.xpath('//img[@itemprop="image"]')[0].get('src'),
                             '',
                             (

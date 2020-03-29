@@ -64,7 +64,7 @@ class Parser(api.Parser):
                 api.Result(
                     content.xpath('//meta[@name="keywords"]')[0].get('content'),
                     target.data,
-                    'hibbet',
+                    'hibbett',
                     content.xpath('//a[@class="swatchanchor"]')[0].get('data-thumb').split('"')[3].replace(' ', ''),
                     '',
                     (api.currencies['dollar'], float(content.xpath('//span[@class="price-sales"]')[0].get('content'))),
