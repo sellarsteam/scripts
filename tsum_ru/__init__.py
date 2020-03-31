@@ -8,6 +8,7 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
+
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
@@ -61,34 +62,17 @@ class Parser(api.Parser):
                 'russian-retailers',
                 content.xpath('//img[@class="photo-inspector__image"]')[0].get('src'),
                 '',
-                (api.currencies['ruble'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
+                (
+                    api.currencies['ruble'],
+                    float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                ),
                 {},
-                tuple([size.text.split(' |')[0] + ' US' for size in content.xpath('//span[@class="select__text"]') if '|' in size.text][1:]),
-                (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').replace('Кроссовки', '')),
-                ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                tuple([size.text.split(' |')[0] + ' US' for size in content.xpath('//span[@class="select__text"]') if
+                       '|' in size.text][1:]),
+                (
+                    ('StockX', 'https://stockx.com/search/sneakers?s=' +
+                     name.replace(' ', '%20').replace('Кроссовки', '')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                )
             )
         )
-
-
-# if __name__ == '__main__':
-#     content: etree.Element = etree.HTML(get(
-#                             'https://www.tsum.ru/product/5483161-kombinirovannye-krossovki-odsy-1000-off-white-seryi/',
-#                             headers={'user-agent': generate_user_agent(),
-#                                      'connection': 'keep-alive', 'cache-control': 'max-age=0',
-#                                      'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-#                                      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-#                                      'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-#                                      'sec-fetch-user': '?1',
-#                                      'accept-language': 'en-US,en;q=0.9'
-#                                      }).text)
-#     print(get(
-#                 'https://www.tsum.ru/product/5483161-kombinirovannye-krossovki-odsy-1000-off-white-seryi/',
-#                 headers={'user-agent': generate_user_agent(),
-#                          'connection': 'keep-alive', 'cache-control': 'max-age=0',
-#                          'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-#                          'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-#                          'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-#                          'sec-fetch-user': '?1',
-#                          'accept-language': 'en-US,en;q=0.9'}
-#             ).text)
-#     print(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))

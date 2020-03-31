@@ -8,6 +8,7 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
+
 def get_sizes(url, content) -> tuple:
     sizes = list()
     last_size = 0.0
@@ -45,9 +46,11 @@ class Parser(api.Parser):
                          'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                          'sec-fetch-user': '?1',
                          'accept-language': 'en-US,en;q=0.9'}
-            ).text).xpath('//a[@class="grid-product__meta"]') if 'nike' in element.get('href').split('/')[4] or
-                           'jordan' in element.get('href').split('/')[4] or 'yeezy' in element.get('href').split('/')[4]
-                           or 'force' in element.get('href').split('/')[4]
+            ).text).xpath('//a[@class="grid-product__meta"]')
+            if 'nike' in element.get('href').split('/')[4] or
+               'jordan' in element.get('href').split('/')[4] or
+               'yeezy' in element.get('href').split('/')[4] or
+               'force' in element.get('href').split('/')[4]
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -77,10 +80,15 @@ class Parser(api.Parser):
                 'shopify-filtered',
                 content.xpath('//meta[@property="og:image"]')[0].get('content').split('?')[0],
                 '',
-                (api.currencies['dollar'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',',''))),
+                (
+                    api.currencies['dollar'],
+                    float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',', ''))
+                ),
                 {},
                 get_sizes(target.data, content),
-                (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                (
+                    ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                )
             )
         )
