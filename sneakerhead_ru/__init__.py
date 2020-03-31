@@ -19,7 +19,7 @@ class Parser(api.Parser):
         self.interval: int = 1
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 120)
+        return api.IInterval(self.name, 20)
 
     def targets(self) -> List[TargetType]:
         return [
