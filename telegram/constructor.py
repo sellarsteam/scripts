@@ -2,7 +2,7 @@ from typing import Tuple
 
 from core.api import Result
 
-currencies: tuple = ('£', '$', '€', '₽')
+currencies: tuple = ('£', '$', '€', '₽', '¥')
 
 
 def build(item: Result) -> str:

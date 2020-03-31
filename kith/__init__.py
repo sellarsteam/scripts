@@ -8,6 +8,7 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
+
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
@@ -61,10 +62,17 @@ class Parser(api.Parser):
                 'kith',
                 content.xpath('//meta[@property="og:image"]')[0].get('content'),
                 '',
-                (api.currencies['dollar'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',',''))),
+                (
+                    api.currencies['dollar'],
+                    float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',', ''))
+                ),
                 {},
-                tuple([str(size.get('data-value')) + ' US' for size in content.xpath('//div[@class="swatch clearfix"]//div')][1:]),
-                (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                tuple(str(size.get('data-value')) + ' US' for size in content.xpath(
+                    '//div[@class="swatch clearfix"]//div'
+                ))[1:],
+                (
+                    ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                )
             )
         )
