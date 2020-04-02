@@ -87,7 +87,7 @@ class Parser(api.Parser):
                     image,
                     '',
                     (
-                        api.currencies['ruble'],
+                        api.currencies['RUB'],
                         float(content.xpath(
                             '//div[@class="price"]'
                         )[0].text.replace('\t', '').replace('\n', '').replace('\xa0', ''))

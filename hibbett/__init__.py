@@ -67,7 +67,7 @@ class Parser(api.Parser):
                     'hibbett',
                     content.xpath('//a[@class="swatchanchor"]')[0].get('data-thumb').split('"')[3].replace(' ', ''),
                     '',
-                    (api.currencies['dollar'], float(content.xpath('//span[@class="price-sales"]')[0].get('content'))),
+                    (api.currencies['USD'], float(content.xpath('//span[@class="price-sales"]')[0].get('content'))),
                     {},
                     tuple((str(int(re.findall(r'size=....', size.get('href'))[0].split('=')[1]) / 10) + ' US',
                            size.get('href'))

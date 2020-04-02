@@ -63,7 +63,7 @@ class Parser(api.Parser):
                 content.xpath('//meta[@property="og:image"]')[0].get('content'),
                 '',
                 (
-                    api.currencies['dollar'],
+                    api.currencies['USD'],
                     float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',', ''))
                 ),
                 {},

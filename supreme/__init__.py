@@ -52,7 +52,7 @@ class Parser(api.Parser):
                 'supreme-nyc',
                 'https://' + content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//', ''),
                 content.xpath('//p[@itemprop="description"]')[0].text,
-                (api.currencies['euro'], float(content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
+                (api.currencies['EUR'], float(content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
                 {'Цвет': content.xpath('//p[@itemprop="model"]')[0].text},
                 tuple(size.text for size in content.xpath('//option[@value]')),
                 (

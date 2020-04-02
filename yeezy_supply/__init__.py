@@ -108,7 +108,7 @@ class Parser(api.Parser):
                     'yeezysupply',
                     content['view_list'][0]['image_url'],
                     content['meta_data']['description'],
-                    (api.currencies['dollar'], float(content['pricing_information']['standard_price'])),
+                    (api.currencies['USD'], float(content['pricing_information']['standard_price'])),
                     {},
                     tuple(size.current_value['size'] for size in sizes_json),
                     ()

@@ -70,7 +70,7 @@ class Parser(api.Parser):
                     content.xpath('//img[@id=""]')[0].get('src'),
                     '',
                     (
-                        api.currencies['pound'],
+                        api.currencies['GBP'],
                         float(content.xpath('//span[@class="pri"]')[0].get('content').replace('£', ''))
                     ),
                     {},

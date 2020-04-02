@@ -6,7 +6,7 @@ import pytz
 
 from core.api import Result
 
-currencies: tuple = ('£', '$', '€', '₽', '¥')
+currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł')
 
 
 def build(item: Result) -> dict:

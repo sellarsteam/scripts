@@ -62,7 +62,7 @@ class Parser(api.Parser):
                         content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
                         '',
                         (
-                            api.currencies['ruble'],
+                            api.currencies['RUB'],
                             float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                         ),
                         {},

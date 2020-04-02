@@ -78,7 +78,7 @@ class Parser(api.Parser):
                     content['productInfo'][model]['imageUrls']['productImageUrl'],
                     content['productInfo'][model]['productContent']['descriptionHeading'],
                     (
-                        api.currencies['ruble'],
+                        api.currencies['RUB'],
                         content['productInfo'][model]['merchPrice']['currentPrice'],
                         content['productInfo'][model]['merchPrice']['fullPrice'] if
                         content['productInfo'][model]['merchPrice']['discounted'] else 0

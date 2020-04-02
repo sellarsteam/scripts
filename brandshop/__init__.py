@@ -55,7 +55,7 @@ class Parser(api.Parser):
                             content.xpath('//img[@itemprop="image"]')[0].get('src'),
                             '',
                             (
-                                api.currencies['ruble'],
+                                api.currencies['RUB'],
                                 float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))
                             ),
                             {},

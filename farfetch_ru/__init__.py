@@ -65,7 +65,7 @@ class Parser(api.Parser):
                 re.findall(r'(https?://[\S]+jpg)', str(for_content.content))[19].split('"600":"')[-1],
                 '',
                 (
-                    api.currencies['ruble'],
+                    api.currencies['RUB'],
                     float(content.xpath(
                         '//span[@data-tstid="priceInfo-original"]'
                     )[0].text.replace('₽', '').replace('\xa0', ''))

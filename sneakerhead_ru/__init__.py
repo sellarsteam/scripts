@@ -57,7 +57,7 @@ class Parser(api.Parser):
                     'russian-retailers',
                     content.xpath('//meta[@itemprop="image"]')[0].get('content'),
                     content.xpath('//meta[@itemprop="description"]')[0].get('content'),
-                    (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
+                    (api.currencies['RUB'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
                     {},
                     tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
                         '//div[@class="flex-row sizes-chart-items-tab"]'))[0].xpath(

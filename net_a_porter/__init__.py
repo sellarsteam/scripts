@@ -76,7 +76,7 @@ class Parser(api.Parser):
                     'porter',
                     'https:' + target.data[3],
                     '',
-                    (api.currencies['pound'], float(target.data[4])),
+                    (api.currencies['GBP'], float(target.data[4])),
                     {},
                     (),
                     (
