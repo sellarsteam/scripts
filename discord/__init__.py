@@ -10,6 +10,7 @@ import yaml
 
 from core import __version__, __copyright__
 from core import api
+from core import codes
 from core.api import SSuccess, SFail
 from core.logger import Logger
 from .constructor import build
@@ -72,6 +73,8 @@ class EventsExecutor(api.EventsExecutor):
                                 )
                                 if response.status_code == 400:
                                     self.log.error(f'Message lost: {response.text}')
+                                    print(json.dumps(msg.content))
+                                    print(msg.content)
                             else:
                                 self.log.warn(f'Message channel doesn\'t exist: {msg.channel}')
                         else:
@@ -144,21 +147,12 @@ class EventsExecutor(api.EventsExecutor):
         else:
             self.log.warn('Script offline (due to raised exception)')
 
-    def e_error(self, message: str, thread: str) -> None:
+    def e_alert(self, code: codes.Code, thread: str) -> None:
         self.messages.put(
             Message(
-                4,
+                3 if str(code.code)[0] == '5' else 4,
                 'tech',
-                {'content': f'___Alert [ERROR]___\n{message}\nThread: {thread}'}
-            )
-        )
-
-    def e_fatal(self, e: Exception, thread: str) -> None:
-        self.messages.put(
-            Message(
-                3,
-                'tech',
-                {'content': f'___Alert [FATAL]___\n{e.__class__.__name__}: {e.__str__()}\nThread: {thread}'}
+                {'content': f'__Alert__\n{code.format()}\nThread: {thread}'}
             )
         )
 
