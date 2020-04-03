@@ -3,6 +3,9 @@ from typing import List
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
+from re import findall
+from jsonpath2 import Path
+from json import loads, JSONDecodeError
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -17,7 +20,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 25)
+        return api.IInterval(self.name, 10)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -25,34 +28,28 @@ class Parser(api.Parser):
                           self.name, 'https://kith.com/' + element.xpath('a')[0].get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
-                headers={'user-agent': self.user_agent,
-                         'connection': 'keep-alive', 'cache-control': 'max-age=0',
-                         'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                         'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-                         'sec-fetch-user': '?1',
-                         'accept-language': 'en-US,en;q=0.9'}
+                headers={'user-agent': self.user_agent}
             ).text).xpath('//div[@class="product-card__information"]')
+            if 'Nike' in element[0].xpath('h1[@class="product-card__title"]')[0].text
+               or 'Yeezy' in element[0].xpath('h1[@class="product-card__title"]')[0].text
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                content: etree.Element = etree.HTML(get(
-                    target.data,
-                    headers={'user-agent': generate_user_agent(),
-                             'connection': 'keep-alive', 'cache-control': 'max-age=0',
-                             'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                             'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-                             'sec-fetch-user': '?1',
-                             'accept-language': 'en-US,en;q=0.9',
-                             'referer': self.catalog
-                             }).text)
+                get_content = get(target.data, headers={'user-agent': generate_user_agent()}).text
+                content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
+            sizes_data = Path.parse_str('$.product.variants.*').match(
+                loads(findall(r'var meta = {.*}', get_content)[0]
+                      .replace('var meta = ', '')))
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        except JSONDecodeError:
+            return api.SFail(self.name, 'Exception JSONDecodeError')
+        except IndexError:
+            return api.SWaiting(target)
         name = content.xpath('//meta[@property="og:title"]')[0].get('content').split(' -')[0]
         return api.SSuccess(
             self.name,
@@ -67,9 +64,12 @@ class Parser(api.Parser):
                     float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',', ''))
                 ),
                 {},
-                tuple(str(size.get('data-value')) + ' US' for size in content.xpath(
-                    '//div[@class="swatch clearfix"]//div'
-                ))[1:],
+                tuple(
+                    (
+                        str(size_data.current_value['public_title']),
+                        'https://kith.com/cart/' + str(size_data.current_value['id']) + ':1'
+                    ) for size_data in sizes_data
+                ),
                 (
                     ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')

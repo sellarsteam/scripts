@@ -45,6 +45,8 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        except IndexError:
+            return api.SWaiting(target)
         if available:
             try:
                 sizes_data = Path.parse_str('$.variants.*').match(
@@ -67,7 +69,7 @@ class Parser(api.Parser):
                         tuple(
                             (
                                 size_data.current_value['option1'],
-                                target.data + '?variant=' + str(size_data.current_value['id'])
+                                'https://shop.pharmabergen.no/cart/' + str(size_data.current_value['id']) + ':1'
                             ) for size_data in sizes_data
                         ),
                         (
@@ -77,7 +79,7 @@ class Parser(api.Parser):
                     )
                 )
             except JSONDecodeError:
-                return api.SFail(self.name, 'Exception XMLDecodeError')
+                return api.SFail(self.name, 'Exception JSONDecodeError')
         else:
             return api.SWaiting(target)
 
