@@ -19,7 +19,7 @@ class Parser(api.Parser):
         self.interval: int = 1
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 120)
+        return api.IInterval(self.name, 20)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -57,7 +57,7 @@ class Parser(api.Parser):
                     'russian-retailers',
                     content.xpath('//meta[@itemprop="image"]')[0].get('content'),
                     content.xpath('//meta[@itemprop="description"]')[0].get('content'),
-                    (api.currencies['ruble'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
+                    (api.currencies['RUB'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
                     {},
                     tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
                         '//div[@class="flex-row sizes-chart-items-tab"]'))[0].xpath(

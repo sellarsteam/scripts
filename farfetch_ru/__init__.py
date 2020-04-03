@@ -18,7 +18,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 120)
+        return api.IInterval(self.name, 30)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -65,7 +65,7 @@ class Parser(api.Parser):
                 re.findall(r'(https?://[\S]+jpg)', str(for_content.content))[19].split('"600":"')[-1],
                 '',
                 (
-                    api.currencies['ruble'],
+                    api.currencies['RUB'],
                     float(content.xpath(
                         '//span[@data-tstid="priceInfo-original"]'
                     )[0].text.replace('₽', '').replace('\xa0', ''))

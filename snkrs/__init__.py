@@ -25,7 +25,7 @@ class Parser(api.Parser):
         self.interval: int = 1
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 120)
+        return api.IInterval(self.name, 10)
 
     def targets(self) -> List[TargetType]:  # TODO: Error handling support
         return [
@@ -78,7 +78,7 @@ class Parser(api.Parser):
                     content['productInfo'][model]['imageUrls']['productImageUrl'],
                     content['productInfo'][model]['productContent']['descriptionHeading'],
                     (
-                        api.currencies['ruble'],
+                        api.currencies['RUB'],
                         content['productInfo'][model]['merchPrice']['currentPrice'],
                         content['productInfo'][model]['merchPrice']['fullPrice'] if
                         content['productInfo'][model]['merchPrice']['discounted'] else 0

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from core import __copyright__, __version__
 from core import api
+from core import codes
 from core import library
 from core.api import SSuccess, SFail
 from core.logger import Logger
@@ -156,22 +157,12 @@ class EventsExecutor(api.EventsExecutor):
         else:
             self.log.warn('Bot offline (due to raised exception)')
 
-    def e_error(self, message: str, thread: str) -> None:
+    def e_alert(self, code: codes.Code, thread: str) -> None:
         self.messages.put(
             Message(
-                4,
+                3 if str(code.code)[0] == '5' else 4,
                 self.bot.send_message,
-                (self.chat, f'<u><b>Alert [ERROR]</b></u>\n{message}\nThread: {thread}'),
-                {'parse_mode': 'HTML', 'timeout': 16}
-            )
-        )
-
-    def e_fatal(self, e: Exception, thread: str) -> None:
-        self.messages.put(
-            Message(
-                3,
-                self.bot.send_message,
-                (self.chat, f'<u><b>Alert [FATAL]</b></u>\n{e.__class__.__name__}: {e.__str__()}\nThread: {thread}'),
+                (self.chat, f'<u><b>Alert</b></u>\n{code.format()}\nThread: {thread}'),
                 {'parse_mode': 'HTML', 'timeout': 16}
             )
         )

@@ -107,7 +107,7 @@ class Parser(api.Parser):
                             '//div[@style]'
                         )[2].get('style').split('url(')[-1].replace(')', '').replace(';', ''),
                         text,
-                        (api.currencies['dollar'], 0),
+                        (api.currencies['USD'], 0),
                         {},
                         (),
                         ()
@@ -122,7 +122,7 @@ class Parser(api.Parser):
                         'buyers-monitor',
                         '',
                         text,
-                        (api.currencies['dollar'], 0),
+                        (api.currencies['USD'], 0),
                         {},
                         (),
                         ()

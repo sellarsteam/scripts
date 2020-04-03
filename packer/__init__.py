@@ -1,5 +1,8 @@
+from json import loads, JSONDecodeError
+from re import findall
 from typing import List
 
+from jsonpath2 import Path
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
@@ -7,20 +10,6 @@ from user_agent import generate_user_agent
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-
-
-def get_sizes(url, content) -> tuple:
-    sizes = list()
-    last_size = 0.0
-    for size in content.xpath('//form[@method="post"]//select[@name="id"]//option[@value]'):
-        size_for_list = size.text.split(' /')[0].replace('\n', '').replace(' ', '')
-        if content.xpath('//meta[@name="twitter:description"]')[0].get('content').split(' ')[2] in size.text:
-            if last_size < float(str(size_for_list.replace('C', '').replace('W', '').replace('Y', ''))):
-                sizes.append((size_for_list, url + '?variant=' + size.get('value')))
-                last_size = float(str(size_for_list.replace('C', '').replace('W', '').replace('Y', '')))
-            else:
-                break
-    return tuple(sizes)
 
 
 class Parser(api.Parser):
@@ -31,7 +20,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 120)
+        return api.IInterval(self.name, 20)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -39,13 +28,7 @@ class Parser(api.Parser):
                           self.name, 'https://packershoes.com' + element.get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
-                headers={'user-agent': self.user_agent,
-                         'connection': 'keep-alive', 'cache-control': 'max-age=0',
-                         'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                         'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-                         'sec-fetch-user': '?1',
-                         'accept-language': 'en-US,en;q=0.9'}
+                headers={'user-agent': self.user_agent}
             ).text).xpath('//a[@class="grid-product__meta"]')
             if 'nike' in element.get('href').split('/')[4] or
                'jordan' in element.get('href').split('/')[4] or
@@ -56,21 +39,17 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                content: etree.Element = etree.HTML(get(
-                    target.data,
-                    headers={'user-agent': self.user_agent,
-                             'connection': 'keep-alive', 'cache-control': 'max-age=0',
-                             'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                             'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
-                             'sec-fetch-user': '?1',
-                             'accept-language': 'en-US,en;q=0.9',
-                             'referer': self.catalog
-                             }).text)
+                get_content = get(target.data, headers={'user-agent': generate_user_agent()}).text
+                content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
+            sizes_data = Path.parse_str('$.product.variants.*').match(
+                loads(findall(r'var meta = {.*}', get_content)[0]
+                      .replace('var meta = ', '')))
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        except JSONDecodeError:
+            return api.SFail(self.name, 'Exception JSONDecodeError')
         name = content.xpath('//meta[@property="og:title"]')[0].get('content')
         return api.SSuccess(
             self.name,
@@ -81,11 +60,16 @@ class Parser(api.Parser):
                 content.xpath('//meta[@property="og:image"]')[0].get('content').split('?')[0],
                 '',
                 (
-                    api.currencies['dollar'],
+                    api.currencies['USD'],
                     float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',', ''))
                 ),
                 {},
-                get_sizes(target.data, content),
+                tuple(
+                    (
+                        str(size_data.current_value['public_title']).split(' /')[0] + ' US',
+                        'https://packershoes.com/cart/' + str(size_data.current_value['id']) + ':1'
+                    ) for size_data in sizes_data
+                ),
                 (
                     ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')

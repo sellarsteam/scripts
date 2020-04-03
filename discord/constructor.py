@@ -1,12 +1,13 @@
-import math
 import urllib.parse
 from datetime import datetime
+from typing import List
 
 import pytz
 
 from core.api import Result
 
-currencies: tuple = ('£', '$', '€', '₽', '¥')
+currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł')
+sizes_column_size = 5
 
 
 def build(item: Result) -> dict:
@@ -44,14 +45,14 @@ def build(item: Result) -> dict:
                     'value': v
                 })
     if item.sizes:
-        sizes: list = [
-            '' for i in range(4 if math.ceil(item.sizes.__len__() / 5) > 4 else math.ceil(item.sizes.__len__() / 5))
-        ]
+        sizes: List[str] = []
         for i, v in enumerate(item.sizes):
+            if sizes.__len__() < (i // sizes_column_size) + 1:
+                sizes.append('')
             if isinstance(v, (tuple, list)) and v.__len__() == 2:
-                sizes[i % sizes.__len__()] += f'[{v[0]}]({v[1]})\n'
+                sizes[i // sizes_column_size] += f'[{v[0]}]({v[1]})\n'
             elif isinstance(v, str):
-                sizes[i % sizes.__len__()] += f'{v}\n'
+                sizes[i // sizes_column_size] += f'{v}\n'
         embed['fields'].append({
             'name': 'Размеры',
             'value': sizes[0],

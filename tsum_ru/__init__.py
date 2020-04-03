@@ -17,7 +17,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 120)
+        return api.IInterval(self.name, 5)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -63,7 +63,7 @@ class Parser(api.Parser):
                 content.xpath('//img[@class="photo-inspector__image"]')[0].get('src'),
                 '',
                 (
-                    api.currencies['ruble'],
+                    api.currencies['RUB'],
                     float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                 ),
                 {},
