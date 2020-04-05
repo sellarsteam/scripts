@@ -9,7 +9,7 @@ from user_agent import generate_user_agent
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-
+from scripts.proxy import get_proxy
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -26,7 +26,7 @@ class Parser(api.Parser):
             api.TInterval(element[0].get('href').split('/')[4],
                           self.name, 'https://shop.pharmabergen.no' + element[0].get('href'), self.interval)
             for element in etree.HTML(get('https://shop.pharmabergen.no/collections/new-arrivals/',
-                                          headers={'user-agent': generate_user_agent()}
+                                          headers={'user-agent': generate_user_agent()}, proxies=get_proxy()
                                           ).text).xpath('//div[@class="product-info-inner"]')
             if element[0].xpath('span[@class]')[0].text in ['NIKE', 'JORDAN'] or 'yeezy' in element[0].get('href')
         ]
@@ -36,7 +36,7 @@ class Parser(api.Parser):
             if isinstance(target, api.TInterval):
                 available: bool = False
                 content: etree.Element = etree.HTML(
-                    get(target.data, headers={'user-agent': generate_user_agent()}).text)
+                    get(target.data, headers={'user-agent': generate_user_agent()}, proxies=get_proxy()).text)
                 if content.xpath('//input[@type="submit"]')[0].get('value').replace('\n', '') == 'Add to Cart':
                     available = True
                 else:

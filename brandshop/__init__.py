@@ -14,7 +14,7 @@ from core.logger import Logger
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://brandshop.ru/new/'
+        self.catalog: str = 'https://brandshop.ru/New/'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
@@ -24,20 +24,21 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(
-                element.xpath('div[@class="product" or @class="product outofstock"]')[0].get('data-product-id'),
+                element[0].get('href').split('/')[4],
                 self.name,
-                element.xpath(
-                    'div[@class="product" or @class="product outofstock"]'
-                )[0].xpath('a[@href]')[0].get('href'), self.interval)
+                element[0].get('href'), self.interval)
             for element in etree.HTML(
                 get(
                     self.catalog,
                     headers={'user-agent': self.user_agent}
                 ).text
-            ).xpath('//div[@class="product-container"]')
-            if 'krossovki' in element.xpath(
-                'div[@class="product" or @class="product outofstock"]'
-            )[0].xpath('a[@href]')[0].get('href')
+            ).xpath('//div[@class="product"]')
+            if 'krossovki' in element[0].get('href') and ('jordan' in element[0].get('href')
+                                                          or 'yeezy' in element[0].get('href')
+                                                          or 'max' in element[0].get('href')
+                                                          or 'dunk' in element[0].get('href')
+                                                          or 'force' in element[0].get('href')
+                                                          or 'blaze' in element[0].get('href'))
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -48,11 +49,10 @@ class Parser(api.Parser):
                     return api.SSuccess(
                         self.name,
                         api.Result(
-                            content.xpath('//span[@itemprop="brand"]')[0].text +
-                            content.xpath('//span[@itemprop="name"]/text()[2]')[0],
+                            content.xpath('//span[@itemprop="name"]')[0].text,
                             target.data,
                             'russian-retailers',
-                            content.xpath('//img[@itemprop="image"]')[0].get('src'),
+                            content.xpath('//meta[@property="og:image"]')[0].get('content'),
                             '',
                             (
                                 api.currencies['RUB'],
@@ -67,9 +67,9 @@ class Parser(api.Parser):
                             (
                                 (
                                     'StockX',
-                                    'https://stockx.com/search/sneakers?s=' + (
+                                    'https://stockx.com/search/sneakers?s=' + str(
                                             content.xpath('//span[@itemprop="brand"]')[0].text +
-                                            content.xpath('//span[@itemprop="name"]/text()[2]')[0]
+                                            content.xpath('//span[@itemprop="name"]')[0].text
                                     ).replace(' ', '%20').replace('\xa0', '%20')),
                                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             )
@@ -81,3 +81,4 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+

@@ -28,9 +28,13 @@ class Parser(api.Parser):
                 self.name,
                 i.current_value['Url'], self.interval
             )
-            for i in Path.parse_str('$[*]').match(
+            for i in Path.parse_str('$.*').match(
                 loads(get(self.catalog, headers={'user-agent': self.user_agent}).text)
-            ) if i.current_value['CategoryNames'][0] == 'Обувь' or i.current_value['CategoryNames'][1] == 'Обувь'
+            ) if ('Кроссовки' in i.current_value['CategoryNames'] 
+                 or 'Обувь' in i.current_value['CategoryNames'])
+                 and ('Yeezy' in i.current_value['Model'] 
+                 or 'Jordan' in i.current_value['Model']
+                 or 'Nike' in i.current_value['Model'])
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -56,7 +60,7 @@ class Parser(api.Parser):
                     target.data,
                     'russian-retailers',
                     content.xpath('//meta[@itemprop="image"]')[0].get('content'),
-                    content.xpath('//meta[@itemprop="description"]')[0].get('content'),
+                    '',
                     (api.currencies['RUB'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
                     {},
                     tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
@@ -65,9 +69,8 @@ class Parser(api.Parser):
                     (
                         (
                             'StockX',
-                            'https://stockx.com/search/sneakers?s=' + content.xpath(
-                                '//meta[@itemprop="name"]'
-                            )[0].get('content').replace(' ', '%20')
+                            'https://stockx.com/search/sneakers?s=' + target.name.replace('Кроссовки', '')
+                                .replace(' ', '%20')
                         ),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )

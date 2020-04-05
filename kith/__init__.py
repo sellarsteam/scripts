@@ -10,7 +10,7 @@ from user_agent import generate_user_agent
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-
+from scripts.proxy import get_proxy
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -28,7 +28,7 @@ class Parser(api.Parser):
                           self.name, 'https://kith.com/' + element.xpath('a')[0].get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
-                headers={'user-agent': self.user_agent}
+                headers={'user-agent': self.user_agent}, proxies=get_proxy()
             ).text).xpath('//div[@class="product-card__information"]')
             if 'Nike' in element[0].xpath('h1[@class="product-card__title"]')[0].text
                or 'Yeezy' in element[0].xpath('h1[@class="product-card__title"]')[0].text
@@ -37,7 +37,8 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': generate_user_agent()}).text
+                get_content = get(target.data, headers={'user-agent': generate_user_agent()},
+                                  proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
@@ -76,3 +77,5 @@ class Parser(api.Parser):
                 )
             )
         )
+
+
