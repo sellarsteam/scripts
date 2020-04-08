@@ -46,9 +46,13 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = False
+                available: bool = loads(get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
+                                            headers=headers, proxies=get_proxy()).text)['availability_status'] == 'IN_STOCK'
+                if available == False:
+                    return api.SWaiting(target)
+                else:
+                    available = True
                 content: dict = loads(get(target.data, headers=headers, proxies=get_proxy()).text)
-                available = True
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except JSONDecodeError:
@@ -57,8 +61,8 @@ class Parser(api.Parser):
             return api.SFail(self.name, 'Wrong scheme')
         if available:
             sizes_json = Path.parse_str('$.variation_list.*').match(loads(
-                    get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
-                        headers=headers, proxies=get_proxy()).text))
+                      get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
+            headers=headers, proxies=get_proxy()).text))
             return api.SSuccess(
                 self.name,
                 api.Result(
@@ -76,3 +80,11 @@ class Parser(api.Parser):
             )
         else:
             return api.SWaiting(target)
+
+if __name__ == '__main__':
+    content: dict = loads(get('https://www.yeezysupply.com/api/products/FV6125/availability', headers=headers, proxies=get_proxy()).text)
+    sizes_json = Path.parse_str('$.variation_list.*').match(loads(
+        get(f'https://www.yeezysupply.com/api/products/FV6125/availability',
+            headers=headers, proxies=get_proxy()).text))
+    print(tuple(size.current_value['size'] + ' US' + ' [' + str(size.current_value['availability']) + ']' for size in sizes_json
+                           if size.current_value['availability'] > 0))
