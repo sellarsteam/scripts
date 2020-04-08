@@ -63,7 +63,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.user_agent = generate_user_agent()
-        self.interval: int = 1
+        self.interval: int = 45
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 1200)
@@ -134,9 +134,3 @@ class Parser(api.Parser):
                 )
         else:
             return api.SWaiting(target)
-
-
-if __name__ == '__main__':
-    print(get('https://vk.com/egorovvanya').text)
-    merchant_link = 'https://vk.com/egorovvanya'
-    # print(etree.HTML(get(merchant_link).content).xpath('//span[@class="explain"]')[0].text)
