@@ -63,7 +63,7 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.user_agent = generate_user_agent()
-        self.interval: int = 45
+        self.interval: int = 1
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 1200)
@@ -86,10 +86,14 @@ class Parser(api.Parser):
                 except IndexError:
                     return api.SWaiting(target)
 
-                for key_word in key_words():
-                    if key_word in text:
-                        available = True
-                        break
+                try:
+                    for key_word in key_words():
+                        if key_word in text:
+                            available = True
+                            break
+                except TypeError:
+                    return api.SWaiting(target)
+                
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
