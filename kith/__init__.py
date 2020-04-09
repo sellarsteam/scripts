@@ -6,11 +6,12 @@ from jsonpath2 import Path
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-from scripts.proxy import get_proxy
+
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -52,6 +53,8 @@ class Parser(api.Parser):
         except IndexError:
             return api.SWaiting(target)
         name = content.xpath('//meta[@property="og:title"]')[0].get('content').split(' -')[0]
+        available_sizes = tuple(
+            (element.get('data-value')) for element in content.xpath('//div[@class="swatch clearfix"]')[0].xpath('div'))
         return api.SSuccess(
             self.name,
             api.Result(
@@ -67,9 +70,9 @@ class Parser(api.Parser):
                 {},
                 tuple(
                     (
-                        str(size_data.current_value['public_title']),
+                        str(size_data.current_value['public_title']) + ' US',
                         'https://kith.com/cart/' + str(size_data.current_value['id']) + ':1'
-                    ) for size_data in sizes_data
+                    ) for size_data in sizes_data if size_data.current_value['public_title'] in available_sizes
                 ),
                 (
                     ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
@@ -77,5 +80,6 @@ class Parser(api.Parser):
                 )
             )
         )
+
 
 

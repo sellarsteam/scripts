@@ -57,7 +57,7 @@ class Parser(api.Parser):
                 if content.xpath('//input[@class="btn buy kdxAddToCart"]') != []:
                     available = True
                 else:
-                    return api.SFail(self.name, 'Item is sold out')
+                    return api.SWaiting(target)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:

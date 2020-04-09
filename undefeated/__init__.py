@@ -12,6 +12,7 @@ from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 from scripts.proxy import get_proxy
 
+
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
@@ -58,6 +59,8 @@ class Parser(api.Parser):
             return api.SWaiting(target)
         if available:
             try:
+                available_sizes = tuple((element.get('value')) for element in content.xpath
+                ('//select[@id="SingleOptionSelector-1"]')[0].xpath('option') if element.get('disabled') != 'disabled')
                 name = content.xpath('//meta[@property="og:title"]')[0].get('content')
                 return api.SSuccess(
                     self.name,
@@ -77,7 +80,8 @@ class Parser(api.Parser):
                             (
                                 str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
                                 'https://undefeated.com/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data
+                            ) for size_data in sizes_data if
+                            size_data.current_value['public_title'].split(' ')[-1] in available_sizes
                         ),
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
@@ -89,3 +93,4 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Exception JSONDecodeError')
         else:
             return api.SWaiting(target)
+

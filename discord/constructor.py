@@ -30,7 +30,7 @@ def build(item: Result) -> dict:
         embed['description'] = item.description
     if item.image:
         embed['thumbnail'] = {'url': item.image}
-    if item.price and 2 <= item.price.__len__() <= 3:
+    if 2 <= item.price.__len__() <= 3 and item.price[1]:
         embed['fields'].append({
             'name': 'Цена',
             'value': f'{item.price[1]}{currencies[item.price[0]]}' if
@@ -39,11 +39,10 @@ def build(item: Result) -> dict:
         })
     if item.fields:
         for k, v in item.fields.items():
-            if isinstance(k, str) and isinstance(v, (str, int, float)):
-                embed['fields'].append({
-                    'name': k,
-                    'value': v
-                })
+            embed['fields'].append({
+                'name': k,
+                'value': v
+            })
     if item.sizes:
         sizes: List[str] = []
         for i, v in enumerate(item.sizes):

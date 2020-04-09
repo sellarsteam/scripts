@@ -7,22 +7,11 @@ from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
 from random import choice
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-
-proxies = ['http 46.48.170.175:8080',
-           'http 62.33.207.196:3128',
-           'http 95.156.125.190:41870',
-           'http 81.5.103.14:8081',
-           'http 195.182.152.238:38178',
-           'http 217.174.184.234:8081',
-           'http 62.33.207.201:80',
-           'http 193.106.94.106:8080',
-           'http 62.33.207.201:3128',
-           'http 109.195.194.79:57657',
-           'http 62.33.207.196:80']
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -49,9 +38,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                proxy = choice(proxies)
                 get_content = get(target.data, headers={'user-agent': generate_user_agent()},
-                                  proxies = {str(proxy.split(' ')[0]): str(proxy.split(' ')[1])}).text
+                                  proxies = get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 if content.xpath('//strong')[0].text.replace(' ', '').replace('\t', '').replace('\n', '') != 'SoldOut':
                     available = True

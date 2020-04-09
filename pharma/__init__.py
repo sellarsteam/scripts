@@ -68,7 +68,7 @@ class Parser(api.Parser):
                         {},
                         tuple(
                             (
-                                size_data.current_value['option1'],
+                                str(size_data.current_value['option1']) + ' EU',
                                 'https://shop.pharmabergen.no/cart/' + str(size_data.current_value['id']) + ':1'
                             ) for size_data in sizes_data
                         ),

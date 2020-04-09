@@ -86,10 +86,14 @@ class Parser(api.Parser):
                 except IndexError:
                     return api.SWaiting(target)
 
-                for key_word in key_words():
-                    if key_word in text:
-                        available = True
-                        break
+                try:
+                    for key_word in key_words():
+                        if key_word in text:
+                            available = True
+                            break
+                except TypeError:
+                    return api.SWaiting(target)
+                
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -130,9 +134,3 @@ class Parser(api.Parser):
                 )
         else:
             return api.SWaiting(target)
-
-
-if __name__ == '__main__':
-    print(get('https://vk.com/egorovvanya').text)
-    merchant_link = 'https://vk.com/egorovvanya'
-    # print(etree.HTML(get(merchant_link).content).xpath('//span[@class="explain"]')[0].text)
