@@ -25,7 +25,7 @@ class Parser(api.Parser):
         self.interval: int = 1
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 10)
+        return api.IInterval(self.name, 5)
 
     def targets(self) -> List[TargetType]:  # TODO: Error handling support
         return [
