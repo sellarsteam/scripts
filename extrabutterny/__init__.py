@@ -21,7 +21,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 10)
+        return api.IInterval(self.name, 2)
 
     def targets(self) -> List[TargetType]:
         return [
