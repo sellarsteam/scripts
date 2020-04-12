@@ -44,7 +44,6 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                print(target.data)
                 content = etree.HTML(get(target.data, self.user_agent).content)
                 if len(content.xpath('//button')) != 0:
                     return api.SSuccess(

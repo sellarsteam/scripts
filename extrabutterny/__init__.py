@@ -6,12 +6,12 @@ from jsonpath2 import Path
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
-from random import choice
 from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -39,8 +39,13 @@ class Parser(api.Parser):
             if isinstance(target, api.TInterval):
                 available: bool = False
                 get_content = get(target.data, headers={'user-agent': generate_user_agent()},
-                                  proxies = get_proxy()).text
+                                  proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
+                available_sizes = tuple(
+                    i.current_value['sku'].split('-')[-1] for i in Path.parse_str('$.offers.*').match(
+                        loads(content.xpath('//script[@type="application/ld+json"]')[0].text)) if
+                    i.current_value['availability'] == 'https://schema.org/InStock')
+
                 if content.xpath('//strong')[0].text.replace(' ', '').replace('\t', '').replace('\n', '') != 'SoldOut':
                     available = True
                 else:
@@ -74,7 +79,7 @@ class Parser(api.Parser):
                             (
                                 str(size_data.current_value['public_title']) + ' US',
                                 'https://extrabutterny.com/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data
+                            ) for size_data in sizes_data if size_data.current_value['public_title'] in available_sizes
                         ),
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
