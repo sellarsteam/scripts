@@ -48,8 +48,13 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = loads(self.scraper.get(f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
+                try:
+                    available: bool = loads(self.scraper.get(f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
                                             headers=headers, proxies=get_proxy()).text)['availability'] == 'IN_STOCK'
+                except JSONDecodeError:
+                    available: bool = loads(self.scraper.get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
+                                            headers=headers, proxies=get_proxy()).text)['availability_status'] == 'IN_STOCK'
+                    
                 if available == False:
                     return api.SWaiting(target)
                 else:
@@ -62,9 +67,18 @@ class Parser(api.Parser):
         except KeyError:
             return api.SFail(self.name, 'Wrong scheme')
         if available:
-            sizes_json = Path.parse_str('$.skus.*').match(loads(
-                      self.scraper.get(f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
-            headers=headers, proxies=get_proxy()).text))
+            try:
+                sizes_json = Path.parse_str('$.skus.*').match(loads(
+                          self.scraper.get(f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
+                headers=headers, proxies=get_proxy()).text))
+                sizes = tuple(size.current_value['displaySize'] + ' US' + ' [' + str(size.current_value['hypeAvailability']) + ']' for size in sizes_json
+                         if size.current_value['hypeAvailability'] > 0)
+            except JSONDecodeError:
+                sizes_json = Path.parse_str('$.skus.*').match(loads(
+                          self.scraper.get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
+                            headers=headers, proxies=get_proxy()).text))
+                sizes = tuple(size.current_value['size'] + ' US' + ' [' + str(size.current_value['availability']) + ']' for size in sizes_json
+                         if size.current_value['availability'] > 0)
             return api.SSuccess(
                 self.name,
                 api.Result(
@@ -75,8 +89,7 @@ class Parser(api.Parser):
                     content['meta_data']['description'],
                     (api.currencies['USD'], float(content['pricing_information']['standard_price'])),
                     {},
-                    tuple(size.current_value['displaySize'] + ' US' + ' [' + str(size.current_value['hypeAvailability']) + ']' for size in sizes_json
-                         if size.current_value['hypeAvailability'] > 0),
+                    sizes,
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + content['name'].replace(' ', '%20')),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
@@ -85,3 +98,4 @@ class Parser(api.Parser):
             )
         else:
             return api.SWaiting(target)
+
