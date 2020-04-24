@@ -4,9 +4,7 @@ from typing import List
 from json import loads, JSONDecodeError
 from lxml import etree
 from re import findall
-from user_agent import generate_user_agent
 from requests import get
-from scripts.proxy import get_proxy
 from jsonpath2 import Path, match
 
 from core import api
@@ -19,17 +17,24 @@ class Parser(api.Parser):
         super().__init__(name, log)
         self.catalog: str = 'https://www.deadstock.ca/collections/new-arrivals?sort_by=created-descending'
         self.interval: int = 1
-        self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 5)
+        return api.IInterval(self.name, 1)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[4],
                           self.name, 'https://www.deadstock.ca' + element.get('href'), self.interval)
             for element in etree.HTML(get(
-                url=self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()
+                url=self.catalog, headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                                                      '.html)Mozilla/5.0 (compatible; '
+                                                                      'Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)'}
             ).text).xpath('//a[@class=" grid-product__meta"]')
             if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
         ]
@@ -38,7 +43,15 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(url=target.data, headers={'headers': generate_user_agent()}, proxies=get_proxy()).text
+                get_content = get(url=target.data, headers={'headers': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                                                      '.html)Mozilla/5.0 (compatible; '
+                                                                      'Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)'}).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple(size.get('for').split('-')[-1]
                                         for size in content.xpath('//fieldset[@id="ProductSelect-option-0"]')[0].xpath('label[@class=""]'))
@@ -73,5 +86,19 @@ class Parser(api.Parser):
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
-        else:
-            return api.SWaiting(target)
+        else: # TODO return info, that target is sold out
+            return api.SSuccess(
+                self.name,
+                api.Result(
+                    'Sold out',
+                    target.data,
+                    'tech',
+                    content.xpath('//meta[@property="og:image"]')[2].get('content'),
+                    '',
+                    (api.currencies['USD'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
+                    {},
+                    tuple(),
+                    (('StockX', 'https://stockx.com/search/sneakers?s='),
+                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                )
+            )

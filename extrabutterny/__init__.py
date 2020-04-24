@@ -5,8 +5,6 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from user_agent import generate_user_agent
-from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -18,17 +16,24 @@ class Parser(api.Parser):
         super().__init__(name, log)
         self.catalog: str = 'https://extrabutterny.com/collections/footwear/Mens'
         self.interval: int = 1
-        self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 2)
+        return api.IInterval(self.name, 1)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element[0].get('href').split('/')[4],
                           self.name, 'https://extrabutterny.com' + element[0].get('href'), self.interval)
             for element in etree.HTML(get(self.catalog,
-                                          headers={'user-agent': generate_user_agent()}
+                                          headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                                                      '.html)Mozilla/5.0 (compatible; '
+                                                                      'Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)'}
                                           ).text).xpath('//div[@class="GridItem-imageContainer"]')
             if
             'nike' in element[0].get('href') or 'jordan' in element[0].get('href') or 'yeezy' in element[0].get('href')
@@ -38,8 +43,15 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(target.data, headers={'user-agent': generate_user_agent()},
-                                  proxies=get_proxy()).text
+                get_content = get(target.data, headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                                                      '.html)Mozilla/5.0 (compatible; '
+                                                                      'Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                                                      '+https://www.pinterest.com/bot.html)'}).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple(
                     i.current_value['sku'].split('-')[-1] for i in Path.parse_str('$.offers.*').match(
@@ -48,8 +60,6 @@ class Parser(api.Parser):
 
                 if content.xpath('//strong')[0].text.replace(' ', '').replace('\t', '').replace('\n', '') != 'SoldOut':
                     available = True
-                else:
-                    return api.SWaiting(target)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -89,5 +99,19 @@ class Parser(api.Parser):
                 )
             except JSONDecodeError:
                 return api.SFail(self.name, 'Exception JSONDecodeError')
-        else:
-            return api.SWaiting(target)
+        else:  # TODO return info, that target is sold out
+            return api.SSuccess(
+                self.name,
+                api.Result(
+                    'Sold out',
+                    target.data,
+                    'tech',
+                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                    '',
+                    (api.currencies['USD'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
+                    {},
+                    tuple(),
+                    (('StockX', 'https://stockx.com/search/sneakers?s='),
+                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                )
+            )

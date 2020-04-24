@@ -3,6 +3,7 @@ from typing import List
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
+from cfscrape import create_scraper
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -15,6 +16,7 @@ class Parser(api.Parser):
         self.catalog: str = 'https://www.net-a-porter.com/ru/en/d/Shop/Shoes/Sneakers?cm_sp=topnav-_-shoes-_-sneakers&pn=1&npp=60&image_view=product&dscroll=0&sortorder=new-in&sizescheme=IT'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
+        self.scraper = create_scraper()
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 120)
@@ -32,7 +34,7 @@ class Parser(api.Parser):
                            .replace('\t', '').replace('\n', '').replace('£', '')
                            ),
                           self.interval)
-            for element in etree.HTML(get(
+            for element in etree.HTML(self.scraper.get(
                 self.catalog,
                 headers={
                     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',

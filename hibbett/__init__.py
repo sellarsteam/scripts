@@ -20,7 +20,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 5)
+        return api.IInterval(self.name, 1200)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -29,7 +29,7 @@ class Parser(api.Parser):
             for element in etree.HTML(self.scraper.get(
                 url=self.catalog, proxies=get_proxy()
             ).text).xpath('//a[@class="name-link"]') if 'dunk' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') or 'sacai' in element.get('href') or 'air' in element.get('href')
-        ]
+        ][0:5:]
 
     def execute(self, target: TargetType) -> StatusType:
         try:

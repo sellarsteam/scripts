@@ -4,5 +4,23 @@ ignore:
     - .git
   scripts:
     - example
-    - footpatrol-us
+    - footpatrol-u
     - telegram-alert
+    - discord
+    - brandshop
+    - deadstock
+    - nike-snkrs
+    - extrabutterny
+    - farfetch-ru
+    - hibbett
+    - kith
+    - net-a-porter
+    - packer
+    - pharma
+    - sneakerhead-ru
+    - supreme-nyc
+    - traektoria-ru
+    - tsum-ru
+    - undefeated
+    - vk-merchants
+    - yeezy-supply

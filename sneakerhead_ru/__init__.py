@@ -19,7 +19,7 @@ class Parser(api.Parser):
         self.interval: int = 1
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+        return api.IInterval(self.name, 1)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -30,11 +30,11 @@ class Parser(api.Parser):
             )
             for i in Path.parse_str('$.*').match(
                 loads(get(self.catalog, headers={'user-agent': self.user_agent}).text)
-            ) if ('Кроссовки' in i.current_value['CategoryNames'] 
-                 or 'Обувь' in i.current_value['CategoryNames'])
-                 and ('Yeezy' in i.current_value['Model'] 
-                 or 'Jordan' in i.current_value['Model']
-                 or 'Nike' in i.current_value['Model'])
+            ) if ('Кроссовки' in i.current_value['CategoryNames']
+                  or 'Обувь' in i.current_value['CategoryNames'])
+                 and ('Yeezy' in i.current_value['Model']
+                      or 'Jordan' in i.current_value['Model']
+                      or 'Nike' in i.current_value['Model'])
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -77,4 +77,18 @@ class Parser(api.Parser):
                 )
             )
         else:
-            return api.SWaiting(target)
+            return api.SSuccess(
+                self.name,
+                api.Result(
+                    'Sold out',
+                    target.data,
+                    'tech',
+                    '',
+                    '',
+                    (api.currencies['USD'], 1),
+                    {},
+                    tuple(),
+                    (('StockX', 'https://stockx.com/search/sneakers?s='),
+                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                )
+            )
