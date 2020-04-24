@@ -33,9 +33,9 @@ class Parser(api.Parser):
             if isinstance(target, api.TInterval):
                 content: etree.Element = etree.HTML(get(url=target.data,
                                                         headers={
-                                                            'headers': 'Mozilla/5.0 (compatible; '
-                                                                       'YandexAccessibilityBot/3.0; '
-                                                                       '+http://yandex.com/bots)'}).text)
+                                                            'user-agent': 'Mozilla/5.0 (compatible; '
+                                                                          'YandexAccessibilityBot/3.0; '
+                                                                          '+http://yandex.com/bots)'}).text)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -49,7 +49,7 @@ class Parser(api.Parser):
                 'russian-retailers',
                 content.xpath('//meta[@property="og:image"]')[0].get('content'),
                 '',
-                (api.currencies['USD'],
+                (api.currencies['RUB'],
                  float(content.xpath('//div[@class="product-page__price"]')[0].text.replace('₽', '').replace('\n', '')
                        .replace(' ', ''))),
                 {},
@@ -62,4 +62,3 @@ class Parser(api.Parser):
                  ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
             )
         )
-
