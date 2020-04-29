@@ -14,7 +14,7 @@ from core.logger import Logger
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://www.lapstoneandhammer.com/collections/new-arrival-1'
+        self.catalog: str = 'https://sneakerpolitics.com/collections/sneakers'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; ' \
@@ -28,12 +28,12 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[-1],
-                          self.name, 'https://www.lapstoneandhammer.com' + element.get('href'), self.interval)
+                          self.name, 'https://sneakerpolitics.com/' + element.get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
                 headers={'user-agent': self.user_agent}
             ).text).xpath(
-                '//div[@class="image-wrapper"]/a')
+                '//div[@class="four columns alpha thumbnail even" or @class="four columns omega thumbnail even"]/a')
             if 'yeezy' in element.get('href') or 'jordan' in element.get('href') or 'air' in element.get('href')
                or 'dunk' in element.get('href') or 'sacai' in element.get('href')
         ]
@@ -52,19 +52,17 @@ class Parser(api.Parser):
             return api.SFail(self.name, 'Exception XMLDecodeError')
         except JSONDecodeError:
             return api.SFail(self.name, 'Exception JSONDecodeError')
-        name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-        try:  # If item is available via raffle
-            if content.xpath('//h2[@style="color:#ff8c00;"]')[0].text == 'THIS PRODUCT IS ONLY AVAILABLE VIA RAFFLE.':
+        try:  # TODO return info, that target is sold out
+            if content.xpath('//span[@class="sold_out"]')[0].text == 'Sold Out':
                 return api.SSuccess(
                     self.name,
                     api.Result(
-                        name,
+                        'Sold out',
                         target.data,
-                        'raffles',
-                        'https:' + content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                        'tech',
                         '',
-                        (api.currencies['USD'],
-                         float(content.xpath('//span[@class="actual-price"]')[0].text.split(' ')[-1])),
+                        '',
+                        (api.currencies['USD'], 1),
                         {},
                         tuple(),
                         (('StockX', 'https://stockx.com/search/sneakers?s='),
@@ -73,27 +71,8 @@ class Parser(api.Parser):
                 )
         except IndexError:
             pass
-        available_sizes = list()
-        try:
-            for size in content.xpath('//select[@id="variant-listbox"]/option'):
-                if size.items()[0][0] != 'disabled':
-                    available_sizes.append(size.text.replace(' ', ''))
-        except IndexError:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    '',
-                    '',
-                    (api.currencies['USD'], 1),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+        name = content.xpath('//meta[@property="og:title"]')[0].get('content')
+        available_sizes = tuple(size.text.replace('c', '') for size in content.xpath('//select[@name="id"]/option'))
         if len(available_sizes) > 0:
             return api.SSuccess(
                 self.name,
@@ -105,14 +84,15 @@ class Parser(api.Parser):
                     '',
                     (
                         api.currencies['USD'],
-                        float(content.xpath('//span[@class="actual-price"]')[0].text.split(' ')[-1])
+                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                     ),
                     {},
                     tuple(
                         (
-                            str(size_data.current_value['public_title']) + ' US',
-                            'https://www.lapstoneandhammer.com/cart/' + str(size_data.current_value['id']) + ':1'
-                        ) for size_data in sizes_data if size_data.current_value['public_title'] in available_sizes
+                            str(size_data.current_value['public_title']).split('M')[-1] + ' US',
+                            'https://sneakerpolitics.com/cart/' + str(size_data.current_value['id']) + ':1'
+                        ) for size_data in sizes_data if
+                        size_data.current_value['public_title'].split('M')[-1] in available_sizes
                     ),
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),

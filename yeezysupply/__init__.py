@@ -26,44 +26,46 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.catalog: str = 'https://www.yeezysupply.com/api/yeezysupply/products/bloom'
-        self.interval: int = 1
+        self.interval: int = 10
         self.scraper = create_scraper()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1200)
+        return api.IInterval(self.name, 30)
 
     def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(
-                i.current_value['product_id'],
-                self.name,
-                'https://www.yeezysupply.com/api/products/' + i.current_value['product_id'],
-                self.interval
-            )
-            for i in Path.parse_str('$[*]').match(
-                loads(get(self.catalog, headers=headers, proxies=get_proxy()).text)
-            )
-        ]
+        try:
+            return [
+                api.TInterval(
+                    i.current_value['product_id'],
+                    self.name,
+                    'https://www.yeezysupply.com/api/products/' + i.current_value['product_id'],
+                    self.interval
+                )
+                for i in Path.parse_str('$[*]').match(
+                    loads(get(self.catalog, headers=headers).text)
+                )
+            ]
+        except JSONDecodeError:
+            return []
 
     def execute(self, target: TargetType) -> StatusType:
         try:
-            print(self.interval)
             if isinstance(target, api.TInterval):
                 try:
                     available: bool = loads(self.scraper.get(
                         f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
-                        headers=headers, proxies=get_proxy()).text)['availability'] == 'IN_STOCK'
+                        headers=headers).text)['availability'] == 'IN_STOCK'
                 except JSONDecodeError:
                     available: bool = \
                         loads(self.scraper.get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
-                                               headers=headers, proxies=get_proxy()).text)[
+                                               headers=headers).text)[
                             'availability_status'] == 'IN_STOCK'
 
                 if not available:
                     return api.SWaiting(target)
                 else:
                     available = True
-                content: dict = loads(get(target.data, headers=headers, proxies=get_proxy()).text)
+                content: dict = loads(get(target.data, headers=headers).text)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except JSONDecodeError:
@@ -75,7 +77,7 @@ class Parser(api.Parser):
                 sizes_json = Path.parse_str('$.skus.*').match(loads(
                     self.scraper.get(
                         f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
-                        headers=headers, proxies=get_proxy()).text))
+                        headers=headers).text))
                 sizes = tuple(
                     size.current_value['displaySize'] + ' US' + ' [' + str(size.current_value['hypeAvailability']) + ']'
                     for size in sizes_json
@@ -83,7 +85,7 @@ class Parser(api.Parser):
             except JSONDecodeError:
                 sizes_json = Path.parse_str('$.variation_list.*').match(loads(
                     self.scraper.get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
-                                     headers=headers, proxies=get_proxy()).text))
+                                     headers=headers).text))
                 sizes = tuple(
                     size.current_value['size'] + ' US' + ' [' + str(size.current_value['availability']) + ']' for size
                     in sizes_json
