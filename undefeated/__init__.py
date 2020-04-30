@@ -62,7 +62,7 @@ class Parser(api.Parser):
                 available: bool = False
                 get_content = get(target.data, headers={'user-agent': self.user_agent}).text
                 content: etree.Element = etree.HTML(get_content)
-                if content.xpath('//span[@class="btn__text"]')[0].text.replace(' ', '').replace('\n', '') != 'Sold':
+                if 'Sold' not in content.xpath('//span[@class="btn__text"]')[0].text:
                     available = True
                 else:
                     return return_sold_out(target.data)
