@@ -22,8 +22,8 @@ class Parser(api.Parser):
 
     def targets(self) -> List[TargetType]:
         return [
-            api.TInterval(element.get('href').split('/')[4],
-                          self.name, 'https://extrabutterny.com' + element.get('href'), self.interval)
+            api.TInterval(element[0].get('href').split('/')[4],
+                          self.name, 'https://extrabutterny.com' + element[0].get('href'), self.interval)
             for element in etree.HTML(get(self.catalog,
                                           headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
                                                                       '.html)Mozilla/5.0 (compatible; '
