@@ -1,6 +1,6 @@
+from json import loads, JSONDecodeError
 from typing import List
 
-from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
 
@@ -9,29 +9,29 @@ from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
 vk_merchants = (
-    'https://vk.com/id507698109',
-    'https://vk.com/id467787089',
-    'https://vk.com/id564747202',
-    'https://vk.com/id279312075',
-    'https://vk.com/id416361025',
-    'https://vk.com/babaevdd',
-    'https://vk.com/id562275038',
-    'https://vk.com/id368686985',
-    'https://vk.com/id466245764',
-    'https://vk.com/id561114731',
-    'https://vk.com/id562914497',
-    'https://vk.com/vika940222',
-    'https://vk.com/id548261318',
-    'https://vk.com/id240373496',
-    'https://vk.com/id435212744',
-    'https://vk.com/id526566071',
-    'https://vk.com/id354212266',
-    'https://vk.com/id435773397',
-    'https://vk.com/id521130049',
-    'https://vk.com/id491969248',
-    'https://vk.com/id180322689',
-    'https://vk.com/mymoneystackin',
-    'https://vk.com/niggazzwithattitude',
+    ('507698109', 'Ren Chris'),
+    ('467787089', 'Уожу Мзй-Линь'),
+    ('564747202', 'Isn Resale'),
+    ('279312075', 'Ярослав Арефьев'),
+    ('416361025', 'Heng Jian'),
+    ('196746875', 'Даниил Бабаев'),
+    ('562275038', 'Игорь Чжан'),
+    ('368686985', 'Аньчжоу Цуй'),
+    ('466245764', 'Su Yingshuo'),
+    ('561114731', 'Лао Бэн'),
+    ('562914497', 'Мао Миша'),
+    ('536404559', 'Viiii Vika'),
+    ('548261318', '铭 小茗'),
+    ('240373496', 'Вадим Толмац'),
+    ('435212744', '吴 晨浩'),
+    ('526566071', 'Ьин Бин'),
+    ('354212266', 'Юй Чжаодоп'),
+    ('435773397', '唐新宇 唐新宇'),
+    ('521130049', 'Синьли Мен'),
+    ('491969248', 'Pan Jingwei'),
+    ('180322689', 'Илья Царёв👨‍💻'),
+    ('90213067', 'Александр Бабурин'),
+    ('60234368', 'Виктор Гусев'),
 )
 
 
@@ -46,24 +46,26 @@ def key_words():
                 yield i.upper()
 
 
-def first_not_fixed_post(merchant_link):
+def get_post_id(merchant_id, token):
+    content = loads(
+        get(f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52',
+            headers={'user-agent': generate_user_agent()}).text
+    )
     try:
-        fixed_label = etree.HTML(get(merchant_link).content).xpath('//span[@class="explain"]')[0].text
-        if fixed_label == 'запись закреплена':
-            return 'https://vk.com' + etree.HTML(get(merchant_link).content).xpath('//a[@class="wi_date"]')[1].get(
-                'href')
+        if content['response']['items'][0]['is_pinned']:
+            return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
         else:
-            return 'https://vk.com' + etree.HTML(get(merchant_link).content).xpath('//a[@class="wi_date"]')[0].get(
-                'href')
-    except IndexError:
-        return 'https://vk.com' + etree.HTML(get(merchant_link).content).xpath('//a[@class="wi_date"]')[0].get('href')
+            return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
+    except KeyError:
+        return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
 
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
+        self.token = '8bc12e8f8bc12e8f8bc12e8fce8bb07efe88bc18bc12e8fd561ae191819697ceb653837'
         self.user_agent = generate_user_agent()
-        self.interval: int = 45
+        self.interval: int = 1
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 1200)
@@ -71,66 +73,58 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(
-                merchant_link.split('/')[3], self.name,
-                first_not_fixed_post(merchant_link), self.interval)
-            for merchant_link in vk_merchants
+                merchant_id[1], self.name,
+                get_post_id(merchant_id, self.token), self.interval)
+            for merchant_id in vk_merchants
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content: etree.Element = etree.HTML(get(target.data).text)
-                try:
-                    text = content.xpath('//div[@class="pi_text" or @class="pi_text zoom_text"]')[0].text
-                except IndexError:
-                    return api.SWaiting(target)
-
-                try:
-                    for key_word in key_words():
-                        if key_word in text:
-                            available = True
-                            break
-                except TypeError:
-                    return api.SWaiting(target)
-                
+                content = loads(get(f"https://api.vk.com/method/wall.getById?posts={target.data}"
+                                    f"&access_token={self.token}&v=5.52").text)
+                text = content['response'][0]['text']
+                for key_word in key_words():
+                    if key_word in text:
+                        available = True
+                        break
             else:
                 return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
+        except JSONDecodeError:
+            return api.SFail(self.name, 'Exception JSONDecodeError')
 
         if available:
             try:
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        content.xpath('//a[@class="pi_author"]')[0].text,
-                        target.data,
-                        'vk-merchants',
-                        content.xpath(
-                            '//div[@style]'
-                        )[2].get('style').split('url(')[-1].replace(')', '').replace(';', ''),
-                        text,
-                        (api.currencies['USD'], 0),
-                        {},
-                        (),
-                        ()
-                    )
+                photo = content['response'][0]['attachments'][0]['photo']['photo_1280']
+            except KeyError:
+                photo = ''
+            return api.SSuccess(
+                self.name,
+                api.Result(
+                    target.name,
+                    f"https://vk.com/id{target.data.split('_')[0]}",
+                    'vk-merchants',
+                    photo,
+                    text,
+                    (api.currencies['USD'], 0),
+                    {},
+                    (),
+                    ()
                 )
-            except IndexError:
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        content.xpath('//a[@class="pi_author"]')[0].text,
-                        target.data,
-                        'buyers-monitor',
-                        '',
-                        text,
-                        (api.currencies['USD'], 0),
-                        {},
-                        (),
-                        ()
-                    )
-                )
+            )
         else:
-            return api.SWaiting(target)
+            return api.SSuccess(  # TODO Return SFail if post is wrong
+                self.name,
+                api.Result(
+                    'Post is wrong',
+                    f"https://vk.com/id{target.data.split('_')[0]}",
+                    'tech',
+                    '',
+                    text,
+                    (api.currencies['USD'], 0),
+                    {},
+                    (),
+                    ()
+                )
+            )

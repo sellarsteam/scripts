@@ -32,7 +32,7 @@ def build(item: Result) -> dict:
         embed['thumbnail'] = {'url': item.image}
     if 2 <= item.price.__len__() <= 3 and item.price[1]:
         embed['fields'].append({
-            'name': 'Цена',
+            'name': 'Price',
             'value': f'{item.price[1]}{currencies[item.price[0]]}' if
             item.price.__len__() == 2 or item.price.__len__() == 3 and item.price[2] == 0 else
             f'~~{item.price[2]}~~ {item.price[1]}{currencies[item.price[0]]}'
@@ -53,7 +53,7 @@ def build(item: Result) -> dict:
             elif isinstance(v, str):
                 sizes[i // sizes_column_size] += f'{v}\n'
         embed['fields'].append({
-            'name': 'Размеры',
+            'name': 'Sizes',
             'value': sizes[0],
             'inline': True
         })
@@ -69,7 +69,7 @@ def build(item: Result) -> dict:
             if i.__len__() == 2:
                 footer_items += (f'[{i[0]}]({i[1]})',)
         embed['fields'].append({
-            'name': 'Ссылки',
+            'name': 'Links',
             'value': ' | '.join(footer_items)
         })
     return embed

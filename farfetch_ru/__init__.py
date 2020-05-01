@@ -18,7 +18,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 30)
+        return api.IInterval(self.name, 10)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -29,7 +29,8 @@ class Parser(api.Parser):
                 headers={'user-agent': self.user_agent,
                          'connection': 'keep-alive', 'cache-control': 'max-age=0',
                          'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,'
+                                   '*/*;q=0.8',
                          'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                          'sec-fetch-user': '?1',
                          'accept-language': 'en-US,en;q=0.9'}

@@ -19,7 +19,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 30)
+        return api.IInterval(self.name, 1200)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -35,7 +35,7 @@ class Parser(api.Parser):
             ).xpath('//div[@class="product"]')
             if 'krossovki' in element[0].get('href') and ('jordan' in element[0].get('href')
                                                           or 'yeezy' in element[0].get('href')
-                                                          or 'max' in element[0].get('href')
+                                                          or 'air' in element[0].get('href')
                                                           or 'dunk' in element[0].get('href')
                                                           or 'force' in element[0].get('href')
                                                           or 'blaze' in element[0].get('href'))
@@ -45,7 +45,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 content = etree.HTML(get(target.data, self.user_agent).content)
-                if content.xpath('//button[@title="Добавить в корзину"]') is not None:
+                if len(content.xpath('//button')) != 0:
                     return api.SSuccess(
                         self.name,
                         api.Result(
@@ -68,17 +68,16 @@ class Parser(api.Parser):
                                 (
                                     'StockX',
                                     'https://stockx.com/search/sneakers?s=' + str(
-                                            content.xpath('//span[@itemprop="brand"]')[0].text +
-                                            content.xpath('//span[@itemprop="name"]')[0].text
+                                        content.xpath('//span[@itemprop="brand"]')[0].text +
+                                        content.xpath('//span[@itemprop="name"]')[0].text
                                     ).replace(' ', '%20').replace('\xa0', '%20')),
                                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             )
                         )
                     )
                 else:
-                    return api.SFail(self.name, 'Unknown "publishType"')
+                    return api.SWaiting(target)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
-
