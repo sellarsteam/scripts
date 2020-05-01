@@ -1,10 +1,10 @@
+from json import JSONDecodeError, loads
+from re import findall
 from typing import List
 
+from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from json import JSONDecodeError, loads
-from jsonpath2 import Path
-from re import findall
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -14,7 +14,7 @@ from core.logger import Logger
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://eflash.doverstreetmarket.com/'
+        self.catalog: str = 'https://eflash-us.doverstreetmarket.com/'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; ' \
@@ -28,7 +28,7 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[-1],
-                          self.name, 'https://eflash.doverstreetmarket.com' + element.get('href'), self.interval)
+                          self.name, 'https://eflash-us.doverstreetmarket.com' + element.get('href'), self.interval)
             for element in etree.HTML(get(
                 url=self.catalog, headers={'user-agent': self.user_agent}
             ).text).xpath('//a[@class="grid-view-item__link"]')
@@ -94,20 +94,21 @@ class Parser(api.Parser):
                     'doverstreetmarket',
                     content.xpath('//meta[@property="og:image"]')[0].get('content'),
                     '',
-                    (api.currencies['GBP'],
+                    (api.currencies['USD'],
                      float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
-                    {'Location': 'Europe (London)'},
+                    {'Location': 'United States (New-York)'},
                     tuple(
                         (
-                            str(size_data.current_value['public_title']) + ' UK',
-                            'https://eflash.doverstreetmarket.com/cart/' + str(size_data.current_value['id']) + ':1'
-                        ) for size_data in sizes_data if size_data.current_value['public_title'].split(' ')[-1] in available_sizes
+                            str(size_data.current_value['public_title']) + ' US',
+                            'https://eflash-us.doverstreetmarket.com/cart/' + str(size_data.current_value['id']) + ':1'
+                        ) for size_data in sizes_data if size_data.current_value['public_title'].split('Size ')[-1]
+                        in available_sizes
                     ),
                     (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
-        else:   # TODO return info, that target is sold out
+        else:  # TODO return info, that target is sold out
             return api.SSuccess(
                 self.name,
                 api.Result(

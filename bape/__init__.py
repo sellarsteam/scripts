@@ -84,4 +84,3 @@ class Parser(api.Parser):
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
-

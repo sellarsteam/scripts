@@ -1,9 +1,9 @@
 from typing import List
 
+from cfscrape import create_scraper
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
-from cfscrape import create_scraper
 
 from core import api
 from core.api import IndexType, TargetType, StatusType

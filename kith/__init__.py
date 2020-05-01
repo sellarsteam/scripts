@@ -37,7 +37,7 @@ class Parser(api.Parser):
                                        '+https://www.pinterest.com/bot.html)'}
             ).text).xpath('//div[@class="product-card__information"]')
             if 'Nike' in element[0].xpath('h1[@class="product-card__title"]')[0].text
-               or 'Yeezy' in element[0].xpath('h1[@class="product-card__title"]')[0].text 
+               or 'Yeezy' in element[0].xpath('h1[@class="product-card__title"]')[0].text
                or 'Jordan' in element[0].xpath('h1[@class="product-card__title"]')[0].text
         ]
 
@@ -63,8 +63,6 @@ class Parser(api.Parser):
             return api.SFail(self.name, 'Exception XMLDecodeError')
         except JSONDecodeError:
             return api.SFail(self.name, 'Exception JSONDecodeError')
-
-
         except IndexError:  # TODO return info, that target is sold out
             return api.SSuccess(
                 self.name,
@@ -77,8 +75,10 @@ class Parser(api.Parser):
                     (api.currencies['USD'], 1),
                     {},
                     tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s='),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
 

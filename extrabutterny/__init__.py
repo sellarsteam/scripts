@@ -25,15 +25,17 @@ class Parser(api.Parser):
             api.TInterval(element[0].get('href').split('/')[4],
                           self.name, 'https://extrabutterny.com' + element[0].get('href'), self.interval)
             for element in etree.HTML(get(self.catalog,
-                                          headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                                                      '.html)Mozilla/5.0 (compatible; '
-                                                                      'Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)'}
+                                          headers={
+                                              'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                                            '.html)Mozilla/5.0 (compatible; '
+                                                            'Pinterestbot/1.0; '
+                                                            '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                                            '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                                            'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                                            'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                                            'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                                            '+https://www.pinterest.com/bot.html)'
+                                          }
                                           ).text).xpath('//div[@class="GridItem-imageContainer"]')
             if
             'nike' in element[0].get('href') or 'jordan' in element[0].get('href') or 'yeezy' in element[0].get('href')
@@ -108,7 +110,10 @@ class Parser(api.Parser):
                     'tech',
                     content.xpath('//meta[@property="og:image"]')[0].get('content'),
                     '',
-                    (api.currencies['USD'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
+                    (
+                        api.currencies['USD'],
+                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                    ),
                     {},
                     tuple(),
                     (('StockX', 'https://stockx.com/search/sneakers?s='),

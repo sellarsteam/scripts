@@ -68,8 +68,8 @@ class Parser(api.Parser):
                                 (
                                     'StockX',
                                     'https://stockx.com/search/sneakers?s=' + str(
-                                            content.xpath('//span[@itemprop="brand"]')[0].text +
-                                            content.xpath('//span[@itemprop="name"]')[0].text
+                                        content.xpath('//span[@itemprop="brand"]')[0].text +
+                                        content.xpath('//span[@itemprop="name"]')[0].text
                                     ).replace(' ', '%20').replace('\xa0', '%20')),
                                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             )
@@ -81,4 +81,3 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
-

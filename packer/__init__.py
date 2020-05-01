@@ -5,12 +5,10 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from user_agent import generate_user_agent
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):

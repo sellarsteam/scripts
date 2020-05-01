@@ -1,7 +1,7 @@
+from json import loads, JSONDecodeError
 from typing import List
 
 from requests import get
-from json import loads, JSONDecodeError
 from user_agent import generate_user_agent
 
 from core import api
@@ -47,8 +47,10 @@ def key_words():
 
 
 def get_post_id(merchant_id, token):
-    content = loads(get(f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52'
-                        , headers={'user-agent': generate_user_agent()}).text)
+    content = loads(
+        get(f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52',
+            headers={'user-agent': generate_user_agent()}).text
+    )
     try:
         if content['response']['items'][0]['is_pinned']:
             return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
@@ -126,5 +128,3 @@ class Parser(api.Parser):
                     ()
                 )
             )
-
-

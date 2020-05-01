@@ -1,11 +1,10 @@
-
+from json import loads
+from re import findall
 from typing import List
 
-from json import loads, JSONDecodeError
+from jsonpath2 import Path
 from lxml import etree
-from re import findall
 from requests import get
-from jsonpath2 import Path, match
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -26,15 +25,17 @@ class Parser(api.Parser):
             api.TInterval(element.get('href').split('/')[4],
                           self.name, 'https://www.deadstock.ca' + element.get('href'), self.interval)
             for element in etree.HTML(get(
-                url=self.catalog, headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                                                      '.html)Mozilla/5.0 (compatible; '
-                                                                      'Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)'}
+                url=self.catalog, headers={
+                    'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                  '.html)Mozilla/5.0 (compatible; '
+                                  'Pinterestbot/1.0; '
+                                  '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                  '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                  'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                  'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                  'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                  '+https://www.pinterest.com/bot.html)'
+                }
             ).text).xpath('//a[@class=" grid-product__meta"]')
             if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
         ]
@@ -43,23 +44,26 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(url=target.data, headers={'headers': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                                                      '.html)Mozilla/5.0 (compatible; '
-                                                                      'Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)'}).text
+                get_content = get(url=target.data, headers={
+                    'headers': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                               '.html)Mozilla/5.0 (compatible; '
+                               'Pinterestbot/1.0; '
+                               '+https://www.pinterest.com/bot.html)Mozilla/5'
+                               '.0 (Linux; Android 6.0.1; Nexus 5X '
+                               'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                               'like Gecko) Chrome/41.0.2272.96 Mobile '
+                               'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                               '+https://www.pinterest.com/bot.html)'
+                }).text
                 content: etree.Element = etree.HTML(get_content)
-                available_sizes = tuple(size.get('for').split('-')[-1]
-                                        for size in content.xpath('//fieldset[@id="ProductSelect-option-0"]')[0].xpath('label[@class=""]'))
+                available_sizes = tuple(
+                    size.get('for').split('-')[-1] for size in
+                    content.xpath('//fieldset[@id="ProductSelect-option-0"]')[0].xpath('label[@class=""]')
+                )
                 if len(available_sizes) > 0:
                     available = True
                 sizes_data = Path.parse_str('$.product.variants.*').match(
-                loads(findall(r'var meta = {.*}', get_content)[0]
-                      .replace('var meta = ', '')))
+                    loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -74,7 +78,10 @@ class Parser(api.Parser):
                     'shopify-filtered',
                     content.xpath('//meta[@property="og:image"]')[2].get('content'),
                     '',
-                    (api.currencies['USD'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
+                    (
+                        api.currencies['USD'],
+                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                    ),
                     {},
                     tuple(
                         (
@@ -86,7 +93,7 @@ class Parser(api.Parser):
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
-        else: # TODO return info, that target is sold out
+        else:  # TODO return info, that target is sold out
             return api.SSuccess(
                 self.name,
                 api.Result(
@@ -95,7 +102,10 @@ class Parser(api.Parser):
                     'tech',
                     content.xpath('//meta[@property="og:image"]')[2].get('content'),
                     '',
-                    (api.currencies['USD'], float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
+                    (
+                        api.currencies['USD'],
+                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                    ),
                     {},
                     tuple(),
                     (('StockX', 'https://stockx.com/search/sneakers?s='),

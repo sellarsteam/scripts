@@ -73,8 +73,9 @@ class Parser(api.Parser):
         name = content.xpath('//meta[@property="og:title"]')[0].get('content').split(' -')[0]
         try:
             available_sizes = tuple(
-                (element.get('data-value')) for element in content.xpath('//div[@class="swatch  clearfix"]')[0].xpath('div')
-                if 'available' in element.get('class'))
+                (element.get('data-value')) for element in
+                content.xpath('//div[@class="swatch  clearfix"]')[0].xpath('div') if 'available' in element.get('class')
+            )
         except IndexError:  # TODO return info, that target is sold out
             return api.SSuccess(
                 self.name,
@@ -116,4 +117,3 @@ class Parser(api.Parser):
                 )
             )
         )
-

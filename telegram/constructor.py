@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from core.api import Result
 
 currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł')

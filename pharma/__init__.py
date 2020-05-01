@@ -11,7 +11,6 @@ from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
 
-
 def return_sold_out(self, data):
     return api.SSuccess(
         self.name,
@@ -45,15 +44,17 @@ class Parser(api.Parser):
             api.TInterval(element[0].get('href').split('/')[4],
                           self.name, 'https://shop.pharmabergen.no' + element[0].get('href'), self.interval)
             for element in etree.HTML(get('https://shop.pharmabergen.no/collections/new-arrivals/',
-                                          headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                                                      '.html)Mozilla/5.0 (compatible; '
-                                                                      'Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)'}
+                                          headers={
+                                              'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                                            '.html)Mozilla/5.0 (compatible; '
+                                                            'Pinterestbot/1.0; '
+                                                            '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                                            '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                                            'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                                            'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                                            'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                                            '+https://www.pinterest.com/bot.html)'
+                                          }
                                           ).text).xpath('//div[@class="product-info-inner"]')
             if element[0].xpath('span[@class]')[0].text in ['NIKE', 'JORDAN'] or 'yeezy' in element[0].get('href')
         ]
@@ -63,15 +64,17 @@ class Parser(api.Parser):
             if isinstance(target, api.TInterval):
                 available: bool = False
                 content: etree.Element = etree.HTML(
-                    get(target.data, headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                                                      '.html)Mozilla/5.0 (compatible; '
-                                                                      'Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)'}).text)
+                    get(target.data, headers={
+                        'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
+                                      '.html)Mozilla/5.0 (compatible; '
+                                      'Pinterestbot/1.0; '
+                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
+                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
+                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
+                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
+                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
+                                      '+https://www.pinterest.com/bot.html)'
+                    }).text)
                 if content.xpath('//input[@type="submit"]')[0].get('value').replace('\n', '') == 'Add to Cart':
                     available = True
                 else:

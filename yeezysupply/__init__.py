@@ -1,11 +1,9 @@
 from json import loads, JSONDecodeError
 from typing import List
 
+from cfscrape import create_scraper
 from jsonpath2 import Path
 from requests import get
-from scripts.proxy import get_proxy
-from cfscrape import create_scraper
-from random import choice
 
 from core import api
 from core.api import IndexType, TargetType, StatusType

@@ -1,7 +1,7 @@
 from typing import List
 
-from lxml import etree
 from cfscrape import create_scraper
+from lxml import etree
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -42,8 +42,8 @@ class Parser(api.Parser):
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
         try:
-            if content.xpath('//button[@class="f-pdp-button f-pdp-button-coming-soon f-pdp-button--lowercase"]')[0]\
-                    .get('aria-label') == 'Coming Soon':
+            if content.xpath('//button[@class="f-pdp-button f-pdp-button-coming-soon f-pdp-button--lowercase"]')[0].get(
+                    'aria-label') == 'Coming Soon':
                 return api.SWaiting(target)
         except IndexError:
             pass
