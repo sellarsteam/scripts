@@ -6,7 +6,7 @@ import pytz
 
 from core.api import Result
 
-currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł')
+currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)')
 sizes_column_size = 5
 
 
