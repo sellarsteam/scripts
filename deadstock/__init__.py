@@ -16,6 +16,11 @@ class Parser(api.Parser):
         super().__init__(name, log)
         self.catalog: str = 'https://www.deadstock.ca/collections/new-arrivals?sort_by=created-descending'
         self.interval: int = 1
+        self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
+                          '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
+                          'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 ' \
+                          '(KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; ' \
+                          'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 1)
@@ -26,18 +31,11 @@ class Parser(api.Parser):
                           self.name, 'https://www.deadstock.ca' + element.get('href'), self.interval)
             for element in etree.HTML(get(
                 url=self.catalog, headers={
-                    'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                  '.html)Mozilla/5.0 (compatible; '
-                                  'Pinterestbot/1.0; '
-                                  '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                  '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                  'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                  'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                  'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                  '+https://www.pinterest.com/bot.html)'
+                    'user-agent': self.user_agent
                 }
             ).text).xpath('//a[@class=" grid-product__meta"]')
-            if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
+            if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
+               or 'sacai' in element.get('href') or 'dunk' in element.get('href')
         ]
 
     def execute(self, target: TargetType) -> StatusType:
@@ -45,15 +43,7 @@ class Parser(api.Parser):
             if isinstance(target, api.TInterval):
                 available: bool = False
                 get_content = get(url=target.data, headers={
-                    'headers': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                               '.html)Mozilla/5.0 (compatible; '
-                               'Pinterestbot/1.0; '
-                               '+https://www.pinterest.com/bot.html)Mozilla/5'
-                               '.0 (Linux; Android 6.0.1; Nexus 5X '
-                               'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                               'like Gecko) Chrome/41.0.2272.96 Mobile '
-                               'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                               '+https://www.pinterest.com/bot.html)'
+                    'headers': self.user_agent
                 }).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple(
@@ -76,7 +66,7 @@ class Parser(api.Parser):
                     name,
                     target.data,
                     'shopify-filtered',
-                    content.xpath('//meta[@property="og:image"]')[2].get('content'),
+                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
                     '',
                     (
                         api.currencies['USD'],

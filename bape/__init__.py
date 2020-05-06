@@ -7,6 +7,8 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
+from requests.exceptions import MissingSchema
+
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -23,13 +25,21 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 10)
 
     def targets(self) -> List[TargetType]:
+        links = list()
+        counter = 0
+        for element in etree.HTML(get(self.catalog,
+                                      headers={'user-agent': self.user_agent}).text) \
+                .xpath('//a[@class="thumb-link"]'):
+            if counter == 10:
+                break
+            if element.get('href')[0] != '/':
+                links.append(element.get('href'))
+                counter += 1
         return [
-                   api.TInterval(element.get('href').split('/')[-1],
-                                 self.name, element.get('href'), self.interval)
-                   for element in etree.HTML(get(self.catalog,
-                                                 headers={'user-agent': self.user_agent}
-                                                 ).text).xpath('//a[@class="thumb-link"]')
-               ][:10:]
+            api.TInterval(element.split('/')[-1],
+                          self.name, element, self.interval)
+            for element in links
+        ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
@@ -44,6 +54,8 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        except MissingSchema:
+            return
         if len(available_sizes) > 0:
             name = content.xpath('//meta[@property="og:title"]')[0].get('content')
             return api.SSuccess(
