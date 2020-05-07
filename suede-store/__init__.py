@@ -12,7 +12,7 @@ from core.logger import Logger
 
 def return_sold_out(data):
     return api.SSuccess(
-        'pharma',
+        'suede-store',
         api.Result(
             'Sold out',
             data,
@@ -31,7 +31,7 @@ def return_sold_out(data):
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://shop.pharmabergen.no/collections/new-arrivals/'
+        self.catalog: str = 'https://suede-store.com/collections/limited-edition?constraint=footwear'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
@@ -43,34 +43,48 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 1)
 
     def targets(self) -> List[TargetType]:
+        links = list()
+        counter = 0
+        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text).xpath(
+                '//div[@class="tt-image-box"]/a'):
+            if counter == 5:
+                break
+            if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get(
+                    'href') or 'dunk' in element.get('href'):
+                links.append(element.get('href'))
+                counter += 1
         return [
-            api.TInterval(element[0].get('href').split('/')[4],
-                          self.name, 'https://shop.pharmabergen.no' + element[0].get('href'), self.interval)
-            for element in etree.HTML(get('https://shop.pharmabergen.no/collections/new-arrivals/',
-                                          headers={'user-agent': self.user_agent}
-                                          ).text).xpath('//div[@class="product-info-inner"]')
-            if element[0].xpath('span[@class]')[0].text in ['NIKE', 'JORDAN'] or 'yeezy' in element[0].get('href')
+            api.TInterval(element.split('/')[-1],
+                          self.name, 'https://suede-store.com' + element, self.interval)
+            for element in links
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = False
-                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent}).text)
-                if content.xpath('//input[@type="submit"]')[0].get('value').replace('\n', '') == 'Add to Cart':
-                    available = True
-                else:
-                    return return_sold_out(target.data)
+                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        try:
+            available_sizes = tuple(
+                (
+                    str(size_data.current_value['title'].split(' ')[0]) + ' US',
+                    'https://suede-store.com/cart/' + str(size_data.current_value['id']) + ':1'
+                ) for size_data in Path.parse_str('$.variants.*').match(loads(get(
+                    f'https://suede-store.com/products/{target.data.split("/")[-1]}.js',
+                    headers={'user-agent': self.user_agent}).text))
+                if size_data.current_value['available'] is True
+            )
+
         except IndexError:
             return return_sold_out(target.data)
-        if available:
+        except JSONDecodeError:
+            return api.SFail(self.name, 'Exception JSONDecodeError')
+        if len(available_sizes) > 0:
             try:
-                sizes_data = Path.parse_str('$.variants.*').match(
-                    loads(content.xpath('//form[@action="/cart/add"]')[0].get('data-product')))
                 name = content.xpath('//meta[@property="og:title"]')[0].get('content')
                 return api.SSuccess(
                     self.name,
@@ -78,20 +92,15 @@ class Parser(api.Parser):
                         name,
                         target.data,
                         'shopify-filtered',
-                        content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
+                        content.xpath('//meta[@property="og:image"]')[0].get('content'),
                         '',
                         (
-                            api.currencies['NOK'],
+                            api.currencies['EUR'],
                             float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content')
-                                  .replace('.', '').replace(',', '.'))
+                                  .replace('.', '').replace(',', '.')) / 100
                         ),
-                        {},
-                        tuple(
-                            (
-                                str(size_data.current_value['option1']) + ' EU',
-                                'https://shop.pharmabergen.no/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data
-                        ),
+                        {'Site': 'Suede-Store'},
+                        available_sizes,
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
                             ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
@@ -100,3 +109,5 @@ class Parser(api.Parser):
                 )
             except JSONDecodeError:
                 return api.SFail(self.name, 'Exception JSONDecodeError')
+        else:
+            return return_sold_out(target.data)

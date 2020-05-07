@@ -1,4 +1,5 @@
 from json import loads, JSONDecodeError
+from re import findall
 from typing import List
 
 from jsonpath2 import Path
@@ -12,7 +13,7 @@ from core.logger import Logger
 
 def return_sold_out(data):
     return api.SSuccess(
-        'pharma',
+        'solefiness',
         api.Result(
             'Sold out',
             data,
@@ -31,7 +32,7 @@ def return_sold_out(data):
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://shop.pharmabergen.no/collections/new-arrivals/'
+        self.catalog: str = 'https://www.solefiness.com/collections/new-arrivals'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
@@ -43,34 +44,49 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 1)
 
     def targets(self) -> List[TargetType]:
+        links = list()
+        counter = 0
+        for element in etree.HTML(get(self.catalog,
+                                      headers={'user-agent': self.user_agent}).text) \
+                .xpath('//div[@class="product-item-details"]/a'):
+            if counter == 5:
+                break
+            if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
+                    or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                links.append(element.get('href'))
+                counter += 1
         return [
-            api.TInterval(element[0].get('href').split('/')[4],
-                          self.name, 'https://shop.pharmabergen.no' + element[0].get('href'), self.interval)
-            for element in etree.HTML(get('https://shop.pharmabergen.no/collections/new-arrivals/',
-                                          headers={'user-agent': self.user_agent}
-                                          ).text).xpath('//div[@class="product-info-inner"]')
-            if element[0].xpath('span[@class]')[0].text in ['NIKE', 'JORDAN'] or 'yeezy' in element[0].get('href')
+            api.TInterval(element.split('/')[-1],
+                          self.name, 'https://www.solefiness.com' + element, self.interval)
+            for element in links
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent}).text)
-                if content.xpath('//input[@type="submit"]')[0].get('value').replace('\n', '') == 'Add to Cart':
+                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                content: etree.Element = etree.HTML(get_content)
+                if content.xpath('//link[@itemprop="availability"]')[0].get('href') == 'http://schema.org/InStock':
                     available = True
                 else:
                     return return_sold_out(target.data)
+                sizes_data = Path.parse_str('$.product.variants.*').match(
+                    loads(findall(r'var meta = {.*}', get_content)[0]
+                          .replace('var meta = ', '')))
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
+        except JSONDecodeError:
+            return api.SFail(self.name, 'Exception JSONDecodeError')
         except IndexError:
             return return_sold_out(target.data)
         if available:
             try:
-                sizes_data = Path.parse_str('$.variants.*').match(
-                    loads(content.xpath('//form[@action="/cart/add"]')[0].get('data-product')))
+                available_sizes = tuple(element.text.split(' ')[0]
+                                        for element in content.xpath('//select[@id="productSelect"]/option')
+                                        if element.get('disabled') is None)
                 name = content.xpath('//meta[@property="og:title"]')[0].get('content')
                 return api.SSuccess(
                     self.name,
@@ -78,19 +94,19 @@ class Parser(api.Parser):
                         name,
                         target.data,
                         'shopify-filtered',
-                        content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
+                        content.xpath('//meta[@property="og:image"]')[0].get('content'),
                         '',
                         (
-                            api.currencies['NOK'],
-                            float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content')
-                                  .replace('.', '').replace(',', '.'))
+                            api.currencies['AUD'],
+                            float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                         ),
-                        {},
+                        {'Site': 'Sole Finess'},
                         tuple(
                             (
-                                str(size_data.current_value['option1']) + ' EU',
-                                'https://shop.pharmabergen.no/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data
+                                str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
+                                'https://www.solefiness.com/cart/' + str(size_data.current_value['id']) + ':1'
+                            ) for size_data in sizes_data if
+                            size_data.current_value['public_title'].split(' ')[-1] in available_sizes
                         ),
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
@@ -100,3 +116,5 @@ class Parser(api.Parser):
                 )
             except JSONDecodeError:
                 return api.SFail(self.name, 'Exception JSONDecodeError')
+        else:
+            return return_sold_out(target.data)

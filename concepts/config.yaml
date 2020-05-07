@@ -1,0 +1,5 @@
+name: concepts
+core: ^0.6.1
+version: 0.9rc1
+important: no
+keep: yes

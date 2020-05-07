@@ -1,7 +1,5 @@
-from json import loads
 from typing import List
 
-from jsonpath2 import Path
 from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
@@ -14,7 +12,7 @@ from core.logger import Logger
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/55379e776636b417f47acd68/?&categoryIds=56&categoryPaths=&session=5e67c3c66116160001f6cdaf&pvid=953289517825957&isDebug=false&format=json'
+        self.catalog: str = 'https://sneakerhead.ru/isnew/'
         self.user_agent = generate_user_agent()
         self.interval: int = 1
 
@@ -24,17 +22,15 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(
-                i.current_value['Model'],
+                element.get('href').split('/')[3],
                 self.name,
-                i.current_value['Url'], self.interval
+                f'https://sneakerhead.ru/{element.get("href")}', self.interval
             )
-            for i in Path.parse_str('$.*').match(
-                loads(get(self.catalog, headers={'user-agent': self.user_agent}).text)
-            ) if ('Кроссовки' in i.current_value['CategoryNames']
-                  or 'Обувь' in i.current_value['CategoryNames'])
-                 and ('Yeezy' in i.current_value['Model']
-                      or 'Jordan' in i.current_value['Model']
-                      or 'Nike' in i.current_value['Model'])
+            for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text)
+                .xpath('//a[@class="product-card__link"]')
+            if ('Кроссовки' in element.text
+                or 'Обувь' in element.text) and ('Yeezy' in element.text or 'Jordan'
+                                                 in element.text or 'Nike' in element.text)
         ]
 
     def execute(self, target: TargetType) -> StatusType:
