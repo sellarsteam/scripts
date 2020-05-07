@@ -2,18 +2,19 @@ from typing import List
 
 from lxml import etree
 from requests import get
+from re import findall
+from jsonpath2 import Path
+from json import loads, JSONDecodeError
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
-from requests.exceptions import MissingSchema
-
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://www.bapeonline.com/bape/men/?prefn1=isNew&prefv1=true&srule=newest&start=0&sz=48'
+        self.catalog: str = 'https://www.saintalfred.com/collections/brands?sort_by=created-descending'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android ' \
@@ -22,54 +23,60 @@ class Parser(api.Parser):
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 10)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
         for element in etree.HTML(get(self.catalog,
                                       headers={'user-agent': self.user_agent}).text) \
-                .xpath('//a[@class="thumb-link"]'):
-            if counter == 10:
+                .xpath('//div[@class="product-list-item"]/figure/a'):
+            if counter == 5:
                 break
-            if element.get('href')[0] != '/':
+            if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
+                    or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                 links.append(element.get('href'))
                 counter += 1
         return [
             api.TInterval(element.split('/')[-1],
-                          self.name, element, self.interval)
+                          self.name, 'https://www.saintalfred.com' + element, self.interval)
             for element in links
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = False
                 get_content = get(target.data, headers={'user-agent': self.user_agent}).text
                 content: etree.Element = etree.HTML(get_content)
-                available_sizes = tuple((size.text.replace(' ', '').replace('\n', ''), size.get('value'))
-                                        for size in content.xpath('//select[@class="variation-select"]/option')
-                                        if not 'UNAVAILABLE' in size.text and not 'Select Size' in size.text)
+                available_sizes = tuple(
+                    (
+                        str(size_data.current_value['public_title']) + ' US',
+                        'https://www.saintalfred.com/cart/' + str(size_data.current_value['id']) + ':1'
+                    ) for size_data in Path.parse_str('$.product.variants.*').match(
+                        loads(findall(r'var meta = {.*}', get_content)[0]
+                              .replace('var meta = ', '')))
+                )
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
-        if len(available_sizes) > 0:
+        except JSONDecodeError:
+            return api.SFail(self.name, 'Exception JSONDecodeError')
+        if content.xpath('//link[@itemprop="availability"]')[0].get('href') != 'http://schema.org/OutOfStock':
             name = content.xpath('//meta[@property="og:title"]')[0].get('content')
             return api.SSuccess(
                 self.name,
                 api.Result(
                     name,
                     target.data,
-                    'bape',
+                    'shopify-filtered',
                     content.xpath('//meta[@property="og:image"]')[0].get('content'),
                     '',
                     (
                         api.currencies['USD'],
-                        float(content.xpath('//div[@class="headline4 pdp-price-sales"]')
-                              [0].text.split('$')[-1].replace(' ', '').replace('\n', ''))
+                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                     ),
-                    {'Site': 'Bape'},
+                    {'Site': 'Saint Alfred'},
                     available_sizes,
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
