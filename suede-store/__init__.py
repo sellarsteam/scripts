@@ -73,11 +73,9 @@ class Parser(api.Parser):
                 (
                     str(size_data.current_value['title'].split(' ')[0]) + ' US',
                     'https://suede-store.com/cart/' + str(size_data.current_value['id']) + ':1'
-                ) for size_data in Path.parse_str('$.variants.*').match
-                (
-                    loads(get(f'https://suede-store.com/products/{target.data.split("/")[-1]}.js',
-                              headers={'user-agent': self.user_agent}).text)
-                )
+                ) for size_data in Path.parse_str('$.variants.*').match(loads(get(
+                    f'https://suede-store.com/products/{target.data.split("/")[-1]}.js',
+                    headers={'user-agent': self.user_agent}).text))
                 if size_data.current_value['available'] is True
             )
 
@@ -113,4 +111,3 @@ class Parser(api.Parser):
                 return api.SFail(self.name, 'Exception JSONDecodeError')
         else:
             return return_sold_out(target.data)
-

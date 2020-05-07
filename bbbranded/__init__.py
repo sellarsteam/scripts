@@ -92,7 +92,7 @@ class Parser(api.Parser):
                         (
                             api.currencies['USD'],
                             float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content')
-                                  .replace('.', '').replace(',', '.'))/100
+                                  .replace('.', '').replace(',', '.')) / 100
                         ),
                         {'Site': 'BB Branded'},
                         tuple(

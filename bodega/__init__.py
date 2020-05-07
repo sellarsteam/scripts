@@ -47,7 +47,7 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text)\
+        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text) \
                 .xpath('//a[@class="image-pg"]'):
             if counter == 5:
                 break

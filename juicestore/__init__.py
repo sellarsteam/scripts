@@ -5,7 +5,6 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType

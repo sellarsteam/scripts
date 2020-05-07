@@ -1,10 +1,10 @@
+from json import loads, JSONDecodeError
+from re import findall
 from typing import List
 
+from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from re import findall
-from jsonpath2 import Path
-from json import loads, JSONDecodeError
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -54,14 +54,11 @@ class Parser(api.Parser):
                 get_content = get(target.data, headers={'user-agent': self.user_agent}).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple(
-                        (
-                            str(size_data.current_value['public_title']) + ' EU',
-                            'https://rsvpgallery.com/cart/' + str(size_data.current_value['id']) + ':1'
-                        )
-                        for size_data in Path.parse_str('$.variants.*').match(
-                            loads(findall(r'product: {.*}', get_content)[0]
-                                  .replace('product: ', ''))) if size_data.current_value['available'] is True
-                    )
+                    (str(size_data.current_value['public_title']) + ' EU',
+                     'https://rsvpgallery.com/cart/' + str(size_data.current_value['id']) + ':1') for size_data in
+                    Path.parse_str('$.variants.*').match(
+                        loads(findall(r'product: {.*}', get_content)[0].replace('product: ', ''))) if
+                    size_data.current_value['available'] is True)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -107,7 +104,3 @@ class Parser(api.Parser):
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )
-
-
-if __name__ == '__main__':
-    print(get('https://rsvpgallery.com/collections/footwear/products/air-jordan-4-retro-se-neon-cool-grey-volt-wolf-grey?variant=31512223121442').text)

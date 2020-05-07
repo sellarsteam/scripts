@@ -7,8 +7,6 @@ from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
 
-from requests.exceptions import MissingSchema
-
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):

@@ -1,10 +1,10 @@
+from json import loads, JSONDecodeError
+from re import findall
 from typing import List
 
+from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from re import findall
-from jsonpath2 import Path
-from json import loads, JSONDecodeError
 
 from core import api
 from core.api import IndexType, TargetType, StatusType

@@ -61,7 +61,8 @@ class Parser(api.Parser):
                 return api.SWaiting(target)
         except IndexError:
             pass
-        available_sizes = tuple(size.get('value') for size in content.xpath('//li[@class="HorizontalList__Item"]/input'))
+        available_sizes = tuple(
+            size.get('value') for size in content.xpath('//li[@class="HorizontalList__Item"]/input'))
         if len(available_sizes) > 0:
             return api.SSuccess(
                 self.name,

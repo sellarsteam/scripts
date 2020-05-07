@@ -2,9 +2,9 @@ from json import loads, JSONDecodeError
 from re import findall
 from typing import List
 
+from cloudscraper import create_scraper
 from jsonpath2 import Path
 from lxml import etree
-from cloudscraper import create_scraper
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -53,7 +53,7 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(self.scraper.get(self.catalog, headers={'user-agent': self.user_agent}).text)\
+        for element in etree.HTML(self.scraper.get(self.catalog, headers={'user-agent': self.user_agent}).text) \
                 .xpath('//div[@class="product"]/a'):
             if counter == 5:
                 break
