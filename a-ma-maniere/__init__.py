@@ -14,7 +14,7 @@ from core.logger import Logger
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://www.dreamtownshoes.com/collections/new-arrivals-1'
+        self.catalog: str = 'https://www.a-ma-maniere.com/collections/new-arrivals'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android ' \
@@ -30,7 +30,7 @@ class Parser(api.Parser):
         counter = 0
         for element in etree.HTML(get(self.catalog,
                                       headers={'user-agent': self.user_agent}).text) \
-                .xpath('//div[@class="reveal"]/a'):
+                .xpath('//div[@class="collection-product"]/a'):
             if counter == 5:
                 break
             if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
@@ -40,7 +40,7 @@ class Parser(api.Parser):
             counter += 1
         return [
             api.TInterval(element.split('/')[-1],
-                          self.name, 'https://www.dreamtownshoes.com' + element, self.interval)
+                          self.name, 'https://www.a-ma-maniere.com' + element, self.interval)
             for element in links
         ]
 
@@ -49,18 +49,23 @@ class Parser(api.Parser):
             if isinstance(target, api.TInterval):
                 get_content = get(target.data, headers={'user-agent': self.user_agent}).text
                 content: etree.Element = etree.HTML(get_content)
-                available_sizes = list(size.get('data-value')
-                                       for size in content.xpath('//div[@class="swatch clearfix"]/div[@data-value]')
-                                       if 'sold' not in size.get('class'))
+                counter = 0
+                symbol = 'c'
+                available_sizes = list()
+                for size in content.xpath('//div[@class="product-size-container"]/span'):
+                    if counter == 0:
+                        symbol = size.text[-1]
+                        counter += 1
+                    if 'unavailable' not in size.get('class'):
+                        available_sizes.append(size.text.replace(symbol, ''))
                 sizes = list()
                 for size in Path.parse_str('$.product.variants.*').match(
-                        loads(findall(r'var meta = {.*}', get_content)[0]
-                              .replace('var meta = ', ''))):
+                        loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', ''))):
                     if size.current_value['public_title'] in available_sizes:
                         sizes.append(
                             (
-                                size.current_value['public_title'],
-                                'https://www.dreamtownshoes.com/cart/' + str(size.current_value['id']) + ':1'
+                                str(size.current_value['public_title']) + symbol,
+                                'https://www.a-ma-maniere.com/cart/' + str(size.current_value['id']) + ':1'
                             )
                         )
             else:
@@ -77,13 +82,13 @@ class Parser(api.Parser):
                     name,
                     target.data,
                     'shopify-filtered',
-                    'http:' + content.xpath('//meta[@itemprop="image"]')[0].get('content'),
+                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
                     '',
                     (
                         api.currencies['USD'],
                         float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                     ),
-                    {'Site': 'Dream Town'},
+                    {'Site': 'A-Ma-Maniere'},
                     tuple(sizes),
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
