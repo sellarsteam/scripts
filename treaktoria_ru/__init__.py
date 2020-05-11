@@ -98,6 +98,7 @@ class Parser(api.Parser):
                         ('StockX', 'https://stockx.com/search/sneakers?s=' +
                          content.xpath('//meta[@name="keywords"]')[0].get('content').replace(' ', '%20')
                          .replace('кеды', '').replace('Высокие', '').replace('Низкие', '')),
+                        ('Cart', 'https://www.traektoria.ru/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

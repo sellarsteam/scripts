@@ -101,6 +101,7 @@ class Parser(api.Parser):
                     sizes,
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + content['name'].replace(' ', '%20')),
+                        ('Cart': 'https://www.yeezysupply.com/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

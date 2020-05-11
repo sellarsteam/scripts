@@ -83,6 +83,7 @@ class Parser(api.Parser):
                     (),
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + target.data[1].replace(' ', '%20')),
+                        ('Cart', 'https://www.net-a-porter.com/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

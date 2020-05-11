@@ -80,6 +80,7 @@ class Parser(api.Parser):
                     available_sizes,
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                        ('Cart', 'https://www.saintalfred.com/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

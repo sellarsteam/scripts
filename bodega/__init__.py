@@ -110,6 +110,7 @@ class Parser(api.Parser):
                         ),
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                            ('Cart', 'https://bdgastore.com/cart'),
                             ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                         )
                     )

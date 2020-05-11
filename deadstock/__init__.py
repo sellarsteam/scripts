@@ -80,6 +80,7 @@ class Parser(api.Parser):
                         ) for size_data in sizes_data if size_data.current_value['public_title'] in available_sizes
                     ),
                     (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                     ('Cart', 'https://www.deadstock.ca/cart'),
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )

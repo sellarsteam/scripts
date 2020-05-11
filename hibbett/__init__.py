@@ -60,6 +60,7 @@ class Parser(api.Parser):
                           for size in content.xpath('//a[@class="swatchanchor"]') if 'size' in size.get('href')),
                     (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@name="keywords"]')[0]
                       .get('content').replace(' ', '%20')),
+                     ('Cart', 'https://www.hibbett.com/cart'),
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )

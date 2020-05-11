@@ -105,6 +105,7 @@ class Parser(api.Parser):
                         size_data.current_value['public_title'].split(' ')[-1] in available_sizes
                     ),
                     (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                     ('Cart', 'https://eflash.doverstreetmarket.com/cart'),
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )

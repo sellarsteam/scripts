@@ -87,6 +87,7 @@ class Parser(api.Parser):
                     tuple(sizes),
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                        ('Cart', 'https://www.dreamtownshoes.com/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )
@@ -105,6 +106,7 @@ class Parser(api.Parser):
                     {},
                     tuple(),
                     (('StockX', 'https://stockx.com/search/sneakers?s='),
+                     ('Cart', 'https://www.dreamtownshoes.com/cart'),
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )

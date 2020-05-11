@@ -110,7 +110,7 @@ class Parser(api.Parser):
                     (api.currencies['USD'], 0),
                     {},
                     (),
-                    ()
+                    ('Feedback': 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                 )
             )
         else:

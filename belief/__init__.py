@@ -59,6 +59,7 @@ class Parser(api.Parser):
                     ) for size_data in content.xpath('//select[@id="variant-select"]')[0].xpath('option')
                 ),
                 (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                 ('Cart', 'https://beliefmoscow.com/cart'),
                  ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
             )
         )

@@ -68,6 +68,7 @@ class Parser(api.Parser):
                             'https://stockx.com/search/sneakers?s=' + target.name.replace('Кроссовки', '')
                                 .replace(' ', '%20')
                         ),
+                        ('Cart', 'https://sneakerhead.ru/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

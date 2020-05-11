@@ -71,6 +71,7 @@ class Parser(api.Parser):
                                         content.xpath('//span[@itemprop="brand"]')[0].text +
                                         content.xpath('//span[@itemprop="name"]')[0].text
                                     ).replace(' ', '%20').replace('\xa0', '%20')),
+                                ('Cart', 'https://brandshop.ru/cart')
                                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             )
                         )
