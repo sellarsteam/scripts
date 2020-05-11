@@ -67,7 +67,7 @@ class Parser(api.Parser):
                 get_content = get(target.data, headers={'user-agent': self.user_agent}).text
                 content: etree.Element = etree.HTML(get_content)
                 sizes_data = Path.parse_str('$.product.variants.*').match(
-                    loads(findall(r'var meta = {.*}', get_content)[0]
+                    loads(findall(r'variants = {.*}', get_content)[0]
                           .replace('var meta = ', '')))
             else:
                 return api.SFail(self.name, 'Unknown target type')
