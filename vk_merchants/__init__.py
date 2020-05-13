@@ -1,5 +1,7 @@
 from json import loads, JSONDecodeError
 from typing import List
+import yaml
+import os
 
 from requests import get
 from user_agent import generate_user_agent
@@ -63,27 +65,52 @@ def get_post_id(merchant_id, token):
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.token = '8bc12e8f8bc12e8f8bc12e8fce8bb07efe88bc18bc12e8fd561ae191819697ceb653837'
         self.user_agent = generate_user_agent()
+        self.counter = 0
+        self.number_of_token = 0
         self.interval: int = 1
+        if os.path.isfile(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'):
+            raw = yaml.safe_load(open(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'))
+            if isinstance(raw, dict):
+                if isinstance(raw['token'], list):
+                    self.tokens = raw['token']
+                    self.active = True
+                else:
+                    self.log.error('secret.yaml must contain tokens')
+            else:
+                self.log.error('secret.yaml must contain dict')
+        else:
+            self.log.error('secret.yaml doesn\'t exist')
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1200)
+        return api.IInterval(self.name, 10)
 
     def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(
-                merchant_id[1], self.name,
-                get_post_id(merchant_id, self.token), self.interval)
-            for merchant_id in vk_merchants
-        ]
+        targets = list()
+        for merchant_id in vk_merchants:
+            if self.counter == 5000:
+                self.number_of_token += 1
+                if self.number_of_token == len(self.tokens):
+                    self.number_of_token = 0
+                self.counter = 0
+            token = self.tokens[self.number_of_token]
+            targets.append(api.TInterval(merchant_id[1], self.name, get_post_id(merchant_id, token), self.interval))
+            self.counter += 1
+        return targets
 
     def execute(self, target: TargetType) -> StatusType:
+        if self.counter == 5000:
+            self.number_of_token += 1
+            if self.number_of_token == len(self.tokens):
+                self.number_of_token = 0
+            self.counter = 0
+        token = self.tokens[self.number_of_token]
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
                 content = loads(get(f"https://api.vk.com/method/wall.getById?posts={target.data}"
-                                    f"&access_token={self.token}&v=5.52").text)
+                                    f"&access_token={token}&v=5.52").text)
+                self.counter += 1
                 text = content['response'][0]['text']
                 for key_word in key_words():
                     if key_word in text:
@@ -110,7 +137,7 @@ class Parser(api.Parser):
                     (api.currencies['USD'], 0),
                     {},
                     (),
-                    ('Feedback': 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                 )
             )
         else:
