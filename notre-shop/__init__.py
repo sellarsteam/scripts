@@ -5,6 +5,7 @@ from requests import get
 from re import findall
 from jsonpath2 import Path
 from json import loads, JSONDecodeError
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -29,7 +30,7 @@ class Parser(api.Parser):
         links = list()
         counter = 0
         for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}).text) \
+                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
                 .xpath('//a[@class="collection__product-block"]'):
             if counter == 5:
                 break
@@ -47,7 +48,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = list(size.text.replace('\n', '').replace(' ', '')
                                        for size in content.xpath('//div[@class="product__sizes "]/div')

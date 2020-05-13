@@ -5,6 +5,7 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -29,7 +30,7 @@ class Parser(api.Parser):
         links = list()
         counter = 0
         for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}).text) \
+                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
                 .xpath('//div[@class="product-list-item"]/figure/a'):
             if counter == 5:
                 break
@@ -46,7 +47,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple(
                     (

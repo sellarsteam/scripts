@@ -5,6 +5,7 @@ from typing import List
 from cloudscraper import create_scraper
 from jsonpath2 import Path
 from lxml import etree
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -53,7 +54,7 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(self.scraper.get(self.catalog, headers={'user-agent': self.user_agent}).text) \
+        for element in etree.HTML(self.scraper.get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
                 .xpath('//div[@class="product"]/a'):
             if counter == 5:
                 break
@@ -71,7 +72,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = self.scraper.get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = self.scraper.get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 if content.xpath('//link[@itemprop="availability"]')[0].get('href') == 'http://schema.org/InStock':
                     available = True

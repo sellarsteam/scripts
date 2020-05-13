@@ -5,6 +5,7 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -23,14 +24,14 @@ class Parser(api.Parser):
                           '+https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 2)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[-1],
                           self.name, 'https://eflash.doverstreetmarket.com' + element.get('href'), self.interval)
             for element in etree.HTML(get(
-                url=self.catalog, headers={'user-agent': self.user_agent}
+                url=self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()
             ).text).xpath('//a[@class="grid-view-item__link"]')
             if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
         ]
@@ -38,7 +39,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')

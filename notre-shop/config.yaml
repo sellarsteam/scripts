@@ -1,5 +1,6 @@
 name: notre-shop
-core: ^0.6.1
+core: _0.8.3
 version: 1.0.0rc1
 important: no
 keep: yes
+max-errors: 1

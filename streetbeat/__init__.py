@@ -17,7 +17,7 @@ class Parser(api.Parser):
         self.user_agent = 'APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [

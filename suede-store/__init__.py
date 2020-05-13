@@ -4,6 +4,7 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -40,12 +41,12 @@ class Parser(api.Parser):
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text).xpath(
+        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text).xpath(
                 '//div[@class="tt-image-box"]/a'):
             if counter == 5:
                 break
@@ -62,7 +63,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
@@ -75,7 +76,7 @@ class Parser(api.Parser):
                     'https://suede-store.com/cart/' + str(size_data.current_value['id']) + ':1'
                 ) for size_data in Path.parse_str('$.variants.*').match(loads(get(
                     f'https://suede-store.com/products/{target.data.split("/")[-1]}.js',
-                    headers={'user-agent': self.user_agent}).text))
+                    headers={'user-agent': self.user_agent}, proxies=get_proxy()).text))
                 if size_data.current_value['available'] is True
             )
 

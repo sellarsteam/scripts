@@ -5,6 +5,7 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -41,13 +42,13 @@ class Parser(api.Parser):
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
         for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}).text) \
+                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
                 .xpath('//a[@class="grid-view-item__link grid-view-item__image-container full-width-link"]'):
             if counter == 10:
                 break
@@ -64,7 +65,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 sizes_data = Path.parse_str('$.product.variants.*').match(
                     loads(findall(r'variants = {.*}', get_content)[0]

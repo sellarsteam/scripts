@@ -83,7 +83,7 @@ class Parser(api.Parser):
             self.log.error('secret.yaml doesn\'t exist')
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 10)
+        return api.IInterval(self.name, 1200)
 
     def targets(self) -> List[TargetType]:
         targets = list()

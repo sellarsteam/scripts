@@ -3,6 +3,7 @@ from typing import List
 
 from cfscrape import create_scraper
 from jsonpath2 import Path
+from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -38,7 +39,7 @@ class Parser(api.Parser):
                     self.interval
                 )
                 for i in Path.parse_str('$[*]').match(
-                    loads(create_scraper().get(self.catalog, headers=headers).text)
+                    loads(create_scraper().get(self.catalog, headers=headers, proxies=get_proxy()).text)
                 )
             ]
             return data
@@ -51,7 +52,7 @@ class Parser(api.Parser):
                 try:
                     availability_json = loads(
                         create_scraper().get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
-                                             headers=headers).text)
+                                             headers=headers, proxies=get_proxy()).text)
                     available: bool = availability_json['availability_status'] == 'IN_STOCK'
                     version_json = 1
                     if availability_json['availability_status'] == 'PREVIEW':
@@ -59,7 +60,7 @@ class Parser(api.Parser):
                 except JSONDecodeError:
                     availability_json = loads(create_scraper().get(
                         f'https://www.yeezysupply.com/hpl/content/availability-v2/yeezy-supply/US/{target.name}.json',
-                        headers=headers).text)
+                        headers=headers, proxies=get_proxy()).text)
                     available: bool = availability_json['availability'] == 'IN_STOCK'
                     version_json = 2
                     if availability_json['availability'] == 'PREVIEW':
@@ -86,7 +87,7 @@ class Parser(api.Parser):
                     )
                 else:
                     available = True
-                content: dict = loads(create_scraper().get(target.data, headers=headers).text)
+                content: dict = loads(create_scraper().get(target.data, headers=headers, proxies=get_proxy()).text)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except JSONDecodeError:
