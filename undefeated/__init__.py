@@ -9,6 +9,7 @@ from requests import get
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 def return_sold_out(data):
@@ -41,14 +42,14 @@ class Parser(api.Parser):
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element[0].xpath('a')[0].get('href').split('/')[4],
                           self.name, 'https://undefeated.com' + element[0].xpath('a')[0].get('href'), self.interval)
             for element in etree.HTML(get(self.catalog,
-                                          headers={'user-agent': self.user_agent}
+                                          headers={'user-agent': self.user_agent}, proxies=get_proxy()
                                           ).text).xpath('//div[@class="grid-product__wrapper"]')
             if 'air' in element[0].xpath('a')[0].get('href') or 'yeezy' in element[0].xpath('a')[0].get('href')
                or 'aj' in element[0].xpath('a')[0].get('href') or 'dunk' in element[0].xpath('a')[0].get('href')
@@ -58,7 +59,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 if 'Sold' not in content.xpath('//span[@class="btn__text"]')[0].text:
                     available = True
@@ -103,6 +104,7 @@ class Parser(api.Parser):
                         ),
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                            ('Cart', 'https://undefeated.com/cart'),
                             ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                         )
                     )

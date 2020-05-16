@@ -1,4 +1,3 @@
-import re
 from typing import List
 
 from cfscrape import create_scraper
@@ -8,7 +7,6 @@ from user_agent import generate_user_agent
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -23,45 +21,68 @@ class Parser(api.Parser):
         return api.IInterval(self.name, 1200)
 
     def targets(self) -> List[TargetType]:
-        return [api.TInterval(element.get('href').split('/')[3], self.name, element.get('href'), self.interval)
-                for element in etree.HTML(self.scraper.get(url=self.catalog, proxies=get_proxy()).text).xpath(
-                '//a[@class="name-link"]')
-                if 'dunk' in element.get('href') or
-                'yeezy' in element.get('href') or
-                'jordan' in element.get('href') or
-                'sacai' in element.get('href') or
-                'air' in element.get('href')][0:5:]
+        links = list()
+        counter = 0
+        for element in etree.HTML(create_scraper().get(url=self.catalog).text).xpath('//a[@class="name-link"]'):
+            if counter == 10:
+                break
+            if 'dunk' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') \
+                    or 'sacai' in element.get('href') or 'air' in element.get('href'):
+                links.append(element.get('href'))
+                counter += 1
+        return [
+            api.TInterval(element.split('/')[-1],
+                          self.name, element, self.interval)
+            for element in links
+        ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                available: bool = False
-                content: etree.Element = etree.HTML(self.scraper.get(url=target.data, proxies=get_proxy()).text)
-
-                if len(content.xpath('//a[@class="swatchanchor"]')) > 0:
-                    available = True
+                content: etree.Element = etree.HTML(create_scraper().get(url=target.data).text)
+                available_sizes = list()
+                for element in content.xpath('//ul[@class="swatches size "]/li[@class="selectable"]/a'):
+                    size = element.get('href').split('size=')[-1].split('&')[0].replace('0', '')
+                    if len(size) == 2:
+                        if size == '15':
+                            size = '10.5 US'
+                        else:
+                            if size[-1] == '5':
+                                size = f'{float(size) / 10} US'
+                            else:
+                                size = f'{size} US'
+                    else:
+                        if size == '1':
+                            size = '10 US'
+                        elif size[-1] == '5':
+                            size = f'{float(size) / 10} US'
+                        else:
+                            size = f'{size} US'
+                    available_sizes.append((size, element.get('href')))
+                if len(available_sizes) == 0:
+                    return api.SWaiting(target)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
             return api.SFail(self.name, 'Exception XMLDecodeError')
-        if available:
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    content.xpath('//meta[@name="keywords"]')[0].get('content'),
-                    target.data,
-                    'hibbett',
-                    content.xpath('//a[@class="swatchanchor"]')[0].get('data-thumb').split('"')[3].replace(' ', ''),
-                    '',
-                    (api.currencies['USD'], float(content.xpath('//span[@class="price-sales"]')[0].get('content'))),
-                    {},
-                    tuple((str(int(re.findall(r'size=....', size.get('href'))[0].split('=')[1]) / 10) + ' US',
-                           size.get('href'))
-                          for size in content.xpath('//a[@class="swatchanchor"]') if 'size' in size.get('href')),
-                    (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@name="keywords"]')[0]
-                      .get('content').replace(' ', '%20')),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
+        name = content.xpath('//title')[0].text
+        data_for_image = target.data.split('/')[0]
+        return api.SSuccess(
+            self.name,
+            api.Result(
+                name,
+                target.data,
+                'hibbett',
+                f'https://i1.adis.ws/i/hibbett/{data_for_image.split(".html")[0]}'
+                f'_{data_for_image.split("color=")[-1].split("&")[0]}_'
+                f'right1?w=580&h=580&fmt=jpg&bg=rgb(255,255,255)&img404=404&v=0',
+                '',
+                (api.currencies['USD'], float(content.xpath('//span[@class="price-sales"]')[0].get('content'))),
+                {'Site': 'Hibbett'},
+                tuple(available_sizes),
+                (('StockX', 'https://stockx.com/search/sneakers?s=' + content.xpath('//meta[@name="keywords"]')[0]
+                  .get('content').replace(' ', '%20')),
+                 ('Cart', 'https://www.hibbett.com/cart'),
+                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
             )
-        else:
-            return api.SWaiting(target)
+        )

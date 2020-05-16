@@ -8,6 +8,7 @@ from requests import get
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 def return_sold_out(data):
@@ -40,14 +41,14 @@ class Parser(api.Parser):
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element[0].get('href').split('/')[4],
                           self.name, 'https://shop.pharmabergen.no' + element[0].get('href'), self.interval)
             for element in etree.HTML(get('https://shop.pharmabergen.no/collections/new-arrivals/',
-                                          headers={'user-agent': self.user_agent}
+                                          headers={'user-agent': self.user_agent}, proxies=get_proxy()
                                           ).text).xpath('//div[@class="product-info-inner"]')
             if element[0].xpath('span[@class]')[0].text in ['NIKE', 'JORDAN'] or 'yeezy' in element[0].get('href')
         ]
@@ -56,7 +57,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent}).text)
+                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent},
+                                                        proxies=get_proxy()).text)
                 if content.xpath('//input[@type="submit"]')[0].get('value').replace('\n', '') == 'Add to Cart':
                     available = True
                 else:
@@ -94,6 +96,7 @@ class Parser(api.Parser):
                         ),
                         (
                             ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                            ('Cart', 'https://shop.pharmabergen.no/cart'),
                             ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                         )
                     )

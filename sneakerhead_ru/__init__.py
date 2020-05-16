@@ -17,7 +17,7 @@ class Parser(api.Parser):
         self.interval: int = 1
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -68,6 +68,7 @@ class Parser(api.Parser):
                             'https://stockx.com/search/sneakers?s=' + target.name.replace('Кроссовки', '')
                                 .replace(' ', '%20')
                         ),
+                        ('Cart', 'https://sneakerhead.ru/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

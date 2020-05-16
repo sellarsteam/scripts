@@ -9,6 +9,7 @@ from requests import get
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -16,9 +17,14 @@ class Parser(api.Parser):
         super().__init__(name, log)
         self.catalog: str = 'https://kith.com/collections/mens-footwear'
         self.interval: float = 1
+        self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
+                          '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
+                          'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 ' \
+                          '(KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 ' \
+                          '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -26,15 +32,7 @@ class Parser(api.Parser):
                           self.name, 'https://kith.com/' + element.xpath('a')[0].get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
-                headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                       '.html)Mozilla/5.0 (compatible; '
-                                       'Pinterestbot/1.0; '
-                                       '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                       '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                       'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                       'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                       'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                       '+https://www.pinterest.com/bot.html)'}
+                headers={'user-agent': self.user_agent}, proxies=get_proxy()
             ).text).xpath('//div[@class="product-card__information"]')
             if 'Nike' in element[0].xpath('h1[@class="product-card__title"]')[0].text
                or 'Yeezy' in element[0].xpath('h1[@class="product-card__title"]')[0].text
@@ -44,15 +42,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': 'Pinterest/0.2 (+https://www.pinterest.com/bot'
-                                                                      '.html)Mozilla/5.0 (compatible; '
-                                                                      'Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)Mozilla/5'
-                                                                      '.0 (Linux; Android 6.0.1; Nexus 5X '
-                                                                      'Build/MMB29P) AppleWebKit/537.36 (KHTML, '
-                                                                      'like Gecko) Chrome/41.0.2272.96 Mobile '
-                                                                      'Safari/537.36 (compatible; Pinterestbot/1.0; '
-                                                                      '+https://www.pinterest.com/bot.html)'}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
@@ -106,6 +96,7 @@ class Parser(api.Parser):
                 ),
                 (
                     ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                    ('Cart', 'https://kith.com/cart'),
                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                 )
             )

@@ -6,6 +6,7 @@ from lxml import etree
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -13,21 +14,20 @@ class Parser(api.Parser):
         super().__init__(name, log)
         self.catalog: str = 'https://www.solebox.com/de_DE/c/new'
         self.interval: int = 1
-        self.scraper = create_scraper()
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot .html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android 6.0.1; ' \
                           'Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile ' \
                           'Safari/537.36 (compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html) '
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[3],
                           self.name, 'https://www.solebox.com' + element.get('href'), self.interval)
-            for element in etree.HTML(self.scraper.get(
-                url=self.catalog, headers={'user-agent': self.user_agent}
+            for element in etree.HTML(create_scraper().get(
+                url=self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()
             ).text).xpath('//a[@class="b-product-tile-image-link js-product-tile-link"]')
             if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
         ]
@@ -36,7 +36,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 content: etree.Element = etree.HTML(
-                    self.scraper.get(url=target.data, headers={'user-agent': self.user_agent}).text)
+                    create_scraper().get(url=target.data, headers={'user-agent': self.user_agent},
+                                         proxies=get_proxy()).text)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -65,6 +66,7 @@ class Parser(api.Parser):
                     {},
                     available_sizes,
                     (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                     ('Cart', 'https://www.solebox.com/cart'),
                      ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
                 )
             )

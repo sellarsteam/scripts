@@ -6,6 +6,7 @@ from requests import get
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -26,7 +27,7 @@ class Parser(api.Parser):
         links = list()
         counter = 0
         for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}).text) \
+                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
                 .xpath('//a[@class="thumb-link"]'):
             if counter == 10:
                 break
@@ -43,7 +44,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(target.data, headers={'user-agent': self.user_agent}).text
+                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple((size.text.replace(' ', '').replace('\n', ''), size.get('value'))
                                         for size in content.xpath('//select[@class="variation-select"]/option')
@@ -71,6 +72,7 @@ class Parser(api.Parser):
                     available_sizes,
                     (
                         ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                        ('Cart', 'https://www.bapeonline.com/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

@@ -108,17 +108,17 @@ class EventsExecutor(api.EventsExecutor):
             delta: float = time.time() - start
             time.sleep(.3 - delta if delta <= .3 else 0)
 
-    def e_monitor_turning_on(self) -> None:
+    def e_monitor_starting(self) -> None:
         self.messages.put(
             Message(
                 5,
                 self.bot.send_message,
-                (self.chat, f'INFO\nMonitor turning on\nMonitor {__version__} ({__copyright__})'),
+                (self.chat, f'INFO\nMonitor staring\nMonitor {__version__} ({__copyright__})'),
                 {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
-    def e_monitor_turned_on(self) -> None:
+    def e_monitor_started(self) -> None:
         self.messages.put(
             Message(
                 5,
@@ -128,17 +128,17 @@ class EventsExecutor(api.EventsExecutor):
             )
         )
 
-    def e_monitor_turning_off(self) -> None:
+    def e_monitor_stopping(self) -> None:
         self.messages.put(
             Message(
                 5,
                 self.bot.send_message,
-                (self.chat, 'INFO\nMonitor turning off'),
+                (self.chat, 'INFO\nMonitor stopped'),
                 {'parse_mode': 'HTML', 'timeout': 16}
             )
         )
 
-    def e_monitor_turned_off(self) -> None:
+    def e_monitor_stopped(self) -> None:
         if self.thread.is_alive():
             self.messages.put(
                 Message(

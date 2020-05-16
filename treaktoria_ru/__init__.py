@@ -15,12 +15,15 @@ sizes_stock = ['[LOW]', '[HIGH]', '[MEDIUM]']
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
-        self.catalog: str = 'https://www.traektoria.ru/wear/keds/brand-nike/?price__from=6000&THING_TYPE=%D0%92%D0%AB%D0%A1%D0%9E%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%A0%D0%9E%D0%A1%D0%A1%D0%9E%D0%92%D0%9A%D0%98%7E%D0%9D%D0%98%D0%97%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB'
+        self.catalog: str = 'https://www.traektoria.ru/wear/keds/brand-nike/?price__from=6000&THING_TYPE=%D0%92%D0%AB' \
+                            '%D0%A1%D0%9E%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%95%D0%94%D0%AB%7E%D0' \
+                            '%9A%D0%A0%D0%9E%D0%A1%D0%A1%D0%9E%D0%92%D0%9A%D0%98%7E%D0%9D%D0%98%D0%97%D0%9A%D0%98%D0' \
+                            '%95+%D0%9A%D0%95%D0%94%D0%AB '
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 2)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -98,6 +101,7 @@ class Parser(api.Parser):
                         ('StockX', 'https://stockx.com/search/sneakers?s=' +
                          content.xpath('//meta[@name="keywords"]')[0].get('content').replace(' ', '%20')
                          .replace('кеды', '').replace('Высокие', '').replace('Низкие', '')),
+                        ('Cart', 'https://www.traektoria.ru/cart'),
                         ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                     )
                 )

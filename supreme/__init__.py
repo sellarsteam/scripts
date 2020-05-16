@@ -58,6 +58,7 @@ class Parser(api.Parser):
                 (
                     ('StockX', 'https://stockx.com/search?s=' +
                      content.xpath('//h1[@itemprop="name"]')[0].text.replace(' ', '%20').replace('®', '')),
+                    ('Cart', 'https://www.supremenewyork.com/shop/cart'),
                     ('Mobile', 'https://www.supremenewyork.com/mobile#products/' +
                      content.xpath('//form[@class="add"]')[0].get('action').split('/')[2]),
                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')

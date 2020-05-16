@@ -17,7 +17,7 @@ class Parser(api.Parser):
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1)
+        return api.IInterval(self.name, 3)
 
     def targets(self) -> List[TargetType]:
         return [
@@ -66,6 +66,7 @@ class Parser(api.Parser):
                 (
                     ('StockX', 'https://stockx.com/search/sneakers?s=' +
                      name.replace(' ', '%20').replace('Кроссовки', '')),
+                    ('Cart', 'https://www.tsum.ru/cart'),
                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                 )
             )
