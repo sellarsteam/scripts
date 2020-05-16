@@ -102,16 +102,16 @@ class EventsExecutor(api.EventsExecutor):
             delta: float = time.time() - start
             time.sleep(.1 - delta if delta <= .1 else 0)
 
-    def e_monitor_turning_on(self) -> None:
+    def e_monitor_starting(self) -> None:
         self.messages.put(
             Message(
                 5,
                 'tech',
-                {'content': f'[INFO]\nMonitor turning on\nMonitor {__version__} ({__copyright__})'}
+                {'content': f'[INFO]\nMonitor starting\nMonitor {__version__} ({__copyright__})'}
             )
         )
 
-    def e_monitor_turned_on(self) -> None:
+    def e_monitor_started(self) -> None:
         self.messages.put(
             Message(
                 5,
@@ -120,16 +120,16 @@ class EventsExecutor(api.EventsExecutor):
             )
         )
 
-    def e_monitor_turning_off(self) -> None:
+    def e_monitor_stopping(self) -> None:
         self.messages.put(
             Message(
                 5,
                 'tech',
-                {'content': '[INFO]\nMonitor turning off'}
+                {'content': '[INFO]\nMonitor stopping'}
             )
         )
 
-    def e_monitor_turned_off(self) -> None:
+    def e_monitor_stopped(self) -> None:
         if self.thread.is_alive():
             self.messages.put(
                 Message(

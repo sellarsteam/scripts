@@ -105,9 +105,11 @@ class Parser(api.Parser):
                         ) for size_data in sizes_data if size_data.current_value['public_title'].split('Size ')[-1]
                         in available_sizes
                     ),
-                    (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                     ('Cart', 'https://eflash-us.doverstreetmarket.com/cart')
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
+                    (
+                        ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                        ('Cart', 'https://eflash-us.doverstreetmarket.com/cart'),
+                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    )
                 )
             )
         else:  # TODO return info, that target is sold out
