@@ -1,14 +1,9 @@
-import re
-from random import choice
+from json import JSONDecodeError
+from re import findall
 from typing import List
 
 from cfscrape import create_scraper
 from lxml import etree
-from json import loads, JSONDecodeError
-from jsonpath2 import Path
-from re import findall
-from requests.exceptions import ReadTimeout
-from time import sleep
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
@@ -31,7 +26,8 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(create_scraper().get(self.catalog, headers={'user-agent': self.user_agent}).text).xpath('//a[@data-e2e="product-listing-name"]'):
+        for element in etree.HTML(create_scraper().get(self.catalog, headers={'user-agent': self.user_agent}).text)\
+                .xpath('//a[@data-e2e="product-listing-name"]'):
             if counter == 5:
                 break
             if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get(

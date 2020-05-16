@@ -2,11 +2,11 @@ from typing import List
 
 from cfscrape import create_scraper
 from lxml import etree
-from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -36,7 +36,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 content: etree.Element = etree.HTML(
-                    create_scraper().get(url=target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text)
+                    create_scraper().get(url=target.data, headers={'user-agent': self.user_agent},
+                                         proxies=get_proxy()).text)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:

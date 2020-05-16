@@ -5,11 +5,11 @@ from typing import List
 from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 def return_sold_out(data):
@@ -47,7 +47,8 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text).xpath('//a[@href]'):
+        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text)\
+                .xpath('//a[@href]'):
             if counter == 5:
                 break
             if 'mens' in element.get('href') and ('air' in element.get('href') or 'yeezy' in element.get('href')

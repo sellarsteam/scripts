@@ -1,15 +1,15 @@
+from json import loads, JSONDecodeError
+from re import findall
 from typing import List
 
+from jsonpath2 import Path
 from lxml import etree
 from requests import get
-from re import findall
-from jsonpath2 import Path
-from json import loads, JSONDecodeError
-from scripts.proxy import get_proxy
 
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
+from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -54,9 +54,8 @@ class Parser(api.Parser):
                                        for size in content.xpath('//div[@class="swatch clearfix"]/div[@data-value]')
                                        if 'sold' not in size.get('class'))
                 sizes = list()
-                for size in Path.parse_str('$.product.variants.*').match(
-                        loads(findall(r'var meta = {.*}', get_content)[0]
-                              .replace('var meta = ', ''))):
+                for size in Path.parse_str('$.product.variants.*')\
+                        .match(loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', ''))):
                     if size.current_value['public_title'] in available_sizes:
                         sizes.append(
                             (

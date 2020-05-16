@@ -1,4 +1,3 @@
-import re
 from typing import List
 
 from cfscrape import create_scraper
@@ -8,7 +7,6 @@ from user_agent import generate_user_agent
 from core import api
 from core.api import IndexType, TargetType, StatusType
 from core.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
@@ -50,14 +48,14 @@ class Parser(api.Parser):
                             size = '10.5 US'
                         else:
                             if size[-1] == '5':
-                                size = f'{float(size)/10} US'
+                                size = f'{float(size) / 10} US'
                             else:
                                 size = f'{size} US'
                     else:
                         if size == '1':
                             size = '10 US'
                         elif size[-1] == '5':
-                            size = f'{float(size)/10} US'
+                            size = f'{float(size) / 10} US'
                         else:
                             size = f'{size} US'
                     available_sizes.append((size, element.get('href')))

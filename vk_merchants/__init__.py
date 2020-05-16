@@ -1,8 +1,8 @@
+import os
 from json import loads, JSONDecodeError
 from typing import List
-import yaml
-import os
 
+import yaml
 from requests import get
 from user_agent import generate_user_agent
 
