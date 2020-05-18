@@ -22,7 +22,7 @@ class Parser(api.Parser):
                                        '&fields=active&fields=id&fields=productInfo'
         self.channel: str = '010794e5-35fe-4e32-aaff-cd2c74f89d61'
         self.pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
-        self.interval: int = 1
+        self.interval: int = 3
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 1200)
