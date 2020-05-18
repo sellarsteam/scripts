@@ -8,11 +8,11 @@ from dataclasses import dataclass, field
 import requests
 import yaml
 
-from core import __version__, __copyright__
-from core import api
-from core import codes
-from core.api import SSuccess, SFail
-from core.logger import Logger
+from source import __version__, __copyright__
+from source import api
+from source import codes
+from source.api import SSuccess, SFail
+from source.logger import Logger
 from .constructor import build
 
 

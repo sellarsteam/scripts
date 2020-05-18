@@ -4,9 +4,9 @@ from typing import List
 from cfscrape import create_scraper
 from jsonpath2 import Path
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 from scripts.proxy import get_proxy
 
 headers = {

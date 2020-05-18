@@ -1,9 +1,12 @@
-ignore:
+blacklist:
   folders:
-    - __pycache__
-    - .git
+  - __pycache__
+  - .git
   scripts:
-    - example
-    - telegram
-    - concepts
-    - footpatrol
+  - example
+  - telegram
+  - concepts
+  - footpatrol
+whitelist:
+  folders: []
+  scripts: []

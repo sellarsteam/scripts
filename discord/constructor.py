@@ -4,7 +4,7 @@ from typing import List
 
 import pytz
 
-from core.api import Result
+from source.api import Result
 
 currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)', '$(AUD)')
 sizes_column_size = 5

@@ -3,9 +3,9 @@ from typing import List
 from lxml import etree
 from requests import get
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 from scripts.proxy import get_proxy
 
 

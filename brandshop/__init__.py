@@ -6,9 +6,9 @@ from lxml import etree
 from requests import get
 from user_agent import generate_user_agent
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 
 
 class Parser(api.Parser):
@@ -71,7 +71,7 @@ class Parser(api.Parser):
                                         content.xpath('//span[@itemprop="brand"]')[0].text +
                                         content.xpath('//span[@itemprop="name"]')[0].text
                                     ).replace(' ', '%20').replace('\xa0', '%20')),
-                                ('Cart', 'https://brandshop.ru/cart')
+                                ('Cart', 'https://brandshop.ru/cart'),
                                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             )
                         )

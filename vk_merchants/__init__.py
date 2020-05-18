@@ -6,9 +6,9 @@ import yaml
 from requests import get
 from user_agent import generate_user_agent
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 
 vk_merchants = (
     ('507698109', 'Ren Chris'),

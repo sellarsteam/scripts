@@ -1,4 +1,4 @@
-from core.api import Result
+from source.api import Result
 
 currencies: tuple = ('£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł')
 
