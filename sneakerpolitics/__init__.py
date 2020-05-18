@@ -29,7 +29,7 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[-1],
-                          self.name, 'https://sneakerpolitics.com/' + element.get('href'), self.interval)
+                          self.name, 'https://sneakerpolitics.com' + element.get('href'), self.interval)
             for element in etree.HTML(get(
                 self.catalog,
                 headers={'user-agent': self.user_agent}, proxies=get_proxy()
@@ -83,13 +83,13 @@ class Parser(api.Parser):
                     name,
                     target.data,
                     'shopify-filtered',
-                    'https:' + content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
                     '',
                     (
                         api.currencies['USD'],
                         float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
                     ),
-                    {},
+                    {'Site': 'Sneaker Politics'},
                     tuple(
                         (
                             str(size_data.current_value['public_title']).split('M')[-1] + ' US',
