@@ -24,7 +24,7 @@ class Parser(api.Parser):
             api.TInterval(
                 element.get('href').split('/')[3],
                 self.name,
-                f'https://sneakerhead.ru/{element.get("href")}', self.interval
+                f'https://sneakerhead.ru{element.get("href")}', self.interval
             )
             for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text)
                 .xpath('//a[@class="product-card__link"]')
@@ -37,8 +37,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content: etree.Element = etree.HTML(
-                    get(target.data, self.user_agent).content)
+                print(target.data)
+                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent}).content)
                 if content.xpath('//div[@class="sizes-chart-item selected"]') != () and \
                         content.xpath('//a[@class="size_range_name "]') != []:
                     available = True
