@@ -49,18 +49,19 @@ def key_words():
 
 
 def get_post_id(merchant_id, token):
-    content = loads(
-        get(f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52',
+    s = get(f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52',
             headers={'user-agent': generate_user_agent()}).text
-    )
+    content = loads(s)
     try:
         if content['response']['items'][0]['is_pinned']:
             return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
         else:
             return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
-    except KeyError:
-        return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
-
+    except Exception:
+        try:
+            return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
+        except KeyError:
+            return 0
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger):
@@ -83,7 +84,7 @@ class Parser(api.Parser):
             self.log.error('secret.yaml doesn\'t exist')
 
     def index(self) -> IndexType:
-        return api.IInterval(self.name, 1200)
+        return api.IInterval(self.name, 10)
 
     def targets(self) -> List[TargetType]:
         targets = list()
@@ -94,7 +95,9 @@ class Parser(api.Parser):
                     self.number_of_token = 0
                 self.counter = 0
             token = self.tokens[self.number_of_token]
-            targets.append(api.TInterval(merchant_id[1], self.name, get_post_id(merchant_id, token), self.interval))
+            post_id = get_post_id(merchant_id, token)
+            if post_id != 0:
+                targets.append(api.TInterval(merchant_id[1], self.name, post_id, self.interval))
             self.counter += 1
         return targets
 
@@ -137,7 +140,7 @@ class Parser(api.Parser):
                     (api.currencies['USD'], 0),
                     {},
                     (),
-                    ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                    (('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'),)
                 )
             )
         else:
@@ -152,6 +155,6 @@ class Parser(api.Parser):
                     (api.currencies['USD'], 0),
                     {},
                     (),
-                    ()
+                    (('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'),)
                 )
             )
