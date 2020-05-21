@@ -12,8 +12,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.url = 'https://api.nike.com/product_feed/threads/v2'
         self.catalog: str = self.url + '/?count=24&filter=marketplace%28RU%29&filter=language%28ru%29' \
                                        '&filter=upcoming%28true%29' \
@@ -32,7 +32,7 @@ class Parser(api.Parser):
             api.TInterval(i.current_value['productInfo'][0]['productContent']['title'], self.name,
                           i.current_value['id'], self.interval)
             for i in Path.parse_str('$.objects[*][?(@.productInfo[0].availability.available = true)]').match(
-                loads(get(self.catalog, headers={'user-agent': generate_user_agent()}).text)
+                loads(self.provider.get(self.catalog, headers={'user-agent': generate_user_agent()}))
             )
         ]
 
@@ -42,10 +42,10 @@ class Parser(api.Parser):
                 model = 0
                 available: bool = False
                 content: dict = loads(
-                    get(
+                    self.provider.get(
                         f'{self.url}/{target.data}?channelId={self.channel}&marketplace=RU&language=ru',
                         headers={'user-agent': generate_user_agent()}
-                    ).text
+                    )
                 )
                 for i, v in enumerate(content['productInfo']):
                     if 'C' not in v['skus'][0]['nikeSize'] and 'Y' not in v['skus'][0]['nikeSize']:
