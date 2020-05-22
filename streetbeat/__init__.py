@@ -2,7 +2,6 @@ from json import loads, JSONDecodeError
 from typing import List
 
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
@@ -10,8 +9,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://street-beat.ru/cat/man/adidas-originals/?sort=create&order=desc'
         self.interval: int = 1
         self.user_agent = 'APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)'
@@ -27,9 +26,9 @@ class Parser(api.Parser):
                           element[0].xpath('a[@class="link link--no-color catalog-item__title ddl_product_link"]')[0]
                           .get('href'),
                           self.interval)
-            for element in etree.HTML(get(
-                url=self.catalog, headers={'user-agent': self.user_agent}
-            ).text).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]')
+            for element in etree.HTML(self.provider.get(
+                self.catalog, headers={'user-agent': self.user_agent}
+            )).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]')
             if 'Yeezy' in element[0].xpath('a[@class="link link--no-color catalog-item__title '
                                            'ddl_product_link"]/span')[0].text
         ]
@@ -38,7 +37,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 content: etree.Element = etree.HTML(
-                    get(url=target.data, headers={'user-agent': self.user_agent}).text)
+                    self.provider.get(target.data, headers={'user-agent': self.user_agent}))
                 json_content = loads(content.xpath('//script[@type="application/ld+json"]')[1].text)
             else:
                 return api.SFail(self.name, 'Unknown target type')

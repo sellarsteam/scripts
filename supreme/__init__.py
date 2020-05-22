@@ -1,7 +1,6 @@
 from typing import List
 
 from lxml import etree
-from requests import get
 from requests.exceptions import SSLError
 from user_agent import generate_user_agent
 
@@ -11,8 +10,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.supremenewyork.com/shop/all'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
@@ -25,10 +24,10 @@ class Parser(api.Parser):
             return [
                 api.TInterval(element.get('href').split('/')[4],
                               self.name, element.get('href'), self.interval)
-                for element in etree.HTML(get(
+                for element in etree.HTML(self.provider.get(
                     self.catalog,
                     headers={'user-agent': self.user_agent}
-                ).content).xpath('//a[@style="height:81px;"]') if len(element.xpath('div[@class="sold_out_tag"]')) == 0
+                )).xpath('//a[@style="height:81px;"]') if len(element.xpath('div[@class="sold_out_tag"]')) == 0
             ]
         except SSLError:
             raise api.ScriptError('Site is down')
@@ -37,7 +36,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 content: etree.Element = etree.HTML(
-                    get(self.catalog.replace('/shop/all', '') + target.data, self.user_agent).content)
+                    self.provider.get(self.catalog.replace('/shop/all', '') + target.data,
+                                      headers={'user-agent': self.user_agent}))
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except SSLError:

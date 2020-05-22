@@ -7,6 +7,44 @@ blacklist:
   - telegram
   - concepts
   - footpatrol
+  - discord
+  - nike-snkrs
+  - a-ma-maniere
+  - bape
+  - bbbranded
+  - belief
+  - bodega
+  - brandshop
+  - capsuletoronto
+  - concepts
+  - deadstock
+  - dream-town
+  - dsm-us
+  - dsm-eu
+  - dtlr
+  - extrabutterny
+  - farfetch-ru
+  - hibbett
+  - juicestore
+  - kith
+  - lapstoneandhammer
+  - net-a-porter
+  - notre-shop
+  - packer
+  - pharma
+  - rsvpgallery
+  - saintalfred
+  - shopnicekicks
+  - sneakerhead-ru
+  - sneakerpolitics
+  - solebox
+  - solefiness
+  - streetbeat
+  - suede-store
+  - supreme
+  - traektoria-ru
+  - tsum-ru
+  - undefeated
 whitelist:
   folders: []
   scripts: []

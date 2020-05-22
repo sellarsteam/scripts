@@ -3,7 +3,6 @@ from json import loads, JSONDecodeError
 from typing import List
 
 import yaml
-from requests import get
 from user_agent import generate_user_agent
 
 from source import api
@@ -48,24 +47,24 @@ def key_words():
                 yield i.upper()
 
 
-def get_post_id(merchant_id, token):
-    s = get(f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52',
-            headers={'user-agent': generate_user_agent()}).text
-    content = loads(s)
+def get_post_id(merchant_id, token, provider):
+    content = loads(provider.get(
+        f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52'))
     try:
         if content['response']['items'][0]['is_pinned']:
             return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
         else:
             return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
-    except Exception:
+    except KeyError:
         try:
             return f"{merchant_id[0]}_{content['response']['items'][0]['id']}"
         except KeyError:
             return 0
 
+
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.user_agent = generate_user_agent()
         self.counter = 0
         self.number_of_token = 0
@@ -95,7 +94,7 @@ class Parser(api.Parser):
                     self.number_of_token = 0
                 self.counter = 0
             token = self.tokens[self.number_of_token]
-            post_id = get_post_id(merchant_id, token)
+            post_id = get_post_id(merchant_id, token, self.provider)
             if post_id != 0:
                 targets.append(api.TInterval(merchant_id[1], self.name, post_id, self.interval))
             self.counter += 1
@@ -111,8 +110,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content = loads(get(f"https://api.vk.com/method/wall.getById?posts={target.data}"
-                                    f"&access_token={token}&v=5.52").text)
+                content = loads(self.provider.get(f"https://api.vk.com/method/wall.getById?posts={target.data}"
+                                                  f"&access_token={token}&v=5.52"))
                 self.counter += 1
                 text = content['response'][0]['text']
                 for key_word in key_words():

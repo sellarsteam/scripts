@@ -3,7 +3,6 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 from user_agent import generate_user_agent
 
 from source import api
@@ -12,8 +11,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://brandshop.ru/New/'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
@@ -28,10 +27,10 @@ class Parser(api.Parser):
                 self.name,
                 element[0].get('href'), self.interval)
             for element in etree.HTML(
-                get(
+                self.provider.get(
                     self.catalog,
                     headers={'user-agent': self.user_agent}
-                ).text
+                )
             ).xpath('//div[@class="product"]')
             if 'krossovki' in element[0].get('href') and ('jordan' in element[0].get('href')
                                                           or 'yeezy' in element[0].get('href')
@@ -44,7 +43,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                content = etree.HTML(get(target.data, self.user_agent).content)
+                content = etree.HTML(self.provider.get(target.data, headers={'user-agent': self.user_agent}))
                 if len(content.xpath('//button')) != 0:
                     return api.SSuccess(
                         self.name,
@@ -60,10 +59,10 @@ class Parser(api.Parser):
                             ),
                             {},
                             tuple(size.current_value for size in Path.parse_str('$.*.name').match(loads(
-                                get(
+                                self.provider.get(
                                     f'https://brandshop.ru/getproductsize/{target.data.split("/")[4]}/',
                                     headers={'user-agent': generate_user_agent(), 'referer': target.data}
-                                ).content))),
+                                )))),
                             (
                                 (
                                     'StockX',

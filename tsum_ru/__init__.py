@@ -1,7 +1,6 @@
 from typing import List
 
 from lxml import etree
-from requests import get
 from user_agent import generate_user_agent
 
 from source import api
@@ -10,10 +9,10 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.tsum.ru/catalog/search/?q=yeezy'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     def index(self) -> IndexType:
@@ -23,26 +22,27 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.get('href').split('/')[2],
                           self.name, 'https://www.tsum.ru' + element.get('href'), self.interval)
-            for element in etree.HTML(get(
+            for element in etree.HTML(self.provider.get(
                 self.catalog,
                 headers={'user-agent': self.user_agent}
-            ).text).xpath('//a[@class="product__info"]')
+            )).xpath('//a[@class="product__info"]')
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                content: etree.Element = etree.HTML(get(
+                content: etree.Element = etree.HTML(self.provider.get(
                     target.data,
                     headers={'user-agent': generate_user_agent(),
                              'connection': 'keep-alive', 'cache-control': 'max-age=0',
                              'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image'
+                                       '/webp,image/apng,*/*;q=0.8',
                              'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                              'sec-fetch-user': '?1',
                              'accept-language': 'en-US,en;q=0.9',
                              'referer': self.catalog
-                             }).text)
+                             }))
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:

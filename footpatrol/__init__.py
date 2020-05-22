@@ -2,23 +2,20 @@ from json import JSONDecodeError
 from re import findall
 from typing import List
 
-from cfscrape import create_scraper
 from lxml import etree
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.footpatrol.com/campaign/New+In/?facet:new=latest&sort=latest'
         self.interval: int = 1
         self.user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu ' \
                           'Chromium/79.0.3945.130 Chrome/79.0.3945.130 Safari/537.36 '
-        self.scraper = create_scraper()
 
     def index(self) -> IndexType:
         return api.IInterval(self.name, 5)
@@ -26,8 +23,8 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(create_scraper().get(self.catalog, headers={'user-agent': self.user_agent}).text)\
-                .xpath('//a[@data-e2e="product-listing-name"]'):
+        for element in etree.HTML(self.provider.get(self.catalog, headers={'user-agent': self.user_agent}, mode=1,
+                                                    proxy=True)).xpath('//a[@data-e2e="product-listing-name"]'):
             if counter == 5:
                 break
             if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get(
@@ -44,8 +41,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = self.scraper.get(target.data, headers={
-                    'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={
+                    'user-agent': self.user_agent}, mode=1, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
                 if content.xpath('//meta[@name="twitter:data2"]')[0].get('content') == 'IN STOCK':
                     available = True

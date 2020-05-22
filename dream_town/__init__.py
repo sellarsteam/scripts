@@ -4,17 +4,15 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.dreamtownshoes.com/collections/new-arrivals-1'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
@@ -29,8 +27,8 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
+        for element in etree.HTML(self.provider.get(self.catalog,
+                                                    headers={'user-agent': self.user_agent}, proxy=True)) \
                 .xpath('//div[@class="reveal"]/a'):
             if counter == 5:
                 break
@@ -48,13 +46,13 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = list(size.get('data-value')
                                        for size in content.xpath('//div[@class="swatch clearfix"]/div[@data-value]')
                                        if 'sold' not in size.get('class'))
                 sizes = list()
-                for size in Path.parse_str('$.product.variants.*')\
+                for size in Path.parse_str('$.product.variants.*') \
                         .match(loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', ''))):
                     if size.current_value['public_title'] in available_sizes:
                         sizes.append(

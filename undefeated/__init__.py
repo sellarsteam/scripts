@@ -4,12 +4,10 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 def return_sold_out(data):
@@ -31,8 +29,8 @@ def return_sold_out(data):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://undefeated.com/collections/mens-footwear'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
@@ -48,9 +46,9 @@ class Parser(api.Parser):
         return [
             api.TInterval(element[0].xpath('a')[0].get('href').split('/')[4],
                           self.name, 'https://undefeated.com' + element[0].xpath('a')[0].get('href'), self.interval)
-            for element in etree.HTML(get(self.catalog,
-                                          headers={'user-agent': self.user_agent}, proxies=get_proxy()
-                                          ).text).xpath('//div[@class="grid-product__wrapper"]')
+            for element in etree.HTML(self.provider.get(self.catalog,
+                                                        headers={'user-agent': self.user_agent}, proxy=True
+                                                        )).xpath('//div[@class="grid-product__wrapper"]')
             if 'air' in element[0].xpath('a')[0].get('href') or 'yeezy' in element[0].xpath('a')[0].get('href')
                or 'aj' in element[0].xpath('a')[0].get('href') or 'dunk' in element[0].xpath('a')[0].get('href')
         ]
@@ -59,7 +57,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
                 if 'Sold' not in content.xpath('//span[@class="btn__text"]')[0].text:
                     available = True

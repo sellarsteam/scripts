@@ -3,12 +3,10 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 def return_sold_out(data):
@@ -30,8 +28,8 @@ def return_sold_out(data):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://shop.pharmabergen.no/collections/new-arrivals/'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
@@ -47,9 +45,9 @@ class Parser(api.Parser):
         return [
             api.TInterval(element[0].get('href').split('/')[4],
                           self.name, 'https://shop.pharmabergen.no' + element[0].get('href'), self.interval)
-            for element in etree.HTML(get('https://shop.pharmabergen.no/collections/new-arrivals/',
-                                          headers={'user-agent': self.user_agent}, proxies=get_proxy()
-                                          ).text).xpath('//div[@class="product-info-inner"]')
+            for element in etree.HTML(self.provider.get('https://shop.pharmabergen.no/collections/new-arrivals/',
+                                                        headers={'user-agent': self.user_agent}, proxy=True
+                                                        )).xpath('//div[@class="product-info-inner"]')
             if element[0].xpath('span[@class]')[0].text in ['NIKE', 'JORDAN'] or 'yeezy' in element[0].get('href')
         ]
 
@@ -57,8 +55,9 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent},
-                                                        proxies=get_proxy()).text)
+                content: etree.Element = etree.HTML(self.provider.get(target.data,
+                                                                      headers={'user-agent': self.user_agent},
+                                                                      proxy=True))
                 if content.xpath('//input[@type="submit"]')[0].get('value').replace('\n', '') == 'Add to Cart':
                     available = True
                 else:

@@ -2,7 +2,6 @@ import re
 from typing import List
 
 from lxml import etree
-from requests import get
 from user_agent import generate_user_agent
 
 from source import api
@@ -11,9 +10,10 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
-        self.catalog: str = 'https://www.farfetch.com/ru/sets/men/new-in-this-week-eu-men.aspx?view=180&scale=284&category=136361&designer=214504|1664|1205035'
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
+        self.catalog: str = 'https://www.farfetch.com/ru/sets/men/new-in-this-week-eu-men.aspx?view=180&scale=284' \
+                            '&category=136361&designer=214504|1664|1205035 '
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
@@ -24,7 +24,7 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.get('href').split('/')[-1],
                           self.name, 'https://www.farfetch.com/' + element.get('href'), self.interval)
-            for element in etree.HTML(get(
+            for element in etree.HTML(self.provider.get(
                 self.catalog,
                 headers={'user-agent': self.user_agent,
                          'connection': 'keep-alive', 'cache-control': 'max-age=0',
@@ -34,13 +34,13 @@ class Parser(api.Parser):
                          'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                          'sec-fetch-user': '?1',
                          'accept-language': 'en-US,en;q=0.9'}
-            ).text).xpath('//a[@itemprop="itemListElement"]')
+            )).xpath('//a[@itemprop="itemListElement"]')
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                for_content = get(
+                for_content = self.provider.get(
                     target.data,
                     headers={'user-agent': self.user_agent,
                              'connection': 'keep-alive', 'cache-control': 'max-age=0',
@@ -51,7 +51,7 @@ class Parser(api.Parser):
                              'accept-language': 'en-US,en;q=0.9',
                              'referer': self.catalog
                              })
-                content: etree.Element = etree.HTML(for_content.text)
+                content: etree.Element = etree.HTML(for_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:
@@ -63,7 +63,7 @@ class Parser(api.Parser):
                 name,
                 target.data,
                 'farfetch',
-                re.findall(r'(https?://[\S]+jpg)', str(for_content.content))[19].split('"600":"')[-1],
+                re.findall(r'(https?://[\S]+jpg)', str(for_content))[19].split('"600":"')[-1],
                 '',
                 (
                     api.currencies['RUB'],

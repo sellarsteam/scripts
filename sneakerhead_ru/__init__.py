@@ -1,7 +1,6 @@
 from typing import List
 
 from lxml import etree
-from requests import get
 from user_agent import generate_user_agent
 
 from source import api
@@ -10,8 +9,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://sneakerhead.ru/isnew/'
         self.user_agent = generate_user_agent()
         self.interval: int = 1
@@ -26,7 +25,7 @@ class Parser(api.Parser):
                 self.name,
                 f'https://sneakerhead.ru{element.get("href")}', self.interval
             )
-            for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}).text)
+            for element in etree.HTML(self.provider.get(self.catalog, headers={'user-agent': self.user_agent}))
                 .xpath('//a[@class="product-card__link"]')
             if ('Кроссовки' in element.text
                 or 'Обувь' in element.text) and ('Yeezy' in element.text or 'Jordan'
@@ -37,8 +36,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                print(target.data)
-                content: etree.Element = etree.HTML(get(target.data, headers={'user-agent': self.user_agent}).content)
+                content: etree.Element = etree.HTML(self.provider.get(target.data,
+                                                                      headers={'user-agent': self.user_agent}))
                 if content.xpath('//div[@class="sizes-chart-item selected"]') != () and \
                         content.xpath('//a[@class="size_range_name "]') != []:
                     available = True

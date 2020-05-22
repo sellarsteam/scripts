@@ -3,12 +3,10 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 def return_sold_out(data):
@@ -30,8 +28,8 @@ def return_sold_out(data):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://suede-store.com/collections/limited-edition?constraint=footwear'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
@@ -47,7 +45,7 @@ class Parser(api.Parser):
         links = list()
         counter = 0
         for element in etree.HTML(
-                get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text).xpath(
+                self.provider.get(self.catalog, headers={'user-agent': self.user_agent}, proxy=True)).xpath(
                 '//div[@class="tt-image-box"]/a'):
             if counter == 5:
                 break
@@ -64,7 +62,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')
@@ -75,9 +73,9 @@ class Parser(api.Parser):
                 (
                     str(size_data.current_value['title'].split(' ')[0]) + ' US',
                     'https://suede-store.com/cart/' + str(size_data.current_value['id']) + ':1'
-                ) for size_data in Path.parse_str('$.variants.*').match(loads(get(
+                ) for size_data in Path.parse_str('$.variants.*').match(loads(self.provider.get(
                     f'https://suede-store.com/products/{target.data.split("/")[-1]}.js',
-                    headers={'user-agent': self.user_agent}, proxies=get_proxy()).text))
+                    headers={'user-agent': self.user_agent}, proxy=True)))
                 if size_data.current_value['available'] is True
             )
 

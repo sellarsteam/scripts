@@ -4,17 +4,15 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.deadstock.ca/collections/new-arrivals?sort_by=created-descending'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
@@ -30,11 +28,11 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.get('href').split('/')[4],
                           self.name, 'https://www.deadstock.ca' + element.get('href'), self.interval)
-            for element in etree.HTML(get(
-                url=self.catalog, headers={
+            for element in etree.HTML(self.provider.get(
+                self.catalog, headers={
                     'user-agent': self.user_agent
-                }, proxies=get_proxy()
-            ).text).xpath('//a[@class=" grid-product__meta"]')
+                }, proxy=True
+            )).xpath('//a[@class=" grid-product__meta"]')
             if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
                or 'sacai' in element.get('href') or 'dunk' in element.get('href')
         ]
@@ -43,9 +41,9 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(url=target.data, headers={
+                get_content = self.provider.get(url=target.data, headers={
                     'headers': self.user_agent
-                }, proxies=get_proxy()).text
+                }, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple(
                     size.get('for').split('-')[-1] for size in

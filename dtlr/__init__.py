@@ -4,17 +4,15 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.dtlr.com/pages/releases'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
@@ -30,10 +28,10 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.get('href').split('/')[2],
                           self.name, 'https://www.dtlr.com' + element.get('href'), self.interval)
-            for element in etree.HTML(get(
+            for element in etree.HTML(self.provider.get(
                 self.catalog,
-                headers={'user-agent': self.user_agent}, proxies=get_proxy()
-            ).text).xpath(
+                headers={'user-agent': self.user_agent}, proxy=True
+            )).xpath(
                 '//div[@class="release-item adidas-logo" or @class="release-item jordan-logo" or '
                 '@class="release-item nike-logo"]/a')
             if 'yeezy' in element.get('href') or 'Jordan' in element.get('href') \
@@ -44,7 +42,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')

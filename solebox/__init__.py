@@ -1,17 +1,15 @@
 from typing import List
 
-from cfscrape import create_scraper
 from lxml import etree
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.solebox.com/de_DE/c/new'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot .html)Mozilla/5.0 (compatible; ' \
@@ -26,9 +24,9 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.get('href').split('/')[3],
                           self.name, 'https://www.solebox.com' + element.get('href'), self.interval)
-            for element in etree.HTML(create_scraper().get(
-                url=self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()
-            ).text).xpath('//a[@class="b-product-tile-image-link js-product-tile-link"]')
+            for element in etree.HTML(self.provider.get(
+                self.catalog, headers={'user-agent': self.user_agent}, proxy=True, mode=1
+            )).xpath('//a[@class="b-product-tile-image-link js-product-tile-link"]')
             if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
         ]
 
@@ -36,8 +34,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 content: etree.Element = etree.HTML(
-                    create_scraper().get(url=target.data, headers={'user-agent': self.user_agent},
-                                         proxies=get_proxy()).text)
+                    self.provider.get(target.data, headers={'user-agent': self.user_agent},
+                                      proxy=True, mode=1))
             else:
                 return api.SFail(self.name, 'Unknown target type')
         except etree.XMLSyntaxError:

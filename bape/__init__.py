@@ -1,17 +1,15 @@
 from typing import List
 
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.bapeonline.com/bape/men/?prefn1=isNew&prefv1=true&srule=newest&start=0&sz=48'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
@@ -26,8 +24,8 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
+        for element in etree.HTML(self.provider.get(self.catalog,
+                                                    headers={'user-agent': self.user_agent}, proxy=True)) \
                 .xpath('//a[@class="thumb-link"]'):
             if counter == 10:
                 break
@@ -44,7 +42,7 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = tuple((size.text.replace(' ', '').replace('\n', ''), size.get('value'))
                                         for size in content.xpath('//select[@class="variation-select"]/option')

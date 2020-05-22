@@ -3,7 +3,6 @@ from json import loads, JSONDecodeError
 from typing import List
 
 from jsonpath2 import Path
-from requests import get
 from user_agent import generate_user_agent
 
 from source import api

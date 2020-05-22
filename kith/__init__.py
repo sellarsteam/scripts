@@ -4,19 +4,17 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://kith.com/collections/mens-footwear'
-        self.interval: float = 1
+        self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
                           'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 ' \
@@ -30,10 +28,10 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.xpath('a')[0].get('href').split('/')[2],
                           self.name, 'https://kith.com/' + element.xpath('a')[0].get('href'), self.interval)
-            for element in etree.HTML(get(
+            for element in etree.HTML(self.provider.get(
                 self.catalog,
-                headers={'user-agent': self.user_agent}, proxies=get_proxy()
-            ).text).xpath('//div[@class="product-card__information"]')
+                headers={'user-agent': self.user_agent}, proxy=True
+            )).xpath('//div[@class="product-card__information"]')
             if 'Nike' in element[0].xpath('h1[@class="product-card__title"]')[0].text
                or 'Yeezy' in element[0].xpath('h1[@class="product-card__title"]')[0].text
                or 'Jordan' in element[0].xpath('h1[@class="product-card__title"]')[0].text
@@ -42,7 +40,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
             else:
                 return api.SFail(self.name, 'Unknown target type')

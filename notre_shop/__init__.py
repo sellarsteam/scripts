@@ -4,17 +4,15 @@ from typing import List
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
 from source import api
 from source.api import IndexType, TargetType, StatusType
 from source.logger import Logger
-from scripts.proxy import get_proxy
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
         self.catalog: str = 'https://www.notre-shop.com/collections/footwear/mens?page=1&sort_by=created-descending'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
@@ -29,8 +27,8 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(get(self.catalog,
-                                      headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
+        for element in etree.HTML(self.provider.get(self.catalog,
+                                                    headers={'user-agent': self.user_agent}, proxy=True)) \
                 .xpath('//a[@class="collection__product-block"]'):
             if counter == 5:
                 break
@@ -48,7 +46,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
                 content: etree.Element = etree.HTML(get_content)
                 available_sizes = list(size.text.replace('\n', '').replace(' ', '')
                                        for size in content.xpath('//div[@class="product__sizes "]/div')
