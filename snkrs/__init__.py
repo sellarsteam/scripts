@@ -11,8 +11,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.url = 'https://api.nike.com/product_feed/threads/v2'
         self.catalog: str = self.url + '/?count=24&filter=marketplace%28RU%29&filter=language%28ru%29' \
                                        '&filter=upcoming%28true%29' \
