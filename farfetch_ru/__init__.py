@@ -10,8 +10,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://www.farfetch.com/ru/sets/men/new-in-this-week-eu-men.aspx?view=180&scale=284' \
                             '&category=136361&designer=214504|1664|1205035 '
         self.interval: int = 1

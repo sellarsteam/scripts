@@ -12,8 +12,8 @@ sizes_stock = ['[LOW]', '[HIGH]', '[MEDIUM]']
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://www.traektoria.ru/wear/keds/brand-nike/?price__from=6000&THING_TYPE=%D0%92%D0%AB' \
                             '%D0%A1%D0%9E%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%95%D0%94%D0%AB%7E%D0' \
                             '%9A%D0%A0%D0%9E%D0%A1%D0%A1%D0%9E%D0%92%D0%9A%D0%98%7E%D0%9D%D0%98%D0%97%D0%9A%D0%98%D0' \

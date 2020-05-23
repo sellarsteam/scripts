@@ -19,8 +19,8 @@ headers = {
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://www.yeezysupply.com/api/yeezysupply/products/bloom'
         self.interval: int = 5
 

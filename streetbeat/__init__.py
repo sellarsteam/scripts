@@ -9,8 +9,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://street-beat.ru/cat/man/adidas-originals/?sort=create&order=desc'
         self.interval: int = 1
         self.user_agent = 'APIs-Google (+https://developers.google.com/webmasters/APIs-Google.html)'

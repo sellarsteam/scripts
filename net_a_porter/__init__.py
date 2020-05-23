@@ -9,8 +9,8 @@ from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://www.net-a-porter.com/ru/en/d/Shop/Shoes/Sneakers?cm_sp=topnav-_-shoes-_-sneakers' \
                             '&pn=1&npp=60&image_view=product&dscroll=0&sortorder=new-in&sizescheme=IT '
         self.interval: int = 1

@@ -29,8 +29,8 @@ def return_sold_out(data):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://bdgastore.com/collections/newarrivals#?Collections=' \
                             'New+Arrivals&Producttype=Shoes&search_return=all&res_per_page=24'
         self.interval: int = 1
