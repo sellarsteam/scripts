@@ -1,4 +1,4 @@
 name: discord
-core: ^0.6.3
+core: _0.8.4.dev4
 version: 0.1.0
 important: no
