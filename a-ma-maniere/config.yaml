@@ -1,5 +1,5 @@
 name: a-ma-maniere
-core: _0.8.4.dev4
+core: ^0.8.4.dev5
 version: 1.0.0rc1
 keep: yes
 max-errors: 1
