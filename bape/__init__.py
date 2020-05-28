@@ -1,6 +1,4 @@
 from typing import List, Union
-from json import loads, JSONDecodeError
-from re import findall
 from lxml import etree
 
 from source import api
@@ -49,13 +47,13 @@ class Parser(api.Parser):
                         page_content = etree.Element = etree.HTML(get_content)
                         sizes = [api.Size(size.text.replace(' ', '').replace('\n', ''), size.get('value'))
                                  for size in page_content.xpath('//select[@class="variation-select"]/option')
-                                 if not 'UNAVAILABLE' in size.text and not 'Select Size' in size.text]
+                                 if (not 'UNAVAILABLE' in size.text or not 'OUTOFSTOCK' in size.text) and not 'Select Size' in size.text]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
                         HashStorage.add_target(link[0].hash())
                         result.append(IRelease(
-                            name,
                             item_link,
                             'bape',
+                            name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
                             '',
                             api.Price(

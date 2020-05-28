@@ -1,37 +1,21 @@
 from json import loads, JSONDecodeError
 from re import findall
-from typing import List
+from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
-
-
-def return_sold_out(data):
-    return api.SSuccess(
-        'bbbranded',
-        api.Result(
-            'Sold out',
-            data,
-            'tech',
-            '',
-            '',
-            (api.currencies['USD'], 1),
-            {},
-            tuple(),
-            (('StockX', 'https://stockx.com/search/sneakers?s='),
-             ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-        )
-    )
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.catalog: str = 'https://www.bbbranded.com/collections/mens/mens-footwear'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://www.bbbranded.com/collections/mens/mens-footwear'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
@@ -39,77 +23,76 @@ class Parser(api.Parser):
                           '(KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CInterval(self.name, 3.)
 
-    def targets(self) -> List[TargetType]:
-        links = list()
-        counter = 0
-        for element in etree.HTML(self.provider.get(self.catalog, headers={'user-agent': self.user_agent}, proxy=True))\
-                .xpath('//a[@href]'):
-            if counter == 5:
-                break
-            if 'mens' in element.get('href') and ('air' in element.get('href') or 'yeezy' in element.get('href')
-                                                  or 'jordan' in element.get('href') or 'dunk' in element.get('href')):
-                links.append(element.get('href'))
+    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
+        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        if mode == 0:
+            result = [content]
+            links = list()
+            counter = 0
+            for element in etree.HTML(self.provider.get(self.link,
+                                                        headers={'user-agent': self.user_agent}, proxy=True)) \
+                    .xpath('//a[@class="product-item style--one alt color--light "]'):
+                if counter == 5:
+                    break
+                if 'mens' in element.get('href') and ('air' in element.get('href') or 'yeezy' in element.get('href')
+                                                      or 'jordan' in element.get('href') or 'dunk' in element.get(
+                            'href')):
+                    links.append([api.Target('https://www.bbbranded.com' + element.get('href'), self.name, 0),
+                                  'https://www.bbbranded.com' + element.get('href')])
                 counter += 1
-        return [
-            api.TInterval(element.split('/')[-1],
-                          self.name, 'https://www.bbbranded.com' + element, self.interval)
-            for element in links
-        ]
-
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
-                content: etree.Element = etree.HTML(get_content)
-                sizes_data = Path.parse_str('$.product.variants.*').match(
-                    loads(findall(r'var meta = {.*}', get_content)[0]
-                          .replace('var meta = ', '')))
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-        except IndexError:
-            return return_sold_out(target.data)
-        available_sizes = list(element.text.split('/ ')[-1].split('\n')[0]
-                               for element in content.xpath('//select[@id="productSelect"]/option') if
-                               element.get('disabled') is None)
-        if len(available_sizes) > 0:
-            try:
-                name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        name,
-                        target.data,
-                        'shopify-filtered',
-                        content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                        '',
-                        (
-                            api.currencies['USD'],
-                            float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content')
-                                  .replace('.', '').replace(',', '.')) / 100
-                        ),
-                        {'Site': 'BB Branded'},
-                        tuple(
-                            (
-                                str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
-                                'https://www.bbbranded.com/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data if
-                            size_data.current_value['public_title'].split(' ')[-1] in available_sizes
-                        ),
-                        (
-                            ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                            ('Cart', 'https://www.bbbranded.com/cart'),
-                            ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                        )
-                    )
-                )
-            except JSONDecodeError:
-                return api.SFail(self.name, 'Exception JSONDecodeError')
-        else:
-            return return_sold_out(target.data)
+            if len(links) == 0:
+                return result
+            for link in links:
+                try:
+                    if HashStorage.check_target(link[0].hash()):
+                        try:
+                            item_link = link[1]
+                            get_content = self.provider.get(item_link, headers={'user-agent': self.user_agent},
+                                                            proxy=True)
+                            page_content = etree.Element = etree.HTML(get_content)
+                            sizes_data = Path.parse_str('$.product.variants.*').match(
+                                loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                        except etree.XMLSyntaxError:
+                            raise etree.XMLSyntaxError(self.name, 'Exception XMLDecodeError')
+                        except JSONDecodeError:
+                            raise JSONDecodeError('Exception JSONDecodeError')
+                        except IndexError:
+                            HashStorage.add_target(link[0].hash())
+                            continue
+                        available_sizes = list(element.text.split('/ ')[-1].split('\n')[0]
+                                               for element in page_content.xpath('//select[@id="productSelect"]/option')
+                                               if
+                                               element.get('disabled') is None)
+                        sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
+                                          'https://www.bbbranded.com/cart/' + str(size_data.current_value['id']) + ':1')
+                                 for size_data in sizes_data if
+                                 size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link[0].hash())
+                        result.append(IRelease(
+                            item_link,
+                            'shopify-filtered',
+                            name,
+                            page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                            '',
+                            api.Price(
+                                api.CURRENCIES['USD'],
+                                float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content')
+                                      .replace('.', '').replace(',', '.')) / 100
+                            ),
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX',
+                                           'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://www.bbbranded.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'BB Branded'}
+                        ))
+                except JSONDecodeError:
+                    raise JSONDecodeError('Exception JSONDecodeError')
+            return result

@@ -71,9 +71,9 @@ class Parser(api.Parser):
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
                         HashStorage.add_target(link[0].hash())
                         result.append(IRelease(
-                            name,
                             item_link,
                             'shopify-filtered',
+                            name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
                             '',
                             api.Price(
