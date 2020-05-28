@@ -1,16 +1,19 @@
-from typing import List
-
+from typing import List, Union
+from json import loads, JSONDecodeError
+from re import findall
 from lxml import etree
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.catalog: str = 'https://www.bapeonline.com/bape/men/?prefn1=isNew&prefv1=true&srule=newest&start=0&sz=48'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://www.bapeonline.com/bape/men/?prefn1=isNew&prefv1=true&srule=newest&start=0&sz=48'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android ' \
@@ -18,77 +21,59 @@ class Parser(api.Parser):
                           'Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 10)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CInterval(self.name, 10.)
 
-    def targets(self) -> List[TargetType]:
-        links = list()
-        counter = 0
-        for element in etree.HTML(self.provider.get(self.catalog,
-                                                    headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//a[@class="thumb-link"]'):
-            if counter == 10:
-                break
-            if element.get('href')[0] != '/':
-                links.append(element.get('href'))
+    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
+        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        if mode == 0:
+            result = [content]
+            links = list()
+            counter = 0
+            for element in etree.HTML(self.provider.get(self.link,
+                                                        headers={'user-agent': self.user_agent}, proxy=True)) \
+                    .xpath('//a[@class="thumb-link"]'):
+                if counter == 5:
+                    break
+                if element.get('href')[0] != '/':
+                    links.append([api.Target(element.get('href'), self.name, 0), element.get('href')])
                 counter += 1
-        return [
-            api.TInterval(element.split('/')[-1],
-                          self.name, element, self.interval)
-            for element in links
-        ]
-
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                available: bool = False
-                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
-                content: etree.Element = etree.HTML(get_content)
-                available_sizes = tuple((size.text.replace(' ', '').replace('\n', ''), size.get('value'))
-                                        for size in content.xpath('//select[@class="variation-select"]/option')
-                                        if not 'UNAVAILABLE' in size.text and not 'Select Size' in size.text)
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        if len(available_sizes) > 0:
-            name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    name,
-                    target.data,
-                    'bape',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (
-                        api.currencies['USD'],
-                        float(content.xpath('//div[@class="headline4 pdp-price-sales"]')
-                              [0].text.split('$')[-1].replace(' ', '').replace('\n', ''))
-                    ),
-                    {'Site': 'Bape'},
-                    available_sizes,
-                    (
-                        ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                        ('Cart', 'https://www.bapeonline.com/cart'),
-                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                    )
-                )
-            )
-        else:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (api.currencies['USD'],
-                     float(1)),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+            if len(links) == 0:
+                return result
+            for link in links:
+                try:
+                    if HashStorage.check_target(link[0].hash()):
+                        item_link = link[1]
+                        get_content = self.provider.get(item_link, headers={'user-agent': self.user_agent}, proxy=True)
+                        page_content = etree.Element = etree.HTML(get_content)
+                        sizes = [api.Size(size.text.replace(' ', '').replace('\n', ''), size.get('value'))
+                                 for size in page_content.xpath('//select[@class="variation-select"]/option')
+                                 if not 'UNAVAILABLE' in size.text and not 'Select Size' in size.text]
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link[0].hash())
+                        result.append(IRelease(
+                            name,
+                            item_link,
+                            'bape',
+                            page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                            '',
+                            api.Price(
+                                api.CURRENCIES['USD'],
+                                float(page_content.xpath('//div[@class="headline4 pdp-price-sales"]')[0].text.split('$')[-1]
+                                      .replace(' ', '').replace('\n', ''))
+                            ),
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX',
+                                           'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://www.bapeonline.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'Bape'}
+                        ))
+                    else:
+                        continue
+                except etree.XMLSyntaxError:
+                    raise etree.XMLSyntaxError('Exception XMLDecodeError')
+            return result

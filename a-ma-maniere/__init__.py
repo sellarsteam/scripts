@@ -30,6 +30,7 @@ class Parser(api.Parser):
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         if mode == 0:
+            result = [content]
             links = list()
             counter = 0
             for element in etree.HTML(self.provider.get(self.link,
@@ -44,7 +45,7 @@ class Parser(api.Parser):
                                   'https://www.a-ma-maniere.com' + element.get('href')])
                 counter += 1
             if len(links) == 0:
-                return [content]
+                return result
             for link in links:
                 try:
                     if HashStorage.check_target(link[0].hash()):
@@ -69,7 +70,7 @@ class Parser(api.Parser):
                                                       'https://www.a-ma-maniere.com/cart/' + str(value) + ':1'))
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
                         HashStorage.add_target(link[0].hash())
-                        return [IRelease(
+                        result.append(IRelease(
                             name,
                             item_link,
                             'shopify-filtered',
@@ -87,10 +88,11 @@ class Parser(api.Parser):
                                 FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             ],
                             {'Site': 'A-Ma-Maniere'}
-                        ), content]
+                        ))
                     else:
                         continue
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
                 except JSONDecodeError:
                     raise JSONDecodeError('Exception JSONDecodeError')
+            return result
