@@ -21,7 +21,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CInterval:
-        return api.CInterval(self.name, 5)
+        return api.CInterval(self.name, 5.)
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
