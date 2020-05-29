@@ -1,19 +1,21 @@
 from json import JSONDecodeError, loads
 from re import findall
-from typing import List
+from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.catalog: str = 'https://eflash-us.doverstreetmarket.com/'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://eflash-us.doverstreetmarket.com/'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; ' \
@@ -21,108 +23,67 @@ class Parser(api.Parser):
                           'Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Pinterestbot/1.0; ' \
                           '+https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CInterval(self.name, 3.)
 
-    def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(element.get('href').split('/')[-1],
-                          self.name, 'https://eflash-us.doverstreetmarket.com' + element.get('href'), self.interval)
-            for element in etree.HTML(self.provider.get(
-                url=self.catalog, headers={'user-agent': self.user_agent}, proxy=True
-            )).xpath('//a[@class="grid-view-item__link"]')
-            if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
-        ]
-
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
-                content: etree.Element = etree.HTML(get_content)
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-            sizes_data = Path.parse_str('$.product.variants.*').match(
-                loads(findall(r'var meta = {.*}', get_content)[0]
-                      .replace('var meta = ', '')))
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-        except IndexError:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    '',
-                    '',
-                    (api.currencies['USD'], 1),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
-        try:
-            available_sizes = tuple(
-                (element.text.split(' ')[-1]) for element in content.xpath('//div[@class="name-box"]'))
-        except IndexError:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    '',
-                    '',
-                    (api.currencies['USD'], 1),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
-        name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-        if len(available_sizes) > 0:
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    name,
-                    target.data,
-                    'doverstreetmarket',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (api.currencies['USD'],
-                     float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))),
-                    {'Location': 'United States (New-York)'},
-                    tuple(
-                        (
-                            str(size_data.current_value['public_title']) + ' US',
-                            'https://eflash-us.doverstreetmarket.com/cart/' + str(size_data.current_value['id']) + ':1'
-                        ) for size_data in sizes_data if size_data.current_value['public_title'].split('Size ')[-1]
-                        in available_sizes
-                    ),
-                    (
-                        ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                        ('Cart', 'https://eflash-us.doverstreetmarket.com/cart'),
-                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
+        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = [content]
+        links = list()
+        counter = 0
+        for element in etree.HTML(self.provider.get(
+                url=self.link, headers={'user-agent': self.user_agent}, proxy=True
+        )).xpath('//a[@class="grid-view-item__link"]'):
+            if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href'):
+                links.append([api.Target('https://eflash-us.doverstreetmarket.com' + element.get('href'), self.name, 0),
+                              'https://eflash-us.doverstreetmarket.com' + element.get('href')])
+            counter += 1
+        if len(links) == 0:
+            return result
+        for link in links:
+            try:
+                if HashStorage.check_target(link[0].hash()):
+                    try:
+                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                        page_content: etree.Element = etree.HTML(get_content)
+                        sizes_data = Path.parse_str('$.product.variants.*').match(
+                            loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                    except etree.XMLSyntaxError:
+                        raise etree.XMLSyntaxError('Exception XMLDecodeError')
+                    except JSONDecodeError:
+                        raise JSONDecodeError('Exception JSONDecodeError')
+                    except IndexError:
+                        HashStorage.add_target(link[0].hash())
+                        continue
+                    available_sizes = list(
+                        (element.text.split(' ')[-1]) for element in page_content.xpath('//div[@class="name-box"]'))
+                    sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' UK',
+                                      'https://eflash-us.doverstreetmarket.com/cart/' + str(
+                                          size_data.current_value['id']) + ':1')
+                             for size_data in sizes_data
+                             if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
+                    name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                    HashStorage.add_target(link[0].hash())
+                    result.append(IRelease(
+                        link[1],
+                        'doverstreetmarket',
+                        name,
+                        page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                        '',
+                        api.Price(
+                            api.CURRENCIES['GBP'],
+                            float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                        ),
+                        api.Sizes(api.SIZE_TYPES[''], sizes),
+                        [
+                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                       name.replace(' ', '%20')),
+                            FooterItem('Cart', 'https://eflash-us.doverstreetmarket.com/cart'),
+                            FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                        ],
+                        {'Location': 'United States (New-York)'}
                     )
-                )
-            )
-        else:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    '',
-                    '',
-                    (api.currencies['USD'], 1),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+                    )
+            except JSONDecodeError:
+                raise JSONDecodeError('Exception JSONDecodeError')
