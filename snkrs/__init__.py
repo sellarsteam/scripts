@@ -1,104 +1,114 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from json import loads, JSONDecodeError
-from typing import List
+from typing import List, Union
 
-from jsonpath2 import Path
-from user_agent import generate_user_agent
+from requests import get
 
+from source import tools
 from source import api
-from source.api import IndexType, TargetType, StatusType
+from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, \
+    Price, Sizes, Size
+from source.cache import HashStorage
 from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.url = 'https://api.nike.com/product_feed/threads/v2'
-        self.catalog: str = self.url + '/?count=24&filter=marketplace%28RU%29&filter=language%28ru%29' \
-                                       '&filter=upcoming%28true%29' \
-                                       '&filter=channelId%28010794e5-35fe-4e32-aaff-cd2c74f89d61%29' \
-                                       '&filter=exclusiveAccess%28true%2Cfalse%29&sort=effectiveStartSellDateAsc' \
-                                       '&fields=active&fields=id&fields=productInfo'
-        self.channel: str = '010794e5-35fe-4e32-aaff-cd2c74f89d61'
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
+        super().__init__(name, log, provider)
+        self.url = 'https://www.nike.com/ru/launch/t/'
+        self.api = 'https://api.nike.com/product_feed/threads/v2/'
+        self.filter: str = '&filter=marketplace(RU)&filter=language(ru)' \
+                           '&filter=channelId(010794e5-35fe-4e32-aaff-cd2c74f89d61)'
+        self.catalog_filter: str = '?count=36&filter=upcoming(true)&fields=publishedContent.properties.seo.slug'
+        self.item_filter: str = '?fields=productInfo.merchProduct,productInfo.merchPrice,productInfo.productContent,p' \
+                                'roductInfo.imageUrls,productInfo.launchView,productInfo.skus,productInfo.availableSkus'
         self.pattern: str = '%Y-%m-%dT%H:%M:%S.%fZ'
-        self.interval: int = 3
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 1200)
+    @property
+    def catalog(self) -> api.CatalogType:
+        return api.CInterval(self.name, 120)
 
-    def targets(self) -> List[TargetType]:  # TODO: Error handling support
-        return [
-            api.TInterval(i.current_value['productInfo'][0]['productContent']['title'], self.name,
-                          i.current_value['id'], self.interval)
-            for i in Path.parse_str('$.objects[*][?(@.productInfo[0].availability.available = true)]').match(
-                loads(self.provider.get(self.catalog, headers={'user-agent': generate_user_agent()}))
-            )
-        ]
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = []
 
-    def execute(self, target: api.TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                model = 0
-                available: bool = False
-                content: dict = loads(
-                    self.provider.get(
-                        f'{self.url}/{target.data}?channelId={self.channel}&marketplace=RU&language=ru',
-                        headers={'user-agent': generate_user_agent()}
+        if mode == 0:
+            result.append(content)
+            result.extend([
+                api.TInterval(i['publishedContent']['properties']['seo']['slug'], self.name, 0, 0) for i in
+                loads(get(f'{self.api}{self.catalog_filter}{self.filter}').text)['objects']
+                if not i['publishedContent']['properties']['seo']['slug'].count('test')
+            ])
+            return result
+        elif mode == 1:
+            has_announce = False
+
+            try:
+                try:
+                    items = loads(get(f'{self.api}{self.item_filter}&filter=seoSlugs({content.name})'
+                                      f'{self.filter}').text)['objects'][0]['productInfo']
+                except JSONDecodeError:
+                    self.log.error(f'Bad json: {content.name}')
+                    return [api.TEFail(content, f'Bad json\n{content.hash()}')]
+
+                for i in items:
+                    data = [
+                        f'{self.url}{content.name}',
+                        'nike-snkrs',
+                        i['productContent']['fullTitle'],
+                        i['imageUrls']['productImageUrl'],
+                        i["productContent"]["descriptionHeading"],
+                        Price(CURRENCIES['RUB'], i['merchPrice']['currentPrice'],
+                              i['merchPrice']['fullPrice'] if i['merchPrice']['discounted'] else 0),
+                        Sizes(SIZE_TYPES[''], (
+                            Size(
+                                f'{s["nikeSize"]} [{i["availableSkus"][j]["level"]}]',
+                                f'{self.url}{content.name}/?productId={i["merchPrice"]["productId"]}'
+                                f'&size={s["nikeSize"].partition(" ")[0]}'
+                            ) for j, s in enumerate(i['skus'])
+                        )),
+                        [
+                            api.FooterItem('StockX', f'https://stockx.com/search/sneakers?s=' +
+                                           i['productContent']['title'].replace('"', '').replace("'", '')
+                                           .replace('“', '').replace('”', '').replace(' ', '%20')),
+                            api.FooterItem('Cart', 'https://www.nike.com/cart'),
+                            api.FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                        ]
+                    ]
+
+                    if 'launchView' in i:
+                        date = datetime.strptime(i['launchView']['startEntryDate'], self.pattern)
+                    else:
+                        date = datetime.strptime(i['merchProduct']['commerceStartDate'], self.pattern)
+
+                    if date < datetime.utcnow():
+                        item = api.IRelease(*data)
+                        if HashStorage.check_item(item.hash(4)):
+                            result.append(item)
+                    else:
+                        has_announce = True
+                        item = api.IAnnounce(*data)
+                        item.fields['Attention'] = 'Size of stocks may be changed at release'
+                        item.fields['Release date'] = date.strftime('%H:%M %d/%m/%Y')
+                        if HashStorage.check_item(item.hash(4)):
+                            result.append(item)
+
+            except KeyError:
+                self.log.error(f'Bad schema: {content.name}')
+                return [api.TEFail(content, f'Bad schema\n{content.hash()}')]
+
+            if result or has_announce:
+                if isinstance(content, api.TInterval):
+                    result.append(
+                        api.TSmart(content.name, self.name, 0, date.replace(tzinfo=timezone.utc).timestamp() + 1, 10)
                     )
-                )
-                for i, v in enumerate(content['productInfo']):
-                    if 'C' not in v['skus'][0]['nikeSize'] and 'Y' not in v['skus'][0]['nikeSize']:
-                        model = i
-                if content['productInfo'][model]['merchProduct']['publishType'] == 'FLOW':
-                    if datetime.strptime(content['productInfo'][model]['merchProduct']['commerceStartDate'],
-                                         self.pattern).timestamp() < datetime.utcnow().timestamp():
-                        available = True
-                elif content['productInfo'][model]['merchProduct']['publishType'] == 'LAUNCH':
-                    if datetime.strptime(content['productInfo'][model]['launchView']['startEntryDate'],
-                                         self.pattern).timestamp() < datetime.utcnow().timestamp():
-                        available = True
                 else:
-                    return api.SFail(self.name, 'Unknown "publishType"')
+                    result.append(content)
+
+                return result
             else:
-                return api.SFail(self.name, 'Unknown target type')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-        except KeyError:
-            return api.SFail(self.name, 'Wrong scheme')
-        if available:
-            skus = [i.current_value for i in
-                    Path.parse_str(f'$.productInfo[{model}].availableSkus[*].id').match(content)]
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    content['productInfo'][model]['productContent']['title'],
-                    f'https://nike.com/ru/launch/t/{content["publishedContent"]["properties"]["seo"]["slug"]}',
-                    'nike-snkrs',
-                    content['productInfo'][model]['imageUrls']['productImageUrl'],
-                    content['productInfo'][model]['productContent']['descriptionHeading'],
-                    (
-                        api.currencies['RUB'],
-                        content['productInfo'][model]['merchPrice']['currentPrice'],
-                        content['productInfo'][model]['merchPrice']['fullPrice'] if
-                        content['productInfo'][model]['merchPrice']['discounted'] else 0
-                    ),
-                    {},
-                    tuple(
-                        (
-                            i['countrySpecifications'][0]['localizedSize'],
-                            f'https://www.nike.com/ru/launch/t/'
-                            f'{content["publishedContent"]["properties"]["seo"]["slug"]}'
-                            f'/?productId={content["productInfo"][model]["merchPrice"]["productId"]}'
-                            f'&size={i["countrySpecifications"][0]["localizedSize"].split(" ")[0]}'
-                        ) for i in content['productInfo'][model]['skus'] if i['id'] in skus),
-                    (
-                        ('StockX', 'https://stockx.com/search/sneakers?s=' +
-                         content['publishedContent']['nodes'][0]['nodes'][0]['properties']['altText']
-                         .replace(' ', '%20').replace('\'', '').replace('‘', '')),
-                        ('Cart', 'https://www.nike.com/cart'),
-                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                    )
-                )
-            )
-        else:
-            return api.SWaiting(target)
+                HashStorage.add_target(api.TInterval(content.name, self.name, 0, 0.).hash())
+                return [api.TESuccess(content, 'No more products')]
