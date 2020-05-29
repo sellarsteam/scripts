@@ -1,19 +1,21 @@
 from json import loads, JSONDecodeError
 from re import findall
-from typing import List
+from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.catalog: str = 'https://www.saintalfred.com/collections/brands?sort_by=created-descending'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://www.saintalfred.com/collections/brands?sort_by=created-descending'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android ' \
@@ -21,83 +23,65 @@ class Parser(api.Parser):
                           'Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CInterval(self.name, 3.)
 
-    def targets(self) -> List[TargetType]:
-        links = list()
-        counter = 0
-        for element in etree.HTML(self.provider.get(self.catalog,
-                                                    headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//div[@class="product-list-item"]/figure/a'):
-            if counter == 5:
-                break
-            if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
-                    or 'dunk' in element.get('href') or 'retro' in element.get('href'):
-                links.append(element.get('href'))
+    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
+        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = [content]
+        if mode == 0:
+            links = list()
+            counter = 0
+            for element in etree.HTML(self.provider.get(self.link,
+                                                        headers={'user-agent': self.user_agent}, proxy=True)) \
+                    .xpath('//div[@class="product-list-item"]/figure/a'):
+                if counter == 10:
+                    break
+                if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
+                          or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                    links.append([api.Target('https://www.saintalfred.com' + element.get('href'), self.name, 0),
+                                  'https://www.saintalfred.com' + element.get('href')])
                 counter += 1
-        return [
-            api.TInterval(element.split('/')[-1],
-                          self.name, 'https://www.saintalfred.com' + element, self.interval)
-            for element in links
-        ]
-
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
-                content: etree.Element = etree.HTML(get_content)
-                available_sizes = tuple(
-                    (
-                        str(size_data.current_value['public_title']) + ' US',
-                        'https://www.saintalfred.com/cart/' + str(size_data.current_value['id']) + ':1'
-                    ) for size_data in Path.parse_str('$.product.variants.*').match(
-                        loads(findall(r'var meta = {.*}', get_content)[0]
-                              .replace('var meta = ', '')))
-                )
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-        if content.xpath('//link[@itemprop="availability"]')[0].get('href') != 'http://schema.org/OutOfStock':
-            name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    name,
-                    target.data,
-                    'shopify-filtered',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (
-                        api.currencies['USD'],
-                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                    ),
-                    {'Site': 'Saint Alfred'},
-                    available_sizes,
-                    (
-                        ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                        ('Cart', 'https://www.saintalfred.com/cart'),
-                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                    )
-                )
-            )
-        else:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (api.currencies['USD'],
-                     float(1)),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+            if len(links) == 0:
+                return result
+            for link in links:
+                try:
+                    if HashStorage.check_target(link[0].hash()):
+                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                        page_content: etree.Element = etree.HTML(get_content)
+                        sizes_data = Path.parse_str('$.product.variants.*').match(
+                            loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                        sizes = [api.Size(str(size_data.current_value['public_title']).split(' ')[0] + ' US',
+                                          'https://www.saintalfred.com/cart/' + str(
+                                              size_data.current_value['id']) + ':1')
+                                 for size_data in sizes_data
+                                 if page_content.xpath(f'//option[@value="{size_data.current_value["id"]}"]')[0].get(
+                                'disabled') is None]
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link[0].hash())
+                        result.append(IRelease(
+                            link[1],
+                            'shopify-filtered',
+                            name,
+                            page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                            '',
+                            api.Price(
+                                api.CURRENCIES['USD'],
+                                float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                            ),
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://www.saintalfred.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'Saint Alfred'}
+                        )
+                        )
+                except etree.XMLSyntaxError:
+                    raise etree.XMLSyntaxError('Exception XMLDecodeError')
+                except JSONDecodeError:
+                    raise JSONDecodeError('Exception JSONDecodeError')
+        return result
