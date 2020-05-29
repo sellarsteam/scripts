@@ -36,10 +36,10 @@ class Parser(api.Parser):
                                                     )).xpath('//a[@class=" grid-product__meta"]'):
             if counter == 5:
                 break
-            # if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') \
-            #         or 'sacai' in element.get('href') or 'dunk' in element.get('href'):
-            links.append([api.Target('https://www.deadstock.ca' + element.get('href'), self.name, 0),
-                            'https://www.deadstock.ca' + element.get('href')])
+            if 'air' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') \
+                    or 'sacai' in element.get('href') or 'dunk' in element.get('href'):
+                links.append([api.Target('https://www.deadstock.ca' + element.get('href'), self.name, 0),
+                              'https://www.deadstock.ca' + element.get('href')])
             counter += 1
         if len(links) == 0:
             return result
@@ -49,11 +49,11 @@ class Parser(api.Parser):
                     get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
                     page_content: etree.Element = etree.HTML(get_content)
                     available_sizes = list(
-                    size.get('for').split('-')[-1] for size in
-                    page_content.xpath('//fieldset[@id="ProductSelect-option-0"]')[0].xpath('label[@class=""]')
+                        size.get('for').split('-')[-1] for size in
+                        page_content.xpath('//fieldset[@id="ProductSelect-option-0"]')[0].xpath('label[@class=""]')
                     )
                     sizes_data = Path.parse_str('$.product.variants.*').match(
-                    loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                        loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
                     sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
                                       'https://www.deadstock.ca/cart/' + str(size_data.current_value['id']) + ':1')
                              for size_data in sizes_data

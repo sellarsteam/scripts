@@ -17,7 +17,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://extrabutterny.com/collections/footwear/Mens'
+        self.link: str = 'https://extrabutterny.com/collections/footwear/Mens?page=2&sort_by=manual'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \

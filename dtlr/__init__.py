@@ -36,6 +36,8 @@ class Parser(api.Parser):
                 .xpath(
             '//div[@class="release-item adidas-logo" or @class="release-item jordan-logo" or '
             '@class="release-item nike-logo"]/a'):
+            if counter == 5:
+                break
             if 'yeezy' in element.get('href') or 'Jordan' in element.get('href') \
                     or 'jordan' in element.get('href') or 'nike' in element.get('href') \
                     or 'Nike' in element.get('href'):
