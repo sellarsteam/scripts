@@ -30,62 +30,63 @@ class Parser(api.Parser):
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = [content]
-        links = list()
-        counter = 0
-        for element in etree.HTML(self.provider.get(self.link,
-                                                    headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//div[@class="reveal"]/a'):
-            if counter == 5:
-                break
-            if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
-                    or 'dunk' in element.get('href') or 'retro' in element.get('href') \
-                    or 'blazer' in element.get('href'):
-                links.append([api.Target('https://www.dreamtownshoes.com' + element.get('href'), self.name, 0),
-                              'https://www.dreamtownshoes.com' + element.get('href')])
-            counter += 1
-        if len(links) == 0:
-            return result
-        for link in links:
-            try:
-                if HashStorage.check_target(link[0].hash()):
-                    get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
-                    page_content: etree.Element = etree.HTML(get_content)
-                    available_sizes = list(size.get('data-value')
-                                           for size in
-                                           page_content.xpath('//div[@class="swatch clearfix"]/div[@data-value]')
-                                           if 'sold' not in size.get('class'))
-                    sizes_data = Path.parse_str('$.product.variants.*').match(
-                        loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
-                    sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
-                                      'https://www.dreamtownshoes.com/cart/' + str(
-                                          size_data.current_value['id']) + ':1')
-                             for size_data in sizes_data
-                             if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
+        if mode == 0:
+            links = list()
+            counter = 0
+            for element in etree.HTML(self.provider.get(self.link,
+                                                        headers={'user-agent': self.user_agent}, proxy=True)) \
+                    .xpath('//div[@class="reveal"]/a'):
+                if counter == 5:
+                    break
+                if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
+                        or 'dunk' in element.get('href') or 'retro' in element.get('href') \
+                        or 'blazer' in element.get('href'):
+                    links.append([api.Target('https://www.dreamtownshoes.com' + element.get('href'), self.name, 0),
+                                  'https://www.dreamtownshoes.com' + element.get('href')])
+                counter += 1
+            if len(links) == 0:
+                return result
+            for link in links:
+                try:
+                    if HashStorage.check_target(link[0].hash()):
+                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                        page_content: etree.Element = etree.HTML(get_content)
+                        available_sizes = list(size.get('data-value')
+                                               for size in
+                                               page_content.xpath('//div[@class="swatch clearfix"]/div[@data-value]')
+                                               if 'sold' not in size.get('class'))
+                        sizes_data = Path.parse_str('$.product.variants.*').match(
+                            loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                        sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
+                                          'https://www.dreamtownshoes.com/cart/' + str(
+                                              size_data.current_value['id']) + ':1')
+                                 for size_data in sizes_data
+                                 if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
 
-                    name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                    HashStorage.add_target(link[0].hash())
-                    result.append(IRelease(
-                        link[1],
-                        'shopify-filtered',
-                        name,
-                        'http:' + page_content.xpath('//meta[@itemprop="image"]')[0].get('content'),
-                        '',
-                        api.Price(
-                            api.CURRENCIES['USD'],
-                            float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                        ),
-                        api.Sizes(api.SIZE_TYPES[''], sizes),
-                        [
-                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                       name.replace(' ', '%20')),
-                            FooterItem('Cart', 'https://www.dreamtownshoes.com/cart'),
-                            FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                        ],
-                        {'Site': 'Dream Town'}
-                    )
-                    )
-            except etree.XMLSyntaxError:
-                raise etree.XMLSyntaxError('Exception XMLDecodeError')
-            except JSONDecodeError:
-                raise JSONDecodeError('Exception JSONDecodeError')
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link[0].hash())
+                        result.append(IRelease(
+                            link[1],
+                            'shopify-filtered',
+                            name,
+                            'http:' + page_content.xpath('//meta[@itemprop="image"]')[0].get('content'),
+                            '',
+                            api.Price(
+                                api.CURRENCIES['USD'],
+                                float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                            ),
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://www.dreamtownshoes.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'Dream Town'}
+                        )
+                        )
+                except etree.XMLSyntaxError:
+                    raise etree.XMLSyntaxError('Exception XMLDecodeError')
+                except JSONDecodeError:
+                    raise JSONDecodeError('Exception JSONDecodeError')
         return result

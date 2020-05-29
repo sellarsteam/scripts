@@ -25,8 +25,8 @@ class Parser(api.Parser):
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = [content]
         if mode == 0:
-            result = [content]
             links = list()
             counter = 0
             for element in etree.HTML(self.provider.get(self.link,
@@ -74,4 +74,4 @@ class Parser(api.Parser):
                         continue
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
-            return result
+        return result
