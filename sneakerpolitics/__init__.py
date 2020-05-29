@@ -1,19 +1,21 @@
 from json import loads, JSONDecodeError
 from re import findall
-from typing import List
+from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.catalog: str = 'https://sneakerpolitics.com/collections/sneakers'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://sneakerpolitics.com/collections/sneakers'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; ' \
@@ -21,15 +23,16 @@ class Parser(api.Parser):
                           'Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Pinterestbot/1.0; ' \
                           '+https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CInterval(self.name, 3.)
 
     def targets(self) -> List[TargetType]:
         return [
             api.TInterval(element.get('href').split('/')[-1],
                           self.name, 'https://sneakerpolitics.com' + element.get('href'), self.interval)
             for element in etree.HTML(self.provider.get(
-                self.catalog,
+                self.link,
                 headers={'user-agent': self.user_agent}, proxy=True
             )).xpath(
                 '//div[@class="four columns alpha thumbnail even" or @class="four columns omega thumbnail even"]/a')
@@ -37,84 +40,62 @@ class Parser(api.Parser):
                or 'dunk' in element.get('href') or 'sacai' in element.get('href')
         ]
 
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent}, proxy=True)
-                content: etree.Element = etree.HTML(get_content)
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-            sizes_data = Path.parse_str('$.product.variants.*').match(
-                loads(findall(r'var meta = {.*}', get_content)[0]
-                      .replace('var meta = ', '')))
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-        try:  # TODO return info, that target is sold out
-            if content.xpath('//span[@class="sold_out"]')[0].text == 'Sold Out':
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        'Sold out',
-                        target.data,
-                        'tech',
-                        '',
-                        '',
-                        (api.currencies['USD'], 1),
-                        {},
-                        tuple(),
-                        (
-                            ('StockX', 'https://stockx.com/search/sneakers?s='),
-                            ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
+        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = [content]
+        if mode == 0:
+            links = list()
+            counter = 0
+            for element in etree.HTML(self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+                                      ).xpath(
+                '//div[@class="four columns alpha thumbnail even" or @class="four columns omega thumbnail even"]/a'):
+                if counter == 5:
+                    break
+                if 'yeezy' in element.get('href') or 'jordan' in element.get('href') or 'air' in element.get('href') \
+                        or 'dunk' in element.get('href') or 'sacai' in element.get('href'):
+                    links.append([api.Target('https://sneakerpolitics.com' + element.get('href'), self.name, 0),
+                                  'https://sneakerpolitics.com' + element.get('href')])
+                counter += 1
+            if len(links) == 0:
+                return result
+            for link in links:
+                try:
+                    if HashStorage.check_target(link[0].hash()):
+                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                        page_content: etree.Element = etree.HTML(get_content)
+                        sizes_data = Path.parse_str('$.product.variants.*').match(
+                            loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link[0].hash())
+                        available_sizes = tuple(size.text.replace('c', '')
+                                                for size in page_content.xpath('//select[@name="id"]/option'))
+                        sizes = [api.Size(str(size_data.current_value['public_title']).split('M')[-1] + ' US',
+                                          'https://sneakerpolitics.com/cart/' + str(size_data.current_value['id']) + ':1')
+                                 for size_data in sizes_data
+                                 if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
+                        result.append(IRelease(
+                            link[1],
+                            'shopify-filtered',
+                            name,
+                            page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                            '',
+                            api.Price(
+                                api.CURRENCIES['USD'],
+                                float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                            ),
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://bdgastore.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'Sneaker Politics'}
                         )
-                    )
-                )
-        except IndexError:
-            pass
-        name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-        available_sizes = tuple(size.text.replace('c', '') for size in content.xpath('//select[@name="id"]/option'))
-        if len(available_sizes) > 0:
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    name,
-                    target.data,
-                    'shopify-filtered',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (
-                        api.currencies['USD'],
-                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                    ),
-                    {'Site': 'Sneaker Politics'},
-                    tuple(
-                        (
-                            str(size_data.current_value['public_title']).split('M')[-1] + ' US',
-                            'https://sneakerpolitics.com/cart/' + str(size_data.current_value['id']) + ':1'
-                        ) for size_data in sizes_data if
-                        size_data.current_value['public_title'].split('M')[-1] in available_sizes
-                    ),
-                    (
-                        ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                        ('Cart', 'https://sneakerpolitics.com/cart'),
-                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                    )
-                )
-            )
-        else:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    '',
-                    '',
-                    (api.currencies['USD'], 1),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+                        )
+                except etree.XMLSyntaxError:
+                    raise etree.XMLSyntaxError('Exception XMLDecodeError')
+                except JSONDecodeError:
+                    raise JSONDecodeError('Exception JSONDecodeError')
+        return result
+
