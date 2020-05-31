@@ -38,11 +38,9 @@ class Parser(api.Parser):
         result = [content]
         if mode == 0:
             links = []
-            c = self.provider.get(
+            page_content = etree.HTML(self.provider.get(
                 self.link, headers=self.headers, proxy=True, mode=1
-            )
-            print(c)
-            page_content = etree.HTML(c)
+            ))
             for element in page_content.xpath('//a[@class="b-product-tile-image-link js-product-tile-link"]'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
