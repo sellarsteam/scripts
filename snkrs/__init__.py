@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from json import loads, JSONDecodeError
+from time import mktime, strptime, time
 from typing import List, Union
 
 from requests import get
 
-from source import tools
 from source import api
 from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, \
     Price, Sizes, Size
@@ -79,12 +79,10 @@ class Parser(api.Parser):
                         ]
                     ]
 
-                    if 'launchView' in i:
-                        date = datetime.strptime(i['launchView']['startEntryDate'], self.pattern)
-                    else:
-                        date = datetime.strptime(i['merchProduct']['commerceStartDate'], self.pattern)
+                    date = mktime(strptime(i['launchView']['startEntryDate'] if 'launchView' in i else
+                                           i['merchProduct']['commerceStartDate'], self.pattern))
 
-                    if date < datetime.utcnow():
+                    if date < time():
                         item = api.IRelease(*data)
                         if HashStorage.check_item(item.hash(4)):
                             result.append(item)
@@ -92,7 +90,7 @@ class Parser(api.Parser):
                         has_announce = True
                         item = api.IAnnounce(*data)
                         item.fields['Attention'] = 'Size of stocks may be changed at release'
-                        item.fields['Release date'] = date.strftime('%H:%M %d/%m/%Y')
+                        item.fields['Release date'] = datetime.fromtimestamp(date).strftime('%H:%M %d/%m/%Y')
                         if HashStorage.check_item(item.hash(4)):
                             result.append(item)
 
@@ -101,12 +99,13 @@ class Parser(api.Parser):
                 return [api.TEFail(content, f'Bad schema\n{content.hash()}')]
 
             if result or has_announce:
-                if isinstance(content, api.TInterval):
-                    result.append(
-                        api.TSmart(content.name, self.name, 0, date.replace(tzinfo=timezone.utc).timestamp() + 1, 10)
-                    )
-                else:
+                if isinstance(content, api.TSmart):
+                    content.timestamp = date + 1
                     result.append(content)
+                else:
+                    result.append(
+                        api.TSmart(content.name, self.name, 0, date + 1, 100)
+                    )
 
                 return result
             else:

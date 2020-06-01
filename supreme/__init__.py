@@ -30,39 +30,40 @@ class Parser(api.Parser):
                           .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
                           .timestamp(), 5)
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         if mode == 0:
-            result = [content]
+            content.timestamp = (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7), weeks=1))\
+                .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
+
+            result: list = [content]
 
             def find_data(link):
                 if HashStorage.check_target(link[0].hash()):
                     item_link = link[1]
-                    page_content = etree.HTML(self.provider.get(item_link,
-                                                                headers={'user-agent': self.user_agent}))
+                    page_content = etree.HTML(self.provider.get(item_link, headers={'user-agent': self.user_agent}))
                     name = page_content.xpath('//h1[@itemprop="name"]')[0].text
                     result.append(
                         IRelease(
                             item_link,
                             'supreme-nyc',
                             name,
-                            'https://' + page_content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//',
-                                                                                                              ''),
+                            'https://' + page_content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//', ''),
                             page_content.xpath('//p[@itemprop="description"]')[0].text,
                             api.Price(api.CURRENCIES['EUR'],
-                                      float(page_content.xpath('//span[@itemprop="price"]')[0].text
-                                            .replace('€', ''))),
-                            api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text)
-                                                           for size in page_content.xpath('//option[@value]')]),
+                                      float(page_content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
+                            api.Sizes(api.SIZE_TYPES[''],
+                                      [api.Size(size.text) for size in page_content.xpath('//option[@value]')]),
                             [
                                 FooterItem('StockX', 'https://stockx.com/search?s=' +
                                            page_content.xpath('//h1[@itemprop="name"]')
-                                           [0].text.replace(' ', '%20').replace(
-                                               '®', '')),
+                                           [0].text.replace(' ', '%20').replace('®', '')),
                                 FooterItem('Cart', 'https://www.supremenewyork.com/shop/cart'),
                                 FooterItem('Mobile', 'https://www.supremenewyork.com/mobile#products/' +
-                                           page_content.xpath('//form[@class="add"]')[0].get('action').split('/')[
-                                               2]),
+                                           page_content.xpath('//form[@class="add"]')[0].get('action').split('/')[2]),
                                 FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             ],
                             {'Site': 'Supreme'}))
@@ -72,8 +73,8 @@ class Parser(api.Parser):
                       'https://www.supremenewyork.com/' + element.get('href')]
                      for element in
                      etree.HTML(self.provider.get(self.link, headers={'user-agent': self.user_agent}))
-                         .xpath('//a[@style="height:81px;"]')
-                     if len(element.xpath('div[@class="sold_out_tag"]')) == 0]
+                          .xpath('//a[@style="height:81px;"]') if len(element.xpath('div[@class="sold_out_tag"]')) == 0]
+
             try:
                 for link in links:
                     var = threading.Thread(target=find_data, args=(link,))
@@ -82,4 +83,5 @@ class Parser(api.Parser):
                 raise SSLError('Site is down')
             except etree.XMLSyntaxError:
                 raise etree.XMLSyntaxError('Exception XMLDecodeError')
-        return result
+
+            return result
