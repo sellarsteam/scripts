@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
@@ -25,28 +26,42 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CInterval(self.name, 3.)
+        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
-        result = [content]
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1))\
+            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
+
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = []
         if mode == 0:
-            links = list()
+            links = []
             counter = 0
-            for element in etree.HTML(self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)) \
-                    .xpath(
+
+            for element in etree.HTML(self.provider.get(self.link,
+                                                        headers={'user-agent': self.user_agent}, proxy=True)).xpath(
                 '//div[@class="release-item adidas-logo" or @class="release-item jordan-logo" or '
-                '@class="release-item nike-logo"]/a'):
+                '@class="release-item nike-logo"]/a'
+            ):
                 if counter == 5:
                     break
+
                 if 'yeezy' in element.get('href') or 'Jordan' in element.get('href') \
                         or 'jordan' in element.get('href') or 'nike' in element.get('href') \
                         or 'Nike' in element.get('href'):
                     links.append([api.Target('https://www.dtlr.com' + element.get('href'), self.name, 0),
                                   'https://www.dtlr.com' + element.get('href')])
+
                 counter += 1
-            if len(links) == 0:
+
+            if not links:
                 return result
+
             for link in links:
                 if HashStorage.check_target(link[0].hash()):
                     try:
@@ -62,10 +77,12 @@ class Parser(api.Parser):
                     except IndexError:
                         HashStorage.add_target(link[0].hash())
                         continue
-                    available_sizes = list(
+
+                    available_sizes = [
                         (element.get('data-value')) for element in
                         page_content.xpath('//div[@class="swatch  clearfix"]/div') if 'available' in element.get('class')
-                    )
+                    ]
+
                     sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
                                       'https://www.dtlr.com/cart/' + str(size_data.current_value['id']) + ':1')
                              for size_data in sizes_data
@@ -91,6 +108,11 @@ class Parser(api.Parser):
                             FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                         ],
                         {'Site': 'DTLR Villa Store'}
-                    )
-                    )
+                    ))
+
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
         return result
