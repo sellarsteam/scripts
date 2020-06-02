@@ -31,7 +31,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1))\
-            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=5, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -63,14 +63,14 @@ class Parser(api.Parser):
                         page_content = etree.Element = etree.HTML(get_content)
                         counter = 0
                         symbol = 'c'
-                        available_sizes = list()
+                        available_sizes = []
                         for size in page_content.xpath('//div[@class="product-size-container"]/span'):
                             if counter == 0:
                                 symbol = size.text[-1]
                                 counter += 1
                             if 'unavailable' not in size.get('class'):
                                 available_sizes.append(size.text.replace(symbol, ''))
-                        sizes = list()
+                        sizes = []
                         for size in Path.parse_str('$.product.variants.*').match(
                                 loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', ''))):
                             value = size.current_value['public_title']

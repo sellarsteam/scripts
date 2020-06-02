@@ -4,6 +4,7 @@ from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
+from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -25,13 +26,18 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CInterval(self.name, 3.)
+        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
+
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1))\
+            .replace(second=5, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
-        result = [content]
+        result = []
         if mode == 0:
-            links = list()
+            links = []
             counter = 0
             for element in etree.HTML(self.provider.get(self.link,
                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
@@ -44,8 +50,6 @@ class Parser(api.Parser):
                     links.append([api.Target('https://www.bbbranded.com' + element.get('href'), self.name, 0),
                                   'https://www.bbbranded.com' + element.get('href')])
                 counter += 1
-            if len(links) == 0:
-                return result
             for link in links:
                 try:
                     if HashStorage.check_target(link[0].hash()):
@@ -63,10 +67,10 @@ class Parser(api.Parser):
                         except IndexError:
                             HashStorage.add_target(link[0].hash())
                             continue
-                        available_sizes = list(element.text.split('/ ')[-1].split('\n')[0]
+                        available_sizes = [element.text.split('/ ')[-1].split('\n')[0]
                                                for element in page_content.xpath('//select[@id="productSelect"]/option')
                                                if
-                                               element.get('disabled') is None)
+                                               element.get('disabled') is None]
                         sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
                                           'https://www.bbbranded.com/cart/' + str(size_data.current_value['id']) + ':1')
                                  for size_data in sizes_data if
@@ -95,4 +99,8 @@ class Parser(api.Parser):
                         ))
                 except JSONDecodeError:
                     raise JSONDecodeError('Exception JSONDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+            result.append(content)
         return result

@@ -1,6 +1,7 @@
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
+from datetime import datetime, timedelta, timezone
 
 from jsonpath2 import Path
 from lxml import etree
@@ -25,13 +26,18 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CInterval(self.name, 3.)
+        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
+
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1))\
+            .replace(second=5, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
-        result = [content]
+        result = []
         if mode == 0:
-            links = list()
+            links = []
             counter = 0
             for element in etree.HTML(self.provider.get(self.link,
                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
@@ -44,17 +50,15 @@ class Parser(api.Parser):
                     links.append([api.Target('https://www.dreamtownshoes.com' + element.get('href'), self.name, 0),
                                   'https://www.dreamtownshoes.com' + element.get('href')])
                 counter += 1
-            if len(links) == 0:
-                return result
             for link in links:
                 try:
                     if HashStorage.check_target(link[0].hash()):
                         get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
-                        available_sizes = list(size.get('data-value')
+                        available_sizes = [size.get('data-value')
                                                for size in
                                                page_content.xpath('//div[@class="swatch clearfix"]/div[@data-value]')
-                                               if 'sold' not in size.get('class'))
+                                               if 'sold' not in size.get('class')]
                         sizes_data = Path.parse_str('$.product.variants.*').match(
                             loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
                         sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
@@ -89,4 +93,9 @@ class Parser(api.Parser):
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
                 except JSONDecodeError:
                     raise JSONDecodeError('Exception JSONDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
         return result

@@ -23,11 +23,16 @@ class Parser(api.Parser):
     def catalog(self) -> CatalogType:
         return api.CInterval(self.name, 10.)
 
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1))\
+            .replace(second=6, microsecond=0, tzinfo=timezone.utc).timestamp()
+
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
-        result = [content]
+        result = []
         if mode == 0:
-            links = list()
+            links = []
             counter = 0
             for element in etree.HTML(self.provider.get(self.link,
                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
@@ -37,8 +42,7 @@ class Parser(api.Parser):
                 if element.get('href')[0] != '/':
                     links.append([api.Target(element.get('href'), self.name, 0), element.get('href')])
                 counter += 1
-            if len(links) == 0:
-                return result
+
             for link in links:
                 try:
                     if HashStorage.check_target(link[0].hash()):
