@@ -39,8 +39,8 @@ class Parser(api.Parser):
             result.append(content)
             result.extend([
                 api.TInterval(i['publishedContent']['properties']['seo']['slug'], self.name, 0, 0) for i in
-                loads(self.provider.get(f'{self.api}{self.catalog_filter}{self.filter}'),
-                      headers={'user-agent': generate_user_agent()})['objects']
+                loads(self.provider.get(f'{self.api}{self.catalog_filter}{self.filter}',
+                                        headers={'user-agent': generate_user_agent()}))['objects']
                 if not i['publishedContent']['properties']['seo']['slug'].count('test')
             ])
             return result
