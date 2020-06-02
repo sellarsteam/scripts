@@ -3,7 +3,7 @@ from json import loads, JSONDecodeError
 from time import mktime, strptime, time
 from typing import List, Union
 
-from requests import get
+from user_agent import generate_user_agent
 
 from source import api
 from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, \
@@ -39,7 +39,8 @@ class Parser(api.Parser):
             result.append(content)
             result.extend([
                 api.TInterval(i['publishedContent']['properties']['seo']['slug'], self.name, 0, 0) for i in
-                loads(get(f'{self.api}{self.catalog_filter}{self.filter}').text)['objects']
+                loads(self.provider.get(f'{self.api}{self.catalog_filter}{self.filter}'),
+                      headers={'user-agent': generate_user_agent()})['objects']
                 if not i['publishedContent']['properties']['seo']['slug'].count('test')
             ])
             return result
@@ -48,8 +49,10 @@ class Parser(api.Parser):
 
             try:
                 try:
-                    items = loads(get(f'{self.api}{self.item_filter}&filter=seoSlugs({content.name})'
-                                      f'{self.filter}').text)['objects'][0]['productInfo']
+                    items = loads(self.provider.get(
+                        f'{self.api}{self.item_filter}&filter=seoSlugs({content.name}){self.filter}',
+                        headers={'user-agent': generate_user_agent()}
+                    ))['objects'][0]['productInfo']
                 except JSONDecodeError:
                     self.log.error(f'Bad json: {content.name}')
                     return [api.TEFail(content, f'Bad json\n{content.hash()}')]
