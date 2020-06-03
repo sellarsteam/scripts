@@ -14,10 +14,6 @@ class Parser(api.Parser):
         self.link: str = 'https://www.solebox.com/en_RU/c/footwear?prefn1=isNew&prefv1=true&openCategory=true' \
                          '&specificCategory=new '
         self.interval: int = 1
-        self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot .html)Mozilla/5.0 (compatible; ' \
-                          'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android 6.0.1; ' \
-                          'Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile ' \
-                          'Safari/537.36 (compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html) '
         self.headers = {'authority': 'www.solebox.com',
                         'scheme': 'https',
                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,'
@@ -50,8 +46,7 @@ class Parser(api.Parser):
             page_content: etree.Element = etree.HTML(
                 self.provider.get(content.name, headers=self.headers,
                                   proxy=True, mode=1))
-            name = page_content.xpath('//div[@class="js-target"]/a')[0].text.replace('\n', '').replace('\t', '') + \
-                   ' ' + page_content.xpath('//li[@class="b-breadcrumb-item"]/span')[0].text
+            name = page_content.xpath('//span[@class="b-breadcrumb-text"]')[0].text
             try:
                 date = page_content.xpath('//button[@class="f-pdp-button f-pdp-button--release js-btn-release"]')[
                     0].text

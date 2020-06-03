@@ -66,6 +66,10 @@ class Parser(api.Parser):
                                 loads(findall(r'product: {.*}', get_content)[0].replace('product: ', ''))) if
                                  size_data.current_value['available'] is True]
                         name = page_content.xpath('//h1[@class="desktop-12"]')[0].text
+                        try:
+                            price = float(page_content.xpath('//div[@class="price-field"]/span')[0].text.split(' ')[1])
+                        except ValueError:
+                            price = 0.
                         HashStorage.add_target(link[0].hash())
                         result.append(IRelease(
                             link[1],
@@ -75,7 +79,7 @@ class Parser(api.Parser):
                             '',
                             api.Price(
                                 api.CURRENCIES['USD'],
-                                float(page_content.xpath('//div[@class="price-field"]/span')[0].text.split(' ')[1])
+                                price
                             ),
                             api.Sizes(api.SIZE_TYPES[''], sizes),
                             [

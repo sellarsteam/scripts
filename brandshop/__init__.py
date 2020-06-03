@@ -1,9 +1,9 @@
-from json import loads
 from typing import List, Union
 
-from jsonpath2 import Path
 from lxml import etree
 from user_agent import generate_user_agent
+
+from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -22,11 +22,16 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CInterval(self.name, 3.)
+        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
-        result = [content]
+        result = []
         if mode == 0:
             links = []
             for element in etree.HTML(
@@ -36,16 +41,12 @@ class Parser(api.Parser):
                     )
             ).xpath('//div[@class="product"]/a'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
-                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
                                 self.provider.get(element.get('href'), headers={'user-agent': self.user_agent}))
-                            sizes = [api.Size(size.current_value) for size in Path.parse_str('$.*.name').match(loads(
-                                self.provider.get(
-                                    f'https://brandshop.ru/getproductsize/{element.get("href").split("/")[4]}/',
-                                    headers={'user-agent': generate_user_agent(), 'referer': element.get("href")}
-                                )))]
+                            sizes = [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')]
                             name = page_content.xpath('//span[@itemprop="name"]')[0].text
                             HashStorage.add_target(api.Target(element.get('href'), self.name, 0).hash())
                             result.append(
@@ -90,4 +91,9 @@ class Parser(api.Parser):
                         ],
                         {'Site': 'Brandshop'}
                     ))
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
         return result
