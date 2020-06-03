@@ -1,6 +1,8 @@
 from typing import List, Union
 from lxml import etree
 
+from datetime import datetime, timedelta, timezone
+
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -21,12 +23,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CInterval(self.name, 10.)
+        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
 
     @staticmethod
     def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1))\
-            .replace(second=6, microsecond=0, tzinfo=timezone.utc).timestamp()
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=2, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
@@ -34,9 +36,12 @@ class Parser(api.Parser):
         if mode == 0:
             links = []
             counter = 0
-            for element in etree.HTML(self.provider.get(self.link,
-                                                        headers={'user-agent': self.user_agent}, proxy=True)) \
-                    .xpath('//a[@class="thumb-link"]'):
+            catalog_links = etree.HTML(self.provider.get(self.link,
+                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
+                .xpath('//a[@class="thumb-link"]')
+            if not catalog_links:
+                raise ConnectionResetError('Shopify banned this IP')
+            for element in catalog_links:
                 if counter == 5:
                     break
                 if element.get('href')[0] != '/':
@@ -78,4 +83,10 @@ class Parser(api.Parser):
                         continue
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
+        result.append(content)
         return result

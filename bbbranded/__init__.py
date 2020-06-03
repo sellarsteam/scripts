@@ -31,7 +31,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1))\
-            .replace(second=5, microsecond=500000, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
@@ -39,9 +39,12 @@ class Parser(api.Parser):
         if mode == 0:
             links = []
             counter = 0
-            for element in etree.HTML(self.provider.get(self.link,
-                                                        headers={'user-agent': self.user_agent}, proxy=True)) \
-                    .xpath('//a[@class="product-item style--one alt color--light "]'):
+            catalog_links = etree.HTML(self.provider.get(self.link,
+                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
+                .xpath('//a[@class="product-item style--one alt color--light "]')
+            if not catalog_links:
+                raise ConnectionResetError('Shopify banned this IP')
+            for element in catalog_links:
                 if counter == 5:
                     break
                 if 'mens' in element.get('href') and ('air' in element.get('href') or 'yeezy' in element.get('href')

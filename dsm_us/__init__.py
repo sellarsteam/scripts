@@ -31,7 +31,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=5, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
@@ -39,9 +39,10 @@ class Parser(api.Parser):
         if mode == 0:
             links = []
             counter = 0
-            for element in etree.HTML(self.provider.get(
-                    url=self.link, headers={'user-agent': self.user_agent}, proxy=True
-            )).xpath('//a[@class="grid-view-item__link"]'):
+            catalog_links = etree.HTML(self.provider.get(self.link,
+                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
+                .xpath('//a[@class="grid-view-item__link"]')
+            for element in catalog_links:
                 if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href'):
                     links.append(
                         [api.Target('https://eflash-us.doverstreetmarket.com' + element.get('href'), self.name, 0),
