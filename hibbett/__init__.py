@@ -21,7 +21,7 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(self.provider.get(url=self.catalog, proxy=True, mode=1))\
+        for element in etree.HTML(self.provider.get(url=self.catalog, proxy=True, mode=1)) \
                 .xpath('//a[@class="name-link"]'):
             if counter == 5:
                 break

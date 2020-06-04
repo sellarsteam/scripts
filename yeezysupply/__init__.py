@@ -50,7 +50,7 @@ class Parser(api.Parser):
                 try:
                     availability_json = loads(
                         self.provider.get(f'https://www.yeezysupply.com/api/products/{target.name}/availability',
-                                             headers=headers, proxy=True, mode=1).text)
+                                          headers=headers, proxy=True, mode=1).text)
                     available: bool = availability_json['availability_status'] == 'IN_STOCK'
                     version_json = 1
                     if availability_json['availability_status'] == 'PREVIEW':

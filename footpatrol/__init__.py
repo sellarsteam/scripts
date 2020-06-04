@@ -1,6 +1,6 @@
 from re import findall
-
 from typing import List, Union
+
 from lxml import etree
 
 from source import api

@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -48,7 +48,7 @@ class Parser(api.Parser):
                 if counter == 10:
                     break
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
-                          or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     links.append([api.Target('https://www.saintalfred.com' + element.get('href'), self.name, 0),
                                   'https://www.saintalfred.com' + element.get('href')])
                 counter += 1

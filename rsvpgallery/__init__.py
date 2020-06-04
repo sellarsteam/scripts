@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger

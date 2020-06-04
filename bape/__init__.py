@@ -1,7 +1,7 @@
-from typing import List, Union
-from lxml import etree
-
 from datetime import datetime, timedelta, timezone
+from typing import List, Union
+
+from lxml import etree
 
 from source import api
 from source import logger
@@ -30,8 +30,11 @@ class Parser(api.Parser):
         return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=2, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
@@ -45,30 +48,34 @@ class Parser(api.Parser):
                 if counter == 5:
                     break
                 if element.get('href')[0] != '/':
-                    links.append([api.Target(element.get('href'), self.name, 0), element.get('href')])
+                    links.append(api.Target(element.get('href'), self.name, 0))
                 counter += 1
 
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
-                        item_link = link[1]
-                        get_content = self.provider.get(item_link, headers={'user-agent': self.user_agent}, proxy=True)
+                    if HashStorage.check_target(link.hash()):
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content = etree.Element = etree.HTML(get_content)
-                        sizes = [api.Size(size.text.replace(' ', '').replace('\n', ''), size.get('value'))
-                                 for size in page_content.xpath('//select[@class="variation-select"]/option')
-                                 if (not 'UNAVAILABLE' in size.text or not 'OUTOFSTOCK' in size.text) and not 'Select Size' in size.text]
+                        sizes = [
+                            api.Size(size.text.replace(' ', '').replace('\n', ''), size.get('value'))
+                            for size in page_content.xpath('//select[@class="variation-select"]/option')
+                            if ('UNAVAILABLE' not in size.text or
+                                'OUTOFSTOCK' not in size.text) and 'Select Size' not in size.text
+                        ]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            item_link,
+                            link.name,
                             'bape',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
                             '',
                             api.Price(
                                 api.CURRENCIES['USD'],
-                                float(page_content.xpath('//div[@class="headline4 pdp-price-sales"]')[0].text.split('$')[-1]
-                                      .replace(' ', '').replace('\n', ''))
+                                float(
+                                    page_content.xpath('//div[@class="headline4 pdp-price-sales"]')[0]
+                                        .text.split('$')[-1].replace(' ', '').replace('\n', '')
+                                )
                             ),
                             api.Sizes(api.SIZE_TYPES[''], sizes),
                             [

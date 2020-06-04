@@ -1,9 +1,8 @@
+from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
-
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -29,8 +28,11 @@ class Parser(api.Parser):
         return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
@@ -41,7 +43,7 @@ class Parser(api.Parser):
                     )
             ).xpath('//div[@class="product"]/a'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
-                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
@@ -62,9 +64,11 @@ class Parser(api.Parser):
                                     ),
                                     api.Sizes(api.SIZE_TYPES[''], sizes),
                                     [
-                                        FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                                   name.replace(' ', '%20').replace('"', '').replace('\n', '')\
-                                                   .replace(' ', '')),
+                                        FooterItem(
+                                            'StockX',
+                                            'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
+                                            replace('"', '').replace('\n', '').replace(' ', '')
+                                        ),
                                         FooterItem('Cart', 'https://brandshop.ru/cart'),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],

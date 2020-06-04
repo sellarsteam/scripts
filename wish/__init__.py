@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -16,7 +16,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://wishatl.com/collections/mens-new-arrivals/?sort_by=created-descending'
+        self.link: str = 'https://wishatl.com/collections/footwear'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)Mozilla/5.0 (Linux; Android ' \
@@ -33,8 +33,11 @@ class Parser(api.Parser):
         return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=2, microsecond=0, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
@@ -50,14 +53,13 @@ class Parser(api.Parser):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href') \
                         or 'blazer' in element.get('href'):
-                    links.append([api.Target('https://wishatl.com' + element.get('href'), self.name, 0),
-                                  'https://wishatl.com' + element.get('href')])
+                    links.append(api.Target('https://wishatl.com' + element.get('href'), self.name, 0))
                 counter += 1
 
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                    if HashStorage.check_target(link.hash()):
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
                         sizes = [api.Size(size_data.current_value['public_title'].split('/ ')[-1] + ' US',
                                           'https://bdgastore.com/cart/' + str(size_data.current_value['id']) + ':1')
@@ -65,9 +67,9 @@ class Parser(api.Parser):
                                 loads(findall(r'"product": {.*}', get_content)[0].replace('"product": ', '')))
                                  if size_data.current_value['available'] is True]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            link[1],
+                            link.name,
                             'shopify-filtered',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),

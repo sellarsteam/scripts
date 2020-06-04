@@ -6,6 +6,10 @@ blacklist:
   - example
   - telegram
   - concepts
+  - slamjam
+  - shopnicekicks
+  - footpatrol
+  - solebox
 whitelist:
   folders: []
   scripts: []

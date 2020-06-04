@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -33,8 +33,11 @@ class Parser(api.Parser):
         return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
@@ -48,30 +51,31 @@ class Parser(api.Parser):
                 if counter == 10:
                     break
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
-                         or 'dunk' in element.get('href') or 'retro' in element.get('href') \
-                         or 'aj' in element.get('href'):
-                    links.append([api.Target('https://undefeated.com' + element.get('href'), self.name, 0),
-                                      'https://undefeated.com' + element.get('href')])
+                        or 'dunk' in element.get('href') or 'retro' in element.get('href') \
+                        or 'aj' in element.get('href'):  # TODO: Optimize
+                    links.append(api.Target('https://undefeated.com' + element.get('href'), self.name, 0))
                 counter += 1
 
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                    if HashStorage.check_target(link.hash()):
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
                         sizes_data = Path.parse_str('$.product.variants.*').match(
                             loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
-                        available_sizes = list((element.get('value')) for element in page_content.xpath
-                        ('//select[@id="SingleOptionSelector-1"]/option')
-                                                if element.get('disabled') != 'disabled')
+                        available_sizes = list(
+                            (element.get('value')) for element in
+                            page_content.xpath('//select[@id="SingleOptionSelector-1"]/option')
+                            if element.get('disabled') != 'disabled'
+                        )
                         sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
                                           'https://undefeated.com/cart/' + str(size_data.current_value['id']) + ':1')
                                  for size_data in sizes_data
                                  if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            link[1],
+                            link.name,
                             'undefeated',
                             name,
                             page_content.xpath('//meta[@property="og:image:secure_url"]')[0]
@@ -80,7 +84,7 @@ class Parser(api.Parser):
                             api.Price(
                                 api.CURRENCIES['USD'],
                                 float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content')
-                                  .replace('.', '').replace(',', '.'))
+                                      .replace('.', '').replace(',', '.'))
                             ),
                             api.Sizes(api.SIZE_TYPES[''], sizes),
                             [
@@ -96,6 +100,7 @@ class Parser(api.Parser):
                     raise JSONDecodeError('Exception JSONDecodeError')
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
+
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from json import loads, JSONDecodeError
 from time import mktime, strptime, time
 from typing import List, Union

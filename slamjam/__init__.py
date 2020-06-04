@@ -1,7 +1,6 @@
 from typing import List, Union
-from lxml import etree
 
-from cloudscraper import create_scraper
+from lxml import etree
 
 from source import api
 from source import logger

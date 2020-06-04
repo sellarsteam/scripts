@@ -1,18 +1,17 @@
+import datetime
+from datetime import timezone, timedelta, datetime
+from time import time
 from typing import List, Union
 
 from lxml import etree
 from requests.exceptions import SSLError
 from user_agent import generate_user_agent
-from time import time
-import datetime
-from datetime import timezone, timedelta, datetime
-import threading
 
-from source import logger
 from source import api
+from source import logger
+from source.api import CatalogType, TargetType, IRelease, RestockTargetType, ItemType, TargetEndType, \
+    FooterItem
 from source.cache import HashStorage
-from source.api import CatalogType, TargetType, CInterval, IRelease, RestockTargetType, ItemType, TargetEndType, \
-    FooterItem, CSmart
 from source.library import SubProvider
 
 

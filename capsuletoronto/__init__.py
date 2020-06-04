@@ -1,7 +1,7 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
-from datetime import datetime, timedelta, timezone
 
 from jsonpath2 import Path
 from lxml import etree
@@ -30,37 +30,42 @@ class Parser(api.Parser):
 
     @staticmethod
     def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1))\
+        return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
             counter = 0
-            catalog_links = etree.HTML(self.provider.get(self.link,
-                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//ul[@class="collection-products"]/li/a')
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//ul[@class="collection-products"]/li/a')
+
             if not catalog_links:
                 raise ConnectionResetError('Shopify banned this IP')
+
             for element in catalog_links:
                 if counter == 5:
                     break
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'dunk' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href') \
                         or 'blazer' in element.get('href'):
-                    links.append([api.Target('https://www.capsuletoronto.com' + element.get('href'), self.name, 0),
-                                  'https://www.capsuletoronto.com' + element.get('href')])
+                    links.append(api.Target('https://www.capsuletoronto.com' + element.get('href'), self.name, 0))
                 counter += 1
+
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                    if HashStorage.check_target(link.hash()):
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
                         available_sizes = [size.get('data-value')
-                                               for size in page_content.xpath('//div[@class="swatch clearfix"]/div')
-                                               if 'available' in size.get('class')]
+                                           for size in page_content.xpath('//div[@class="swatch clearfix"]/div')
+                                           if 'available' in size.get('class')]
                         sizes_data = Path.parse_str('$.product.variants.*').match(
                             loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
                         sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
@@ -69,9 +74,9 @@ class Parser(api.Parser):
                                  for size_data in sizes_data
                                  if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            link[1],
+                            link.name,
                             'shopify-filtered',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),

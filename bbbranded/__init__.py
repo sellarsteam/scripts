@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -30,35 +30,39 @@ class Parser(api.Parser):
 
     @staticmethod
     def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1))\
+        return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
             counter = 0
-            catalog_links = etree.HTML(self.provider.get(self.link,
-                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//a[@class="product-item style--one alt color--light "]')
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//a[@class="product-item style--one alt color--light "]')
+
             if not catalog_links:
                 raise ConnectionResetError('Shopify banned this IP')
+
             for element in catalog_links:
                 if counter == 5:
                     break
-                if 'mens' in element.get('href') and ('air' in element.get('href') or 'yeezy' in element.get('href')
-                                                      or 'jordan' in element.get('href') or 'dunk' in element.get(
-                            'href')):
-                    links.append([api.Target('https://www.bbbranded.com' + element.get('href'), self.name, 0),
-                                  'https://www.bbbranded.com' + element.get('href')])
+                if 'mens' in element.get('href') and \
+                        ('air' in element.get('href') or 'yeezy' in element.get('href') or
+                         'jordan' in element.get('href') or 'dunk' in element.get('href')):
+                    links.append(api.Target('https://www.bbbranded.com' + element.get('href'), self.name, 0))
                 counter += 1
+
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
+                    if HashStorage.check_target(link.hash()):
                         try:
-                            item_link = link[1]
-                            get_content = self.provider.get(item_link, headers={'user-agent': self.user_agent},
+                            get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent},
                                                             proxy=True)
                             page_content = etree.Element = etree.HTML(get_content)
                             sizes_data = Path.parse_str('$.product.variants.*').match(
@@ -68,20 +72,20 @@ class Parser(api.Parser):
                         except JSONDecodeError:
                             raise JSONDecodeError('Exception JSONDecodeError')
                         except IndexError:
-                            HashStorage.add_target(link[0].hash())
+                            HashStorage.add_target(link.hash())
                             continue
                         available_sizes = [element.text.split('/ ')[-1].split('\n')[0]
-                                               for element in page_content.xpath('//select[@id="productSelect"]/option')
-                                               if
-                                               element.get('disabled') is None]
+                                           for element in page_content.xpath('//select[@id="productSelect"]/option')
+                                           if
+                                           element.get('disabled') is None]
                         sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
                                           'https://www.bbbranded.com/cart/' + str(size_data.current_value['id']) + ':1')
                                  for size_data in sizes_data if
                                  size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            item_link,
+                            link.name,
                             'shopify-filtered',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),

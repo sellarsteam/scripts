@@ -1,7 +1,7 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
-from datetime import datetime, timedelta, timezone
 
 from jsonpath2 import Path
 from lxml import etree
@@ -30,7 +30,7 @@ class Parser(api.Parser):
 
     @staticmethod
     def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1))\
+        return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=1, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(

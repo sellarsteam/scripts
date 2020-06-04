@@ -1,11 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -34,17 +33,22 @@ class Parser(api.Parser):
         return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
             counter = 0
-            catalog_links = etree.HTML(self.provider.get(self.link,
-                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//div[@class="GridItem-imageContainer"]/a')
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//div[@class="GridItem-imageContainer"]/a')
+
             if not catalog_links:
                 raise ConnectionResetError('Shopify banned this IP')
+
             for element in catalog_links:
                 if element.get('href') is None:
                     continue
@@ -52,20 +56,22 @@ class Parser(api.Parser):
                     break
                 if 'nike' in element.get('href') or 'jordan' \
                         in element.get('href') or 'yeezy' in element.get('href'):
-                    links.append([api.Target('https://extrabutterny.com' + str(element.get('href')), self.name, 0),
-                                  'https://extrabutterny.com' + str(element.get('href'))])
+                    links.append(api.Target('https://extrabutterny.com' + str(element.get('href')), self.name, 0))
                 counter += 1
+
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
+                    if HashStorage.check_target(link.hash()):
                         try:
-                            get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                            get_content = self.provider.get(
+                                link.name, headers={'user-agent': self.user_agent}, proxy=True)
                             page_content: etree.Element = etree.HTML(get_content)
-                            available_sizes = list(
-                                i.current_value['sku'].split('-')[-1] for i in Path.parse_str('$.offers.*')
-                                .match(loads(page_content.xpath('//script[@type="application/ld+json"]')
-                                             [0].text))
-                                if i.current_value['availability'] == 'https://schema.org/InStock')
+                            available_sizes = [
+                                i.current_value['sku'].split('-')[-1]
+                                for i in Path.parse_str('$.offers.*').match(loads(
+                                    page_content.xpath('//script[@type="application/ld+json"]')[0].text))
+                                if i.current_value['availability'] == 'https://schema.org/InStock'
+                            ]
                             sizes_data = Path.parse_str('$.product.variants.*').match(
                                 loads(findall(r'var meta = {.*}', get_content)[0]
                                       .replace('var meta = ', '')))
@@ -74,33 +80,39 @@ class Parser(api.Parser):
                         except JSONDecodeError:
                             raise JSONDecodeError('Exception JSONDecodeError')
                         except IndexError:
-                            HashStorage.add_target(link[0].hash())
+                            HashStorage.add_target(link.hash())
                             continue
                         name = page_content.xpath('//title')[0].text.split(' [')[0]
-                        HashStorage.add_target(link[0].hash())
-                        sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
-                                          'https://extrabutterny.com/cart/' + str(size_data.current_value['id']) + ':1')
-                                 for size_data in sizes_data
-                                 if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
-                        result.append(IRelease(
-                            link[1],
-                            'shopify-filtered',
-                            name,
-                            page_content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
-                            '',
-                            api.Price(
-                                api.CURRENCIES['USD'],
-                                float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                            ),
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
-                            [
-                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                           name.replace(' ', '%20')),
-                                FooterItem('Cart', 'https://extrabutterny.com/cart'),
-                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                            ],
-                            {'Site': 'Extra Butter NY'}
-                        )
+                        HashStorage.add_target(link.hash())
+                        sizes = [
+                            api.Size(
+                                str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
+                                'https://extrabutterny.com/cart/' + str(size_data.current_value['id']) + ':1')
+                            for size_data in sizes_data
+                            if size_data.current_value['public_title'].split(' ')[-1] in available_sizes
+                        ]
+                        result.append(
+                            IRelease(
+                                link.name,
+                                'shopify-filtered',
+                                name,
+                                page_content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
+                                '',
+                                api.Price(
+                                    api.CURRENCIES['USD'],
+                                    float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                                ),
+                                api.Sizes(api.SIZE_TYPES[''], sizes),
+                                [
+                                    FooterItem(
+                                        'StockX',
+                                        'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')
+                                    ),
+                                    FooterItem('Cart', 'https://extrabutterny.com/cart'),
+                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                ],
+                                {'Site': 'Extra Butter NY'}
+                            )
                         )
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')

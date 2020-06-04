@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -46,15 +46,18 @@ class Parser(api.Parser):
                or 'dunk' in element.get('href') or 'sacai' in element.get('href')
         ]
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
             counter = 0
-            catalog_links = etree.HTML(self.provider.get(self.link,
-                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//div[@class="four columns alpha thumbnail even" or @class="four columns omega thumbnail even"]/a')
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//div[@class="four columns alpha thumbnail even" or @class="four columns omega thumbnail even"]/a')
             if not catalog_links:
                 raise ConnectionResetError('Shopify banned this IP')
             for element in catalog_links:
@@ -62,27 +65,27 @@ class Parser(api.Parser):
                     break
                 if 'yeezy' in element.get('href') or 'jordan' in element.get('href') or 'air' in element.get('href') \
                         or 'dunk' in element.get('href') or 'sacai' in element.get('href'):
-                    links.append([api.Target('https://sneakerpolitics.com' + element.get('href'), self.name, 0),
-                                  'https://sneakerpolitics.com' + element.get('href')])
+                    links.append(api.Target('https://sneakerpolitics.com' + element.get('href'), self.name, 0))
                 counter += 1
 
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                    if HashStorage.check_target(link.hash()):
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
                         sizes_data = Path.parse_str('$.product.variants.*').match(
                             loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         available_sizes = tuple(size.text.replace('c', '')
                                                 for size in page_content.xpath('//select[@name="id"]/option'))
                         sizes = [api.Size(str(size_data.current_value['public_title']).split('M')[-1] + ' US',
-                                          'https://sneakerpolitics.com/cart/' + str(size_data.current_value['id']) + ':1')
+                                          'https://sneakerpolitics.com/cart/' + str(
+                                              size_data.current_value['id']) + ':1')
                                  for size_data in sizes_data
                                  if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
                         result.append(IRelease(
-                            link[1],
+                            link.name,
                             'shopify-filtered',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
@@ -111,4 +114,3 @@ class Parser(api.Parser):
 
             result.append(content)
         return result
-

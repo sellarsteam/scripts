@@ -30,7 +30,7 @@ class Parser(api.Parser):
 
     @staticmethod
     def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1))\
+        return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(
@@ -42,10 +42,10 @@ class Parser(api.Parser):
         if mode == 0:
             links = []
             counter = 0
-            catalog_links = etree.HTML(self.provider.get(self.link,
-                                                         headers={'user-agent': self.user_agent}, proxy=True)) \
-                .xpath('//div[@class="release-item adidas-logo" or @class="release-item jordan-logo" or '
-                '@class="release-item nike-logo"]/a')
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//div[@class="release-item adidas-logo" or @class="release-item jordan-logo" '
+                    'or @class="release-item nike-logo"]/a')
             if not catalog_links:
                 raise ConnectionResetError('Shopify banned this IP')
             for element in catalog_links:
@@ -55,15 +55,14 @@ class Parser(api.Parser):
                 if 'yeezy' in element.get('href') or 'Jordan' in element.get('href') \
                         or 'jordan' in element.get('href') or 'nike' in element.get('href') \
                         or 'Nike' in element.get('href'):
-                    links.append([api.Target('https://www.dtlr.com' + element.get('href'), self.name, 0),
-                                  'https://www.dtlr.com' + element.get('href')])
+                    links.append(api.Target('https://www.dtlr.com' + element.get('href'), self.name, 0))
 
                 counter += 1
 
             for link in links:
-                if HashStorage.check_target(link[0].hash()):
+                if HashStorage.check_target(link.hash()):
                     try:
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
                         sizes_data = Path.parse_str('$.product.variants.*').match(
                             loads(findall(r'var meta = {.*}', get_content)[0]
@@ -73,12 +72,13 @@ class Parser(api.Parser):
                     except JSONDecodeError:
                         raise JSONDecodeError('Exception JSONDecodeError')
                     except IndexError:
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         continue
 
                     available_sizes = [
                         (element.get('data-value')) for element in
-                        page_content.xpath('//div[@class="swatch  clearfix"]/div') if 'available' in element.get('class')
+                        page_content.xpath('//div[@class="swatch  clearfix"]/div') if
+                        'available' in element.get('class')
                     ]
 
                     sizes = [api.Size(str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
@@ -86,9 +86,9 @@ class Parser(api.Parser):
                              for size_data in sizes_data
                              if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
                     name = page_content.xpath('//meta[@property="og:title"]')[0].get('content').split(' -')[0]
-                    HashStorage.add_target(link[0].hash())
+                    HashStorage.add_target(link.hash())
                     result.append(IRelease(
-                        link[1],
+                        link.name,
                         'shopify-filtered',
                         name,
                         page_content.xpath('//meta[@property="og:image"]')[0].get('content'),

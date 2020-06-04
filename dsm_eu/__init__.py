@@ -1,7 +1,7 @@
+from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError, loads
 from re import findall
 from typing import List, Union
-from datetime import datetime, timedelta, timezone
 
 from jsonpath2 import Path
 from lxml import etree
@@ -30,11 +30,14 @@ class Parser(api.Parser):
 
     @staticmethod
     def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1))\
+        return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
@@ -42,16 +45,18 @@ class Parser(api.Parser):
             catalog_links = etree.HTML(self.provider.get(self.link,
                                                          headers={'user-agent': self.user_agent}, proxy=True)) \
                 .xpath('//a[@class="grid-view-item__link"]')
+
             for element in catalog_links:
                 if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href'):
-                    links.append([api.Target('https://eflash.doverstreetmarket.com' + element.get('href'), self.name, 0),
-                                  'https://eflash.doverstreetmarket.com' + element.get('href')])
+                    links.append(api.Target('https://eflash.doverstreetmarket.com' + element.get('href'), self.name, 0))
                 counter += 1
+
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
+                    if HashStorage.check_target(link.hash()):
                         try:
-                            get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                            get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent},
+                                                            proxy=True)
                             page_content: etree.Element = etree.HTML(get_content)
                             sizes_data = Path.parse_str('$.product.variants.*').match(
                                 loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
@@ -60,7 +65,7 @@ class Parser(api.Parser):
                         except JSONDecodeError:
                             raise JSONDecodeError('Exception JSONDecodeError')
                         except IndexError:
-                            HashStorage.add_target(link[0].hash())
+                            HashStorage.add_target(link.hash())
                             continue
                         available_sizes = list(
                             (element.text.split(' ')[-1]) for element in page_content.xpath('//div[@class="name-box"]'))
@@ -70,9 +75,9 @@ class Parser(api.Parser):
                                  for size_data in sizes_data
                                  if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            link[1],
+                            link.name,
                             'doverstreetmarket',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),

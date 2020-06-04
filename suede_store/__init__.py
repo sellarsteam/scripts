@@ -1,9 +1,9 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from datetime import datetime, timedelta, timezone
 
 from source import api
 from source import logger
@@ -32,8 +32,11 @@ class Parser(api.Parser):
         return (datetime.utcnow() + timedelta(minutes=1)) \
             .replace(second=2, microsecond=0, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
             links = []
@@ -48,29 +51,31 @@ class Parser(api.Parser):
                     break
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
-                    links.append([api.Target('https://suede-store.com' + element.get('href'), self.name, 0),
-                                  'https://suede-store.com' + element.get('href')])
+                    links.append(api.Target('https://suede-store.com' + element.get('href'), self.name, 0))
                 counter += 1
 
             for link in links:
                 try:
-                    if HashStorage.check_target(link[0].hash()):
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, proxy=True)
+                    if HashStorage.check_target(link.hash()):
+                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
                         page_content: etree.Element = etree.HTML(get_content)
                         try:
-                            sizes = [api.Size(str(size_data.current_value['title'].split(' ')[0]) + ' US',
-                                              'https://suede-store.com/cart/' + str(size_data.current_value['id']) + ':1')
-                                     for size_data in Path.parse_str('$.variants.*').match(loads(self.provider.get(
-                                     f'https://suede-store.com/products/{link[1].split("/")[-1]}.js',
-                                    headers={'user-agent': self.user_agent}, proxy=True)))
-                                    if size_data.current_value['available'] is True]
+                            sizes = [
+                                api.Size(
+                                    str(size_data.current_value['title'].split(' ')[0]) + ' US',
+                                    'https://suede-store.com/cart/' + str(size_data.current_value['id']) + ':1'
+                                ) for size_data in Path.parse_str('$.variants.*').match(loads(self.provider.get(
+                                    f'https://suede-store.com/products/{link.name.split("/")[-1]}.js',
+                                    headers={'user-agent': self.user_agent}, proxy=True)
+                                )) if size_data.current_value['available'] is True
+                            ]
                         except IndexError:
-                            HashStorage.add_target(link[0].hash())
+                            HashStorage.add_target(link.hash())
                             continue
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
-                        HashStorage.add_target(link[0].hash())
+                        HashStorage.add_target(link.hash())
                         result.append(IRelease(
-                            link[1],
+                            link.name,
                             'shopify-filtered',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
@@ -100,4 +105,3 @@ class Parser(api.Parser):
 
             result.append(content)
         return result
-
