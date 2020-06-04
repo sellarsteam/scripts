@@ -10,12 +10,12 @@ import telegram.ext
 from dotenv import load_dotenv
 
 import telegram
-from core import __copyright__, __version__
-from core import api
-from core import codes
-from core import library
-from core.api import SSuccess, SFail
-from core.logger import Logger
+from source import __copyright__, __version__
+from source import api
+from source import codes
+from source import library
+from source.api import SSuccess, SFail
+from source.logger import Logger
 from .constructor import build
 
 

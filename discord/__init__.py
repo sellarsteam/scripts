@@ -4,15 +4,16 @@ import queue
 import threading
 import time
 from dataclasses import dataclass, field
+from typing import Union
 
 import requests
 import yaml
 
-from core import __version__, __copyright__
-from core import api
-from core import codes
-from core.api import SSuccess, SFail
-from core.logger import Logger
+from source import __version__, __copyright__
+from source import api
+from source import codes
+from source.api import TEFail, IAnnounce, IRelease, IRestock
+from source.logger import Logger
 from .constructor import build
 
 
@@ -152,27 +153,36 @@ class EventsExecutor(api.EventsExecutor):
             Message(
                 3 if str(code.code)[0] == '5' else 4,
                 'tech',
-                {'content': f'__Alert__\n{code.format()}\nThread: {thread}'}
+                {'content': f'__**Alert**__\n{code.format()}\nThread: {thread}'}
             )
         )
 
-    def e_success_status(self, status: SSuccess) -> None:
+    def e_item_announced(self, item: IAnnounce) -> None:
+        self.item(item)
+
+    def e_item_released(self, item: IRelease) -> None:
+        self.item(item)
+
+    def e_item_restock(self, item: IRestock) -> None:
+        self.item(item)
+
+    def item(self, item: Union[IAnnounce, IRelease, IRestock]):
         self.messages.put(
             Message(
                 10,
-                status.result.channel,
-                {'embeds': [build(status.result)]}
+                item.channel,
+                {'embeds': [build(item)]}
             )
         )
 
-    def e_fail_status(self, status: SFail) -> None:
+    def e_target_end_fail(self, target_end: TEFail) -> None:
         self.messages.put(
             Message(
                 5,
                 'tech',
                 {
-                    'content': f'_Alert [WARN]_\n__Target Lost__\n'
-                               f'Message: {status.message}\nScript: {status.script}'
+                    'content': f'__**Alert**__ [**WARN**]\n**Target Fail**\n\nScript: {target_end.target.script}\n'
+                               f'\nDescription: ```{target_end.description}```'
                 }
             )
         )

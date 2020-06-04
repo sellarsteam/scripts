@@ -2,14 +2,12 @@ from json import loads, JSONDecodeError
 from re import findall
 from typing import List
 
-from cloudscraper import create_scraper
 from jsonpath2 import Path
 from lxml import etree
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
-from scripts.proxy import get_proxy
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 
 
 def return_sold_out(data):
@@ -31,17 +29,10 @@ def return_sold_out(data):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://cncpts.com/collections/footwear#'
         self.interval: int = 1
-        self.scraper = create_scraper(
-            interpreter='nodejs',
-            recaptcha={
-                'provider': 'anticaptcha',
-                'api_key': ''  # TODO Add anticaptcha_api_key
-            }
-        )
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
                           'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 ' \
@@ -55,7 +46,7 @@ class Parser(api.Parser):
         links = list()
         counter = 0
         for element in etree.HTML(
-                self.scraper.get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
+                self.provider.get(self.catalog, headers={'user-agent': self.user_agent}, proxy=True, mode=1)) \
                 .xpath('//div[@class="product"]/a'):
             if counter == 5:
                 break
@@ -73,8 +64,8 @@ class Parser(api.Parser):
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                get_content = self.scraper.get(target.data, headers={'user-agent': self.user_agent},
-                                               proxies=get_proxy()).text
+                get_content = self.provider.get(target.data, headers={'user-agent': self.user_agent},
+                                                proxy=True, mode=1)
                 content: etree.Element = etree.HTML(get_content)
                 if content.xpath('//link[@itemprop="availability"]')[0].get('href') == 'http://schema.org/InStock':
                     available = True

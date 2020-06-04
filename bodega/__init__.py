@@ -1,40 +1,23 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
-from typing import List
+from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
-from scripts.proxy import get_proxy
-
-
-def return_sold_out(data):
-    return api.SSuccess(
-        'bodegastore',
-        api.Result(
-            'Sold out',
-            data,
-            'tech',
-            '',
-            '',
-            (api.currencies['USD'], 1),
-            {},
-            tuple(),
-            (('StockX', 'https://stockx.com/search/sneakers?s='),
-             ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-        )
-    )
+from source import api
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
-        self.catalog: str = 'https://bdgastore.com/collections/newarrivals#?Collections=' \
-                            'New+Arrivals&Producttype=Shoes&search_return=all&res_per_page=24'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://bdgastore.com/collections/newarrivals#?Collections=' \
+                         'New+Arrivals&Producttype=Shoes&search_return=all&res_per_page=24'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
@@ -42,81 +25,93 @@ class Parser(api.Parser):
                           '(KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; ' \
                           'Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
 
-    def targets(self) -> List[TargetType]:
-        links = list()
-        counter = 0
-        for element in etree.HTML(get(self.catalog, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text) \
-                .xpath('//a[@class="image-pg"]'):
-            if counter == 5:
-                break
-            if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
-                    or 'dunk' in element.get('href') or 'retro' in element.get('href'):
-                links.append(element.get('href'))
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
+
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = []
+        if mode == 0:
+            links = []
+            counter = 0
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//div[@class="mega-menu-product"]/a')
+
+            if not catalog_links:
+                raise ConnectionResetError('Shopify banned this IP')
+
+            for element in catalog_links:
+                if counter == 5:
+                    break
+                if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
+                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                    links.append(api.Target('https://bdgastore.com' + element.get('href'), self.name, 0))
                 counter += 1
-        return [
-            api.TInterval(element.split('/')[-1],
-                          self.name, 'https://bdgastore.com' + element, self.interval)
-            for element in links
-        ]
 
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                available: bool = False
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
-                content: etree.Element = etree.HTML(get_content)
-                if content.xpath('//link[@itemprop="availability"]')[0].get('href') == 'http://schema.org/InStock':
-                    available = True
-                else:
-                    return return_sold_out(target.data)
-                sizes_data = Path.parse_str('$.product.variants.*').match(
-                    loads(findall(r'var meta = {.*}', get_content)[0]
-                          .replace('var meta = ', '')))
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-        except IndexError:
-            return return_sold_out(target.data)
-        available_sizes = tuple(element.get('data-value')
-                                for element in content.xpath('//div[@class="swatch clearfix"]/div[@aria-label]')
-                                if 'available' in element.get('class'))
-        if available:
-            try:
-                name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        name,
-                        target.data,
-                        'shopify-filtered',
-                        content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                        '',
-                        (
-                            api.currencies['USD'],
-                            float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                        ),
-                        {'Site': 'Bodega'},
-                        tuple(
-                            (
+            for link in links:
+                try:
+                    if HashStorage.check_target(link.hash()):
+                        try:
+                            get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent},
+                                                            proxy=True)
+                            page_content: etree.Element = etree.HTML(get_content)
+                            sizes_data = Path.parse_str('$.product.variants.*').match(
+                                loads(findall(r'var meta = {.*}', get_content)[0].replace('var meta = ', '')))
+                        except etree.XMLSyntaxError:
+                            raise etree.XMLSyntaxError('Exception XMLDecodeError')
+                        except JSONDecodeError:
+                            raise JSONDecodeError('Exception JSONDecodeError')
+                        except IndexError:
+                            HashStorage.add_target(link.hash())
+                            continue
+                        available_sizes = [element.get('data-value')
+                                           for element in page_content.xpath('//div[@class="swatch clearfix"]/div['
+                                                                             '@aria-label]')
+                                           if 'available' in element.get('class')]
+                        sizes = [
+                            api.Size(
                                 str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
-                                'https://bdgastore.com/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data if
-                            size_data.current_value['public_title'].split(' ')[-1] in available_sizes
-                        ),
-                        (
-                            ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                            ('Cart', 'https://bdgastore.com/cart'),
-                            ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                'https://bdgastore.com/cart/' + str(size_data.current_value['id']) + ':1')
+                            for size_data in sizes_data
+                            if size_data.current_value['public_title'].split(' ')[-1] in available_sizes
+                        ]
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link.hash())
+                        result.append(IRelease(
+                            link.name,
+                            'shopify-filtered',
+                            name,
+                            page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                            '',
+                            api.Price(
+                                api.CURRENCIES['USD'],
+                                float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                            ),
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://bdgastore.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'Bodega Store'}
                         )
-                    )
-                )
-            except JSONDecodeError:
-                return api.SFail(self.name, 'Exception JSONDecodeError')
-        else:
-            return return_sold_out(target.data)
+                        )
+                except JSONDecodeError:
+                    raise JSONDecodeError('Exception JSONDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
+        return result

@@ -1,6 +1,5 @@
-name: nike-snkrs
-core: _0.8.3
-version: 1.0.0rc2
-important: no
+name: nike-snkrs-ru
+core: ^0.8.4.dev5
+version: 1.0.0
 keep: yes
-max-errors: 1
+max-errors: 3

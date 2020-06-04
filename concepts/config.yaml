@@ -1,6 +1,5 @@
 name: concepts
-core: _0.8.3
+core: _0.8.4.dev4
 version: 0.9rc1
-important: no
 keep: yes
 max-errors: 1

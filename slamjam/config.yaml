@@ -1,4 +1,4 @@
-name: suede-store
+name: slamjam
 core: ^0.8.4.dev5
 version: 1.0.0rc1
 keep: yes

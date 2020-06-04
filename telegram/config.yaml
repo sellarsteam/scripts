@@ -1,4 +1,4 @@
 name: telegram
-core: ^0.6.1
+core: _0.8.4.dev4
 version: 1.0.0rc1
 important: no

@@ -1,3 +1,7 @@
+# Scripts
+*.zip
+test/
+
 ### Idea
 .idea/
 

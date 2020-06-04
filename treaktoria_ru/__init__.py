@@ -2,19 +2,18 @@ from random import choice
 from typing import List
 
 from lxml import etree
-from requests import get
 from user_agent import generate_user_agent
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 
 sizes_stock = ['[LOW]', '[HIGH]', '[MEDIUM]']
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://www.traektoria.ru/wear/keds/brand-nike/?price__from=6000&THING_TYPE=%D0%92%D0%AB' \
                             '%D0%A1%D0%9E%D0%9A%D0%98%D0%95+%D0%9A%D0%95%D0%94%D0%AB%7E%D0%9A%D0%95%D0%94%D0%AB%7E%D0' \
                             '%9A%D0%A0%D0%9E%D0%A1%D0%A1%D0%9E%D0%92%D0%9A%D0%98%7E%D0%9D%D0%98%D0%97%D0%9A%D0%98%D0' \
@@ -29,35 +28,36 @@ class Parser(api.Parser):
         return [
             api.TInterval(element.get('href').split('/')[2],
                           self.name, 'https://www.traektoria.ru' + element.get('href'), self.interval)
-            for element in etree.HTML(get(
+            for element in etree.HTML(self.provider.get(
                 self.catalog,
                 headers={'user-agent': self.user_agent,
                          'connection': 'keep-alive', 'cache-control': 'max-age=0',
                          'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/'
+                                   '/webp,image/apng,*/*;q=0.8',
                          'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                          'sec-fetch-user': '?1',
                          'accept-language': 'en-US,en;q=0.9'}
-            ).text).xpath('//a[@class="p_link"]')
+            )).xpath('//a[@class="p_link"]')
         ]
 
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
                 available: bool = False
-                content: etree.Element = etree.HTML(get(
+                content: etree.Element = etree.HTML(self.provider.get(
                     target.data,
                     headers={'user-agent': generate_user_agent(),
                              'connection': 'keep-alive', 'cache-control': 'max-age=0',
                              'upgrade-insecure-requests': '1', 'sec-fetch-dest': 'document',
-                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image'
+                                       '/webp,image/apng,*/*;q=0.8',
                              'sec-fetch-site': 'same-origin', 'sec-fetch-mode': 'navigate',
                              'sec-fetch-user': '?1',
                              'accept-language': 'en-US,en;q=0.9',
                              'referer': self.catalog
-                             }).text)
-
-                if content.xpath('//input[@class="btn buy kdxAddToCart"]') != []:
+                             }))
+                if content.xpath('//input[@class="btn buy kdxAddToCart"]'):
                     available = True
                 else:
                     return api.SWaiting(target)

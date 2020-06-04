@@ -1,65 +1,88 @@
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Union
 
 from lxml import etree
-from requests import get
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
-        self.catalog: str = 'https://beliefmoscow.com/collection/obuv'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://beliefmoscow.com/collection/obuv'
         self.interval: int = 1
+        self.user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
 
-    def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(element.get('href').split('/')[4],
-                          self.name, 'https://beliefmoscow.com' + element.get('href'), self.interval)
-            for element in etree.HTML(get(
-                url=self.catalog, headers={'user-agent': 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; '
-                                                         '+http://yandex.com/bots)'}
-            ).text).xpath('//a[@class="product_preview-image\n                product_preview-image--cover"]')
-            if 'nike' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href')
-        ]
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=2, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                content: etree.Element = etree.HTML(get(url=target.data,
-                                                        headers={
-                                                            'user-agent': 'Mozilla/5.0 (compatible; '
-                                                                          'YandexAccessibilityBot/3.0; '
-                                                                          '+http://yandex.com/bots)'}).text)
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        name = content.xpath('//meta[@property="og:title"]')[0].get('content')
-        return api.SSuccess(
-            self.name,
-            api.Result(
-                name,
-                target.data,
-                'russian-retailers',
-                content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                '',
-                (api.currencies['RUB'],
-                 float(content.xpath('//div[@class="product-page__price"]')[0].text.replace('₽', '').replace('\n', '')
-                       .replace(' ', ''))),
-                {},
-                tuple(
-                    (
-                        size_data.text
-                    ) for size_data in content.xpath('//select[@id="variant-select"]')[0].xpath('option')
-                ),
-                (('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                 ('Cart', 'https://beliefmoscow.com/cart'),
-                 ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-            )
-        )
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = []
+        if mode == 0:
+            links = []
+            counter = 0
+            for element in etree.HTML(
+                    self.provider.get(self.link, headers={'user-agent': self.user_agent})
+            ).xpath('//a[@class="product_preview-image\n                product_preview-image--cover"]'):
+                if counter == 5:
+                    break
+
+                if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
+                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                    links.append(api.Target('https://beliefmoscow.com' + element.get('href'), self.name, 0))
+                counter += 1
+
+            for link in links:
+                try:
+                    if HashStorage.check_target(link.hash()):
+                        page_content: etree.Element = etree.HTML(
+                            self.provider.get(link.name, headers={'user-agent': self.user_agent}))
+                        sizes = [api.Size(str(size_data.text).split(' /')[0])
+                                 for size_data in
+                                 page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')]
+                        name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
+                        HashStorage.add_target(link.hash())
+                        result.append(
+                            IRelease(
+                                link.name,
+                                'russian-retailers',
+                                name,
+                                page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                                '',
+                                api.Price(
+                                    api.CURRENCIES['RUB'],
+                                    float(page_content.xpath('//div[@class="product-page__price"]')[0].text.replace(
+                                        '₽', '').replace('\n', '').replace(' ', ''))
+                                ),
+                                api.Sizes(api.SIZE_TYPES[''], sizes),
+                                [
+                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                               name.replace(' ', '%20')),
+                                    FooterItem('Cart', 'https://beliefmoscow.com/cart'),
+                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                ],
+                                {'Site': 'Belief Moscow'}
+                            )
+                        )
+                except etree.XMLSyntaxError:
+                    raise etree.XMLSyntaxError('Exception XMLDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
+        return result

@@ -1,21 +1,22 @@
+from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
 from re import findall
-from typing import List
+from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
-from requests import get
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
-from scripts.proxy import get_proxy
+from source import api
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
-        self.catalog: str = 'https://extrabutterny.com/collections/footwear/Mens'
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://extrabutterny.com/collections/footwear/Mens?page=2&sort_by=manual'
         self.interval: int = 1
         self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
@@ -23,89 +24,101 @@ class Parser(api.Parser):
                           '(KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 ' \
                           '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
 
-    def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(element[0].get('href').split('/')[4],
-                          self.name, 'https://extrabutterny.com' + element[0].get('href'), self.interval)
-            for element in etree.HTML(get(self.catalog,
-                                          headers={'user-agent': self.user_agent}, proxies=get_proxy()
-                                          ).text).xpath('//div[@class="GridItem-imageContainer"]')
-            if
-            'nike' in element[0].get('href') or 'jordan' in element[0].get('href') or 'yeezy' in element[0].get('href')
-        ]
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                available: bool = False
-                get_content = get(target.data, headers={'user-agent': self.user_agent}, proxies=get_proxy()).text
-                content: etree.Element = etree.HTML(get_content)
-                available_sizes = tuple(
-                    i.current_value['sku'].split('-')[-1] for i in Path.parse_str('$.offers.*').match(
-                        loads(content.xpath('//script[@type="application/ld+json"]')[0].text)) if
-                    i.current_value['availability'] == 'https://schema.org/InStock')
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = []
+        if mode == 0:
+            links = []
+            counter = 0
+            catalog_links = etree.HTML(
+                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
+            ).xpath('//div[@class="GridItem-imageContainer"]/a')
 
-                if content.xpath('//strong')[0].text.replace(' ', '').replace('\t', '').replace('\n', '') != 'SoldOut':
-                    available = True
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except IndexError:
-            return api.SWaiting(target)
-        if available:
-            try:
-                sizes_data = Path.parse_str('$.product.variants.*').match(
-                    loads(findall(r'var meta = {.*}', get_content)[0]
-                          .replace('var meta = ', '')))
-                name = content.xpath('//title')[0].text.split(' [')[0]
-                return api.SSuccess(
-                    self.name,
-                    api.Result(
-                        name,
-                        target.data,
-                        'shopify-filtered',
-                        content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
-                        '',
-                        (
-                            api.currencies['USD'],
-                            float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                        ),
-                        {},
-                        tuple(
-                            (
-                                str(size_data.current_value['public_title']) + ' US',
-                                'https://extrabutterny.com/cart/' + str(size_data.current_value['id']) + ':1'
-                            ) for size_data in sizes_data if size_data.current_value['public_title'] in available_sizes
-                        ),
-                        (
-                            ('StockX', 'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')),
-                            ('Cart', 'https://extrabutterny.com/cart'),
-                            ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+            if not catalog_links:
+                raise ConnectionResetError('Shopify banned this IP')
+
+            for element in catalog_links:
+                if element.get('href') is None:
+                    continue
+                if counter == 5:
+                    break
+                if 'nike' in element.get('href') or 'jordan' \
+                        in element.get('href') or 'yeezy' in element.get('href'):
+                    links.append(api.Target('https://extrabutterny.com' + str(element.get('href')), self.name, 0))
+                counter += 1
+
+            for link in links:
+                try:
+                    if HashStorage.check_target(link.hash()):
+                        try:
+                            get_content = self.provider.get(
+                                link.name, headers={'user-agent': self.user_agent}, proxy=True)
+                            page_content: etree.Element = etree.HTML(get_content)
+                            available_sizes = [
+                                i.current_value['sku'].split('-')[-1]
+                                for i in Path.parse_str('$.offers.*').match(loads(
+                                    page_content.xpath('//script[@type="application/ld+json"]')[0].text))
+                                if i.current_value['availability'] == 'https://schema.org/InStock'
+                            ]
+                            sizes_data = Path.parse_str('$.product.variants.*').match(
+                                loads(findall(r'var meta = {.*}', get_content)[0]
+                                      .replace('var meta = ', '')))
+                        except etree.XMLSyntaxError:
+                            raise etree.XMLSyntaxError('Exception XMLDecodeError')
+                        except JSONDecodeError:
+                            raise JSONDecodeError('Exception JSONDecodeError')
+                        except IndexError:
+                            HashStorage.add_target(link.hash())
+                            continue
+                        name = page_content.xpath('//title')[0].text.split(' [')[0]
+                        HashStorage.add_target(link.hash())
+                        sizes = [
+                            api.Size(
+                                str(size_data.current_value['public_title'].split(' ')[-1]) + ' US',
+                                'https://extrabutterny.com/cart/' + str(size_data.current_value['id']) + ':1')
+                            for size_data in sizes_data
+                            if size_data.current_value['public_title'].split(' ')[-1] in available_sizes
+                        ]
+                        result.append(
+                            IRelease(
+                                link.name,
+                                'shopify-filtered',
+                                name,
+                                page_content.xpath('//meta[@property="og:image:secure_url"]')[0].get('content'),
+                                '',
+                                api.Price(
+                                    api.CURRENCIES['USD'],
+                                    float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                                ),
+                                api.Sizes(api.SIZE_TYPES[''], sizes),
+                                [
+                                    FooterItem(
+                                        'StockX',
+                                        'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20')
+                                    ),
+                                    FooterItem('Cart', 'https://extrabutterny.com/cart'),
+                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                ],
+                                {'Site': 'Extra Butter NY'}
+                            )
                         )
-                    )
-                )
-            except JSONDecodeError:
-                return api.SFail(self.name, 'Exception JSONDecodeError')
-        else:  # TODO return info, that target is sold out
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                    '',
-                    (
-                        api.currencies['USD'],
-                        float(content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
-                    ),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+                except etree.XMLSyntaxError:
+                    raise etree.XMLSyntaxError('Exception XMLDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
+        return result

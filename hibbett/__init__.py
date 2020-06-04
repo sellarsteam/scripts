@@ -1,18 +1,16 @@
 from typing import List
 
-from cfscrape import create_scraper
 from lxml import etree
 from user_agent import generate_user_agent
 
-from core import api
-from core.api import IndexType, TargetType, StatusType
-from core.logger import Logger
+from source import api
+from source.api import IndexType, TargetType, StatusType
+from source.logger import Logger
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
-        self.scraper = create_scraper()
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
+        super().__init__(name, log, provider, storage)
         self.catalog: str = 'https://www.hibbett.com/launch-calendar/?prefn1=dtLaunch&prefv1=30'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
@@ -23,8 +21,9 @@ class Parser(api.Parser):
     def targets(self) -> List[TargetType]:
         links = list()
         counter = 0
-        for element in etree.HTML(create_scraper().get(url=self.catalog).text).xpath('//a[@class="name-link"]'):
-            if counter == 10:
+        for element in etree.HTML(self.provider.get(url=self.catalog, proxy=True, mode=1)) \
+                .xpath('//a[@class="name-link"]'):
+            if counter == 5:
                 break
             if 'dunk' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') \
                     or 'sacai' in element.get('href') or 'air' in element.get('href'):
@@ -39,7 +38,7 @@ class Parser(api.Parser):
     def execute(self, target: TargetType) -> StatusType:
         try:
             if isinstance(target, api.TInterval):
-                content: etree.Element = etree.HTML(create_scraper().get(url=target.data).text)
+                content: etree.Element = etree.HTML(self.provider.get(url=target.data, proxy=True, mode=1))
                 available_sizes = list()
                 for element in content.xpath('//ul[@class="swatches size "]/li[@class="selectable"]/a'):
                     size = element.get('href').split('size=')[-1].split('&')[0].replace('0', '')
