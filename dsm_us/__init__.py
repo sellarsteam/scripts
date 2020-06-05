@@ -38,7 +38,6 @@ class Parser(api.Parser):
                 products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
                 if products == '':
                     result.append(api.CInterval(self.name, 600.))
-                    result.append(content)
                     return result
                 for element in Path.parse_str('$.products.*').match(loads(products)):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
