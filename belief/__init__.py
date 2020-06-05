@@ -44,7 +44,7 @@ class Parser(api.Parser):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     links.append(api.Target('https://beliefmoscow.com' + element.get('href'), self.name, 0))
-                counter += 1
+                    counter += 1
 
             for link in links:
                 try:

@@ -35,7 +35,7 @@ class Parser(api.Parser):
                         in element.get('data-url') or 'dunk' in element.get('data-url'):
                     links.append([api.Target('https://www.slamjam.com' + element.get('data-url'), self.name, 0),
                                   'https://www.slamjam.com' + element.get('data-url')])
-                counter += 1
+                    counter += 1
             if len(links) == 0:
                 return result
             for link in links:

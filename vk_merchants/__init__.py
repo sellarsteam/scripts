@@ -97,7 +97,7 @@ class Parser(api.Parser):
             post_id = get_post_id(merchant_id, token, self.provider)
             if post_id != 0:
                 targets.append(api.TInterval(merchant_id[1], self.name, post_id, self.interval))
-            self.counter += 1
+            self.    counter += 1
         return targets
 
     def execute(self, target: TargetType) -> StatusType:
@@ -112,7 +112,7 @@ class Parser(api.Parser):
                 available: bool = False
                 content = loads(self.provider.get(f"https://api.vk.com/method/wall.getById?posts={target.data}"
                                                   f"&access_token={token}&v=5.52"))
-                self.counter += 1
+                self.    counter += 1
                 text = content['response'][0]['text']
                 for key_word in key_words():
                     if key_word in text:

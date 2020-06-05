@@ -28,7 +28,7 @@ class Parser(api.Parser):
             if 'dunk' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') \
                     or 'sacai' in element.get('href') or 'air' in element.get('href'):
                 links.append(element.get('href'))
-                counter += 1
+                    counter += 1
         return [
             api.TInterval(element.split('/')[-1],
                           self.name, element, self.interval)

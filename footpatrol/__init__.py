@@ -36,7 +36,7 @@ class Parser(api.Parser):
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     links.append([api.Target('https://www.footpatrol.com' + element.get('href'), self.name, 0),
                                   'https://www.footpatrol.com' + element.get('href')])
-                counter += 1
+                    counter += 1
             if len(links) == 0:
                 return result
             for link in links:
