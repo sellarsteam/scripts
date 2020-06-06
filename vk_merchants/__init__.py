@@ -1,13 +1,16 @@
 import os
-from json import loads, JSONDecodeError
-from typing import List
 
 import yaml
+from json import loads, JSONDecodeError
+from typing import List, Union
+
 from user_agent import generate_user_agent
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 vk_merchants = (
     ('507698109', 'Ren Chris'),
@@ -33,6 +36,7 @@ vk_merchants = (
     ('180322689', 'Илья Царёв👨‍💻'),
     ('90213067', 'Александр Бабурин'),
     ('60234368', 'Виктор Гусев'),
+    ('132264939', 'Ярослав Руденский')
 )
 
 
@@ -63,8 +67,8 @@ def get_post_id(merchant_id, token, provider):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
         self.user_agent = generate_user_agent()
         self.counter = 0
         self.number_of_token = 0
@@ -82,78 +86,68 @@ class Parser(api.Parser):
         else:
             self.log.error('secret.yaml doesn\'t exist')
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 10)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CInterval(self.name, 1200.)
 
-    def targets(self) -> List[TargetType]:
-        targets = list()
-        for merchant_id in vk_merchants:
-            if self.counter == 5000:
-                self.number_of_token += 1
-                if self.number_of_token == len(self.tokens):
-                    self.number_of_token = 0
-                self.counter = 0
-            token = self.tokens[self.number_of_token]
-            post_id = get_post_id(merchant_id, token, self.provider)
-            if post_id != 0:
-                targets.append(api.TInterval(merchant_id[1], self.name, post_id, self.interval))
-            self.    counter += 1
-        return targets
-
-    def execute(self, target: TargetType) -> StatusType:
-        if self.counter == 5000:
-            self.number_of_token += 1
-            if self.number_of_token == len(self.tokens):
-                self.number_of_token = 0
-            self.counter = 0
-        token = self.tokens[self.number_of_token]
-        try:
-            if isinstance(target, api.TInterval):
-                available: bool = False
-                content = loads(self.provider.get(f"https://api.vk.com/method/wall.getById?posts={target.data}"
-                                                  f"&access_token={token}&v=5.52"))
-                self.    counter += 1
-                text = content['response'][0]['text']
-                for key_word in key_words():
-                    if key_word in text:
-                        available = True
-                        break
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except JSONDecodeError:
-            return api.SFail(self.name, 'Exception JSONDecodeError')
-
-        if available:
+    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
+        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = [content]
+        if mode == 0:
+            targets = []
             try:
-                photo = content['response'][0]['attachments'][0]['photo']['photo_1280']
-            except KeyError:
-                photo = ''
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    target.name,
-                    f"https://vk.com/id{target.data.split('_')[0]}",
-                    'vk-merchants',
-                    photo,
-                    text,
-                    (api.currencies['USD'], 0),
-                    {},
-                    (),
-                    (('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'),)
-                )
-            )
-        else:
-            return api.SSuccess(  # TODO Return SFail if post is wrong
-                self.name,
-                api.Result(
-                    'Post is wrong',
-                    f"https://vk.com/id{target.data.split('_')[0]}",
-                    'tech',
-                    '',
-                    text,
-                    (api.currencies['USD'], 0),
-                    {},
-                    (),
-                    (('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'),)
-                )
-            )
+                for merchant_id in vk_merchants:
+                    if self.counter == 5000:
+                        self.number_of_token += 1
+                        if self.number_of_token == len(self.tokens):
+                            self.number_of_token = 0
+                        self.counter = 0
+                    token = self.tokens[self.number_of_token]
+                    post_id = get_post_id(merchant_id, token, self.provider)
+                    target = api.Target(str(post_id), self.name, 0)
+                    if HashStorage.check_target(target.hash()):
+                        if post_id != 0:
+                            targets.append([target, merchant_id[1]])
+                            HashStorage.add_target(target.hash())
+                    self.counter += 1
+            except JSONDecodeError:
+                raise JSONDecodeError('Exception JSONDecodeError')
+            try:
+                for target in targets:
+                    if self.counter == 5000:
+                        self.number_of_token += 1
+                        if self.number_of_token == len(self.tokens):
+                            self.number_of_token = 0
+                        self.counter = 0
+                    token = self.tokens[self.number_of_token]
+                    content = loads(self.provider.get(f"https://api.vk.com/method/wall.getById?posts={target[0].name}"
+                                                      f"&access_token={token}&v=5.52"))
+                    self.counter += 1
+                    text = content['response'][0]['text']
+                    available = False
+                    for key_word in key_words():
+                        if key_word in text:
+                            available = True
+                            break
+                    if available:
+                        try:
+                            photo = content['response'][0]['attachments'][0]['photo']['photo_1280']
+                        except KeyError:
+                            photo = ''
+                        result.append(IRelease(
+                            f"https://vk.com/id{target[0].name.split('_')[0]}",
+                            'vk-merchants',
+                            target[1],
+                            photo,
+                            text,
+                            api.Price(api.CURRENCIES['USD'], float(0)),
+                            api.Sizes(api.SIZE_TYPES[''], []),
+                            [
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'),
+                            ]
+                        )
+                        )
+            except JSONDecodeError:
+                raise JSONDecodeError('Exception JSONDecodeError')
+            result.append(content)
+        return result
