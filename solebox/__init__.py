@@ -46,7 +46,10 @@ class Parser(api.Parser):
             page_content: etree.Element = etree.HTML(
                 self.provider.get(content.name, headers=self.headers,
                                   proxy=True, mode=1))
-            name = page_content.xpath('//span[@class="b-breadcrumb-text"]')[0].text
+            try:
+                name = page_content.xpath('//span[@class="b-breadcrumb-text"]')[0].text
+            except IndexError:
+                name = ''
             try:
                 date = page_content.xpath('//button[@class="f-pdp-button f-pdp-button--release js-btn-release"]')[
                     0].text
