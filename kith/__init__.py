@@ -60,7 +60,7 @@ class Parser(api.Parser):
                                 continue
                             except IndexError:
                                 continue
-                            sizes = [api.Size(str(size.current_value['option2']) + symbol,
+                            sizes = [api.Size(str(size.current_value['title']) + symbol,
                                               f'https://kith.com/cart/{size.current_value["id"]}:1')
                                      for size in Path.parse_str('$.*').match(element.current_value['variants'])]
                             try:

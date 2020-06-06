@@ -48,7 +48,7 @@ class Parser(api.Parser):
                         target = api.Target('https://rsvpgallery.com/collections/footwear/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
-                            sizes = [api.Size(str(size.current_value['option2']) + ' US',
+                            sizes = [api.Size(str(size.current_value['title']) + ' US',
                                               f'https://rsvpgallery.com/cart/{size.current_value["id"]}:1')
                                      for size in Path.parse_str('$.*').match(element.current_value['variants'])]
                             try:
