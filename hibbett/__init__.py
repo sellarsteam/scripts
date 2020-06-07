@@ -47,12 +47,10 @@ class Parser(api.Parser):
             for element in etree.HTML(self.provider.get(url=self.link, proxy=True, mode=1,
                                                         headers={'user-agent': self.user_agent})) \
                     .xpath('//a[@class="thumb-link has-alt-image"]'):
-                print(element.get('href'))
                 if counter == 10:
                     break
                 if 'dunk' in element.get('href') or 'yeezy' in element.get('href') or 'jordan' in element.get('href') \
                         or 'sacai' in element.get('href') or 'air' in element.get('href'):
-                    print(element.get('href'))
                     result.append(api.TInterval(element.get('href'), self.name, 0, 0))
                 counter += 1
         elif mode == 1:
