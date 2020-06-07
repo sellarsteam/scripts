@@ -47,9 +47,12 @@ class Parser(api.Parser):
                         target = api.Target('https://www.bbbranded.com/collections/mens-footwear/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
-                            sizes = [api.Size(str(size.current_value['option2']) + ' US',
-                                              f'https://www.bbbranded.com/cart/{size.current_value["id"]}:1')
-                                     for size in Path.parse_str('$.*').match(element.current_value['variants'])]
+                            try:
+                                sizes = [api.Size(str(size.current_value['option2']) + ' US',
+                                                  f'https://www.bbbranded.com/cart/{size.current_value["id"]}:1')
+                                         for size in Path.parse_str('$.*').match(element.current_value['variants'])]
+                            except IndexError:
+                                sizes = []
                             try:
                                 price = api.Price(
                                         api.CURRENCIES['USD'],
@@ -65,13 +68,20 @@ class Parser(api.Parser):
                                         api.CURRENCIES['USD'],
                                         float(0)
                                 )
-                            name = element.current_value['title']
+                            try:
+                                image = element.current_value['images'][0]['src']
+                            except IndexError:
+                                image = ''
+                            try:
+                                name = element.current_value['title']
+                            except IndexError:
+                                name = ''
                             HashStorage.add_target(target.hash())
                             result.append(IRelease(
                                 target.name,
                                 'shopify-filtered',
                                 name,
-                                element.current_value['images'][0]['src'],
+                                image,
                                 '',
                                 price,
                                 api.Sizes(api.SIZE_TYPES[''], sizes),
