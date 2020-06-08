@@ -71,7 +71,7 @@ def build(item: Union[IAnnounce, IRelease, IRestock]) -> dict:
 
     if item.footer:
         embed['fields'].append({
-            'name': 'Footer',
+            'name': 'Links',
             'value': ' | '.join((f'[{i.text}]({i.url})' if i.url else i.text for i in item.footer))
         })
 
