@@ -44,7 +44,7 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://www.deadstock.ca/products.json?collection=new-arrivals,footwear&limit=50' + element.
+                        target = api.Target('https://www.deadstock.ca/collections/new-arrivals/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
                             sizes = [api.Size(str(size.current_value['title']) + ' US',
