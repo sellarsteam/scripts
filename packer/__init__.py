@@ -37,7 +37,7 @@ class Parser(api.Parser):
             try:
                 products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
                 if products == '':
-                    result.append(api.CInterval(self.name, 600.))
+                    result.append(api.CInterval(self.name, 0, 600.))
                     return result
 
                 for element in Path.parse_str('$.products.*').match(loads(products)):
