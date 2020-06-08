@@ -15,7 +15,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://www.a-ma-maniere.com/collections/new-arrivals/products.json'
+        self.link: str = 'https://www.a-ma-maniere.com/products.json?collections=new-arrivals,all&limit=50'
         self.interval: int = 1
 
     @property
