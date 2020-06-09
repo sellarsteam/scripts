@@ -15,7 +15,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://kith.com/products.json?collection=new-arrivals,footwear, mens-footwear&limit=50'
+        self.link: str = 'https://kith.com/products.json?limit=1000'
         self.interval: int = 1
 
     @property
@@ -82,7 +82,7 @@ class Parser(api.Parser):
                             HashStorage.add_target(target.hash())
                             result.append(IRelease(
                                 target.name,
-                                'shopify-filtered',
+                                'kith',
                                 name,
                                 element.current_value['images'][0]['src'],
                                 '',
