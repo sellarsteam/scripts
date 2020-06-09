@@ -1,7 +1,8 @@
-from re import findall
+from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
+from re import findall
 
 from source import api
 from source import logger
@@ -20,7 +21,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CInterval(self.name, 3.)
+        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
@@ -30,15 +36,13 @@ class Parser(api.Parser):
             counter = 0
             for element in etree.HTML(self.provider.get(self.link, headers={'user-agent': self.user_agent}, mode=1,
                                                         proxy=True)).xpath('//a[@data-e2e="product-listing-name"]'):
-                if counter == 5:
+                if counter == 200:
                     break
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     links.append([api.Target('https://www.footpatrol.com' + element.get('href'), self.name, 0),
                                   'https://www.footpatrol.com' + element.get('href')])
                     counter += 1
-            if len(links) == 0:
-                return result
             for link in links:
                 try:
                     if HashStorage.check_target(link[0].hash()):
@@ -72,4 +76,9 @@ class Parser(api.Parser):
                         )
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
         return result
