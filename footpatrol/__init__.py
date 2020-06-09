@@ -34,8 +34,8 @@ class Parser(api.Parser):
         if mode == 0:
             links = list()
             counter = 0
-            for element in etree.HTML(self.provider.get(self.link, headers={'user-agent': self.user_agent}, mode=1,
-                                                        proxy=True)).xpath('//a[@data-e2e="product-listing-name"]'):
+            for element in etree.HTML(self.provider.get(self.link, headers={'user-agent': self.user_agent}, mode=1
+                                                        )).xpath('//a[@data-e2e="product-listing-name"]'):
                 if counter == 200:
                     break
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
@@ -46,8 +46,7 @@ class Parser(api.Parser):
             for link in links:
                 try:
                     if HashStorage.check_target(link[0].hash()):
-                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, mode=1,
-                                                        proxy=True)
+                        get_content = self.provider.get(link[1], headers={'user-agent': self.user_agent}, mode=1)
                         page_content: etree.Element = etree.HTML(get_content)
                         name = page_content.xpath('//meta[@name="title"]')[0].get('content').split(' |')[0]
                         sizes = [api.Size(size.replace('name:', '').replace('"', '') + ' UK')
