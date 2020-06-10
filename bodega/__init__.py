@@ -44,26 +44,31 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://bdgastore.com/collections/footwear/products/' + element.
+                        target = api.Target('https://bdgastore.com/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
-                            sizes = [api.Size(str(size.current_value['option2']) + ' US',
+                            sizes_data = Path.parse_str('$.product.variants.*').match(loads(
+                                self.provider.get(target.name + '/count.json',
+                                                  headers={'user-agent': generate_user_agent()},
+                                                  proxy=True)))
+                            sizes = [api.Size(str(size.current_value['option2']) + ' US' +
+                                              f' [{size.current_value["inventory_quantity"]}]',
                                               f'https://bdgastore.com/cart/{size.current_value["id"]}:1')
-                                     for size in Path.parse_str('$.*').match(element.current_value['variants'])]
+                                     for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
                             try:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(element.current_value['variants'][0]['price'])
+                                    api.CURRENCIES['USD'],
+                                    float(element.current_value['variants'][0]['price'])
                                 )
                             except KeyError:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(0)
+                                    api.CURRENCIES['USD'],
+                                    float(0)
                                 )
                             except IndexError:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(0)
+                                    api.CURRENCIES['USD'],
+                                    float(0)
                                 )
                             name = element.current_value['title']
                             HashStorage.add_target(target.hash())

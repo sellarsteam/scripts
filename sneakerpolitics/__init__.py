@@ -45,12 +45,17 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://sneakerpolitics.com/collections/sneakers/products/' + element.
+                        target = api.Target('https://sneakerpolitics.com/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
-                            sizes = [api.Size(str(size.current_value['title']) + ' US',
+                            sizes_data = Path.parse_str('$.variants.*').match(loads(
+                                self.provider.get(target.name + '.js',
+                                                  headers={'user-agent': generate_user_agent()},
+                                                  proxy=True)))
+                            sizes = [api.Size(str(size.current_value['title']) + ' US' 
+                                              f' [?]',
                                               f'https://sneakerpolitics.com/cart/{size.current_value["id"]}:1')
-                                     for size in Path.parse_str('$.*').match(element.current_value['variants'])]
+                                     for size in sizes_data if size.current_value['available'] is True]
                             try:
                                 price = api.Price(
                                         api.CURRENCIES['USD'],

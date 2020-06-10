@@ -44,12 +44,17 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://packershoes.com/collections/new-arrivals/products/' + element.
+                        target = api.Target('https://packershoes.com/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
-                            sizes = [api.Size(str(size.current_value['option1']) + ' US',
-                                              f'https://packershoes.com/cart/{size.current_value["id"]}:1')
-                                     for size in Path.parse_str('$.*').match(element.current_value['variants'])]
+                            sizes_data = Path.parse_str('$.product.variants.*').match(loads(
+                                self.provider.get(target.name + '/count.json',
+                                                  headers={'user-agent': generate_user_agent()},
+                                                  proxy=True)))
+                            sizes = [api.Size(str(size.current_value['option1']) + ' US'
+                                              f' [{size.current_value["inventory_quantity"]}]',
+                                              f'https://www.packershoes.com/cart/{size.current_value["id"]}:1')
+                                     for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
                             try:
                                 price = api.Price(
                                         api.CURRENCIES['USD'],
