@@ -11,8 +11,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://www.solebox.com/en_RU/c/footwear?prefn1=isNew&prefv1=true&openCategory=true' \
-                         '&specificCategory=new '
+        self.link: str = 'https://www.solebox.com/en_RU/c/new'
         self.interval: int = 1
         self.headers = {'authority': 'www.solebox.com',
                         'scheme': 'https',
@@ -35,7 +34,7 @@ class Parser(api.Parser):
         if mode == 0:
             links = []
             page_content = etree.HTML(self.provider.get(
-                self.link, headers=self.headers, proxy=True, mode=1
+                self.link, headers=self.headers, proxy=True, mode=1, timeout=60
             ))
             for element in page_content.xpath('//a[@class="b-product-tile-image-link js-product-tile-link"]'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
@@ -45,7 +44,7 @@ class Parser(api.Parser):
         elif mode == 1:
             page_content: etree.Element = etree.HTML(
                 self.provider.get(content.name, headers=self.headers,
-                                  proxy=True, mode=1))
+                                  proxy=True, mode=1, timeout=60))
             try:
                 name = page_content.xpath('//span[@class="b-breadcrumb-text"]')[0].text
             except IndexError:
