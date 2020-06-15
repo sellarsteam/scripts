@@ -15,7 +15,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://renarts.com/products.json?limit=1000'
+        self.link: str = 'https://nocomplyatx.com/products.json?limit=50'
         self.interval: float = 1
 
     @property
@@ -25,7 +25,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=250000, tzinfo=timezone.utc).timestamp()
+            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -44,17 +44,17 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://renarts.com/products/' + element.
+                        target = api.Target('https://nocomplyatx.com/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
-                            sizes_data = Path.parse_str('$.product.variants.*').match(loads(
-                                self.provider.get(target.name + '/count.json',
+                            sizes_data = Path.parse_str('$.variants.*').match(loads(
+                                self.provider.get(target.name + '.js',
                                                   headers={'user-agent': generate_user_agent()},
                                                   proxy=True)))
-                            sizes = [api.Size(str(size.current_value['option1']) + ' US'
-                                              f' [{size.current_value["inventory_quantity"]}]',
-                                              f'https://renarts.com/cart/{size.current_value["id"]}:1')
-                                     for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
+                            sizes = [api.Size(str(size.current_value['public_title']).upper() + ' US' 
+                                              f' [?]',
+                                              f'https://nocomplyatx.com/cart/{size.current_value["id"]}:1')
+                                     for size in sizes_data if size.current_value['available'] is True]
                             if not sizes:
                                 continue
                             try:
@@ -89,10 +89,10 @@ class Parser(api.Parser):
                                 [
                                     FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                                name.replace(' ', '%20')),
-                                    FooterItem('Cart', 'https://renarts.com/cart'),
+                                    FooterItem('Cart', 'https://nocomplyatx.com/cart'),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],
-                                {'Site': 'Renarts'}
+                                {'Site': 'No-Comply Texas'}
                             ))
             except JSONDecodeError:
                 raise JSONDecodeError('Exception JSONDecodeError')
