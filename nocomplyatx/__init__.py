@@ -25,7 +25,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=1, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
