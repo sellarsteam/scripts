@@ -73,7 +73,7 @@ class Parser(api.Parser):
                             target.name,
                             'travis-scott',
                             name,
-                            element.current_value['images'][0]['src'],
+                                image,
                             '',
                             price,
                             api.Sizes(api.SIZE_TYPES[''], sizes),

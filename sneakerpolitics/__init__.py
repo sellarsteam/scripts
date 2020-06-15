@@ -57,9 +57,13 @@ class Parser(api.Parser):
                                               f'https://sneakerpolitics.com/cart/{size.current_value["id"]}:1')
                                      for size in sizes_data if size.current_value['available'] is True]
                             try:
+                                image = element.current_value['images'][0]['src']
+                            except IndexError:
+                                image = ''
+                            try:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(element.current_value['variants'][0]['price'])
+                                    api.CURRENCIES['USD'],
+                                    float(element.current_value['variants'][0]['price'])
                                 )
                             except KeyError:
                                 price = api.Price(
@@ -77,7 +81,7 @@ class Parser(api.Parser):
                                 target.name,
                                 'shopify-filtered',
                                 name,
-                                element.current_value['images'][0]['src'],
+                                image,
                                 '',
                                 price,
                                 api.Sizes(api.SIZE_TYPES[''], sizes),

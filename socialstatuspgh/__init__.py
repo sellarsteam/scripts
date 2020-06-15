@@ -62,9 +62,13 @@ class Parser(api.Parser):
                             except IndexError:
                                 image = ''
                             try:
+                                image = element.current_value['images'][0]['src']
+                            except IndexError:
+                                image = ''
+                            try:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(element.current_value['variants'][0]['price'])
+                                    api.CURRENCIES['USD'],
+                                    float(element.current_value['variants'][0]['price'])
                                 )
                             except KeyError:
                                 price = api.Price(

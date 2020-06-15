@@ -76,7 +76,7 @@ class Parser(api.Parser):
                                 target.name,
                                 'doverstreetmarket',
                                 name,
-                                element.current_value['images'][0]['src'],
+                                image,
                                 '',
                                 price,
                                 api.Sizes(api.SIZE_TYPES[''], sizes),
