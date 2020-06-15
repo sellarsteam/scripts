@@ -15,7 +15,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://laceupnyc.com/products.json?limit=1000'
+        self.link: str = 'https://renarts.com/products.json?limit=1000'
         self.interval: float = 1
 
     @property
@@ -44,7 +44,7 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://laceupnyc.com/products/' + element.
+                        target = api.Target('https://renarts.com/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
                             sizes_data = Path.parse_str('$.product.variants.*').match(loads(
@@ -53,7 +53,7 @@ class Parser(api.Parser):
                                                   proxy=True)))
                             sizes = [api.Size(str(size.current_value['option1']) + ' US'
                                               f' [{size.current_value["inventory_quantity"]}]',
-                                              f'https://laceupnyc.com/cart/{size.current_value["id"]}:1')
+                                              f'https://renarts.com/cart/{size.current_value["id"]}:1')
                                      for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
                             if not sizes:
                                 continue
@@ -89,10 +89,10 @@ class Parser(api.Parser):
                                 [
                                     FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                                name.replace(' ', '%20')),
-                                    FooterItem('Cart', 'https://laceupnyc.com//cart'),
+                                    FooterItem('Cart', 'https://renarts.com/cart'),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],
-                                {'Site': 'Lace Up NYC'}
+                                {'Site': 'Renarts'}
                             ))
             except JSONDecodeError:
                 raise JSONDecodeError('Exception JSONDecodeError')
