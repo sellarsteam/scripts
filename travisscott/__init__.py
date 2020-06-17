@@ -4,6 +4,7 @@ from typing import List, Union
 
 from jsonpath2 import Path
 from user_agent import generate_user_agent
+from lxml import etree
 
 from source import api
 from source import logger
@@ -37,7 +38,7 @@ class Parser(api.Parser):
             try:
                 products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
                 if products == '{"products":[]}':
-                    result.append(api.CInterval(self.name, 0, 600.))
+                    result.append(api.CInterval(self.name, 600.))
                     return result
 
                 for element in Path.parse_str('$.products.*').match(loads(products)):
@@ -73,7 +74,7 @@ class Parser(api.Parser):
                             target.name,
                             'travis-scott',
                             name,
-                                image,
+                            element.current_value['images'][0]['src'],
                             '',
                             price,
                             api.Sizes(api.SIZE_TYPES[''], sizes),
@@ -85,8 +86,8 @@ class Parser(api.Parser):
                             ],
                             {'Site': 'Travis Scott'}
                         ))
-            except JSONDecodeError:
-                raise JSONDecodeError('Exception JSONDecodeError')
+            except JSONDecodeError as e:
+                raise e('Exception JSONDecodeError')
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False

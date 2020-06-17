@@ -3,6 +3,7 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
+from lxml import etree
 from json import loads, JSONDecodeError
 
 from source import api
@@ -57,8 +58,8 @@ class Parser(api.Parser):
                                                      .xpath('//script[@type="application/ld+json"]')[1].text)
                             except etree.XMLSyntaxError:
                                 raise etree.XMLSyntaxError('Exception XMLDecodeError')
-                            except JSONDecodeError:
-                                raise JSONDecodeError('Exception JSONDecodeError')
+                            except JSONDecodeError as e:
+                                raise e('Exception JSONDecodeError')
                             available_sizes = []
                             for size in page_content.xpath('//ul[@class="sizes__table current"]//li'):
                                 if size.get('class') == 'last':
@@ -75,7 +76,7 @@ class Parser(api.Parser):
                             result.append(
                                 IRelease(
                                     'https://street-beat.ru' + link,
-                                    'russian-retailers',
+                                    'streetbeat',
                                     name,
                                     json_content['image'],
                                     '',

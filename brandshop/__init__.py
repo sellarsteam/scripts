@@ -3,6 +3,7 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
+from lxml import etree
 
 from source import api
 from source import logger
@@ -54,7 +55,7 @@ class Parser(api.Parser):
                             result.append(
                                 IRelease(
                                     element.get('href'),
-                                    'russian-retailers',
+                                    'brandshop',
                                     name,
                                     page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
                                     '',

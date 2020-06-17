@@ -4,6 +4,7 @@ from typing import List, Union
 
 from jsonpath2 import Path
 from user_agent import generate_user_agent
+from lxml import etree
 
 from source import api
 from source import logger
@@ -37,9 +38,16 @@ class Parser(api.Parser):
             try:
                 products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
                 if products == '':
-                    result.append(api.CInterval(self.name, 0, 600.))
+                    result.append(api.CInterval(self.name, 600.))
                     return result
-                for element in Path.parse_str('$.products.*').match(loads(products)):
+                try:
+                    page_content = loads(products)
+                except JSONDecodeError as e:
+                    if etree.HTML(products).xpath('//title')[0].text == 'Page temporarily unavailable':
+                        raise TypeError('Site was banned by shopify')
+                    else:
+                        raise e('JSON decode error')
+                for element in Path.parse_str('$.products.*').match(page_content):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
@@ -54,10 +62,6 @@ class Parser(api.Parser):
                                               f' [{size.current_value["inventory_quantity"]}]',
                                               f'https://eflash-us.doverstreetmarket.com/cart/{size.current_value["id"]}:1')
                                      for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
-                            try:
-                                image = element.current_value['images'][0]['src']
-                            except IndexError:
-                                image = ''
                             try:
                                 price = api.Price(
                                     api.CURRENCIES['USD'],
@@ -79,7 +83,7 @@ class Parser(api.Parser):
                                 target.name,
                                 'doverstreetmarket',
                                 name,
-                                image,
+                                element.current_value['images'][0]['src'],
                                 '',
                                 price,
                                 api.Sizes(api.SIZE_TYPES[''], sizes),
@@ -91,8 +95,8 @@ class Parser(api.Parser):
                                 ],
                                 {'Location': 'United States (New-York)'}
                             ))
-            except JSONDecodeError:
-                raise JSONDecodeError('Exception JSONDecodeError')
+            except JSONDecodeError as e:
+                raise e('Exception JSONDecodeError')
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False

@@ -2,6 +2,7 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
+from lxml import etree
 
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, FooterItem

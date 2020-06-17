@@ -5,6 +5,7 @@ from json import loads, JSONDecodeError
 from typing import List, Union
 
 from user_agent import generate_user_agent
+from lxml import etree
 
 from source import api
 from source import logger
@@ -110,8 +111,8 @@ class Parser(api.Parser):
                             targets.append([target, merchant_id[1]])
                             HashStorage.add_target(target.hash())
                     self.counter += 1
-            except JSONDecodeError:
-                raise JSONDecodeError('Exception JSONDecodeError')
+            except JSONDecodeError as e:
+                raise e('Exception JSONDecodeError')
             try:
                 for target in targets:
                     if self.counter == 5000:
@@ -147,7 +148,7 @@ class Parser(api.Parser):
                             ]
                         )
                         )
-            except JSONDecodeError:
-                raise JSONDecodeError('Exception JSONDecodeError')
+            except JSONDecodeError as e:
+                raise e('Exception JSONDecodeError')
             result.append(content)
         return result

@@ -3,6 +3,7 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
+from lxml import etree
 
 from source import api
 from source import logger
@@ -48,7 +49,7 @@ class Parser(api.Parser):
                         result.append(
                             IRelease(
                                 'https://www.tsum.ru' + element.get('href'),
-                                'russian-retailers',
+                                'tsum',
                                 name,
                                 page_content.xpath('//img[@class="photo-inspector__image"]')[0].get('src'),
                                 '',
