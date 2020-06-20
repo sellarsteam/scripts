@@ -32,7 +32,6 @@ class Parser(api.Parser):
         Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = [content]
         if mode == 0:
-            links = []
             page_content = etree.HTML(self.provider.get(
                 self.link, headers=self.headers, proxy=True, mode=1, timeout=60
             ))

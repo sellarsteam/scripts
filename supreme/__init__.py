@@ -6,7 +6,6 @@ from typing import List, Union
 from lxml import etree
 from requests.exceptions import SSLError
 from user_agent import generate_user_agent
-from lxml import etree
 
 from source import api
 from source import logger

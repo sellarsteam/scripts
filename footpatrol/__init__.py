@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
+from re import findall
 from typing import List, Union
 
 from lxml import etree
-from re import findall
 
 from source import api
 from source import logger

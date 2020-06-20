@@ -4,7 +4,6 @@ from typing import List, Union
 
 from jsonpath2 import Path
 from user_agent import generate_user_agent
-from lxml import etree
 
 from source import api
 from source import logger
@@ -87,7 +86,7 @@ class Parser(api.Parser):
                             {'Site': 'Travis Scott'}
                         ))
             except JSONDecodeError as e:
-                raise e('Exception JSONDecodeError')
+                raise e
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False

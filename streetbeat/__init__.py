@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta, timezone
+from json import loads, JSONDecodeError
 from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
-from lxml import etree
-from json import loads, JSONDecodeError
 
 from source import api
 from source import logger
@@ -59,7 +58,7 @@ class Parser(api.Parser):
                             except etree.XMLSyntaxError:
                                 raise etree.XMLSyntaxError('Exception XMLDecodeError')
                             except JSONDecodeError as e:
-                                raise e('Exception JSONDecodeError')
+                                raise e
                             available_sizes = []
                             for size in page_content.xpath('//ul[@class="sizes__table current"]//li'):
                                 if size.get('class') == 'last':

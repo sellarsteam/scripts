@@ -3,8 +3,8 @@ from json import loads, JSONDecodeError
 from typing import List, Union
 
 from jsonpath2 import Path
-from user_agent import generate_user_agent
 from lxml import etree
+from user_agent import generate_user_agent
 
 from source import api
 from source import logger
@@ -46,7 +46,7 @@ class Parser(api.Parser):
                     if etree.HTML(products).xpath('//title')[0].text == 'Page temporarily unavailable':
                         raise TypeError('Site was banned by shopify')
                     else:
-                        raise e('JSON decode error')
+                        raise e
                 for element in Path.parse_str('$.products.*').match(page_content):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
@@ -58,24 +58,26 @@ class Parser(api.Parser):
                                 self.provider.get(target.name + '.js',
                                                   headers={'user-agent': generate_user_agent()},
                                                   proxy=True)))
-                            sizes = [api.Size(str(size.current_value['title']) + ' US' 
-                                              f' [?]',
-                                              f'https://www.deadstock.ca/cart/{size.current_value["id"]}:1')
-                                     for size in sizes_data if size.current_value['available'] is True]
+                            sizes = [
+                                api.Size(
+                                    str(size.current_value['title']) + ' US [?]',
+                                    f'https://www.deadstock.ca/cart/{size.current_value["id"]}:1')
+                                for size in sizes_data if size.current_value['available'] is True
+                            ]
                             try:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(element.current_value['variants'][0]['price'])
+                                    api.CURRENCIES['USD'],
+                                    float(element.current_value['variants'][0]['price'])
                                 )
                             except KeyError:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(0)
+                                    api.CURRENCIES['USD'],
+                                    float(0)
                                 )
                             except IndexError:
                                 price = api.Price(
-                                        api.CURRENCIES['USD'],
-                                        float(0)
+                                    api.CURRENCIES['USD'],
+                                    float(0)
                                 )
                             name = element.current_value['title']
                             HashStorage.add_target(target.hash())
@@ -96,7 +98,7 @@ class Parser(api.Parser):
                                 {'Site': 'Deadstock Canada'}
                             ))
             except JSONDecodeError as e:
-                raise e('Exception JSONDecodeError')
+                raise e
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False

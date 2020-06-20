@@ -53,7 +53,8 @@ class Parser(api.Parser):
             if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                     or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                 links.append(element.get('href'))
-                    counter += 1
+                counter += 1
+
         return [
             api.TInterval(element.split('/')[-1],
                           self.name, 'https://cncpts.com' + element, self.interval)

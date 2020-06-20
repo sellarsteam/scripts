@@ -3,7 +3,6 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
-from lxml import etree
 
 from source import api
 from source import logger

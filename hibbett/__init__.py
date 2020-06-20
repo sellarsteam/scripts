@@ -1,13 +1,12 @@
+import datetime
+from time import mktime
 from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
-from lxml import etree
 
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, FooterItem
-import datetime
-from time import mktime
 from source.logger import Logger
 
 MOUNTS = {
@@ -134,4 +133,3 @@ class Parser(api.Parser):
                     {'Site': 'Hibbett Sports'}
                 ))
         return result
-

@@ -1,11 +1,9 @@
 import os
-
-import yaml
 from json import loads, JSONDecodeError
 from typing import List, Union
 
+import yaml
 from user_agent import generate_user_agent
-from lxml import etree
 
 from source import api
 from source import logger
@@ -112,7 +110,7 @@ class Parser(api.Parser):
                             HashStorage.add_target(target.hash())
                     self.counter += 1
             except JSONDecodeError as e:
-                raise e('Exception JSONDecodeError')
+                raise e
             try:
                 for target in targets:
                     if self.counter == 5000:
@@ -149,6 +147,6 @@ class Parser(api.Parser):
                         )
                         )
             except JSONDecodeError as e:
-                raise e('Exception JSONDecodeError')
+                raise e
             result.append(content)
         return result

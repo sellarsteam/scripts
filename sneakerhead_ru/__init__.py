@@ -3,7 +3,6 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
-from lxml import etree
 
 from source import api
 from source import logger
@@ -35,7 +34,6 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            links = []
             for element in etree.HTML(
                     self.provider.get(
                         self.link,
@@ -51,9 +49,12 @@ class Parser(api.Parser):
                             page_content = etree.HTML(
                                 self.provider.get('https://sneakerhead.ru' + element.get('href'),
                                                   headers={'user-agent': self.user_agent}))
-                            sizes = [size.text.replace('\n', '').replace(' ', '')
-                                     for size in (page_content.xpath('//div[@class="flex-row sizes-chart-items-tab"]'))[0]
-                                         .xpath('div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')]
+                            sizes = [
+                                size.text.replace('\n', '').replace(' ', '')
+                                for size in
+                                page_content.xpath('//div[@class="flex-row sizes-chart-items-tab"]')[0].xpath(
+                                    'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')
+                            ]
                             name = page_content.xpath('//meta[@itemprop="name"]')[0].get('content')
                             HashStorage.add_target(api.Target('https://sneakerhead.ru' + element.get('href')
                                                               , self.name, 0).hash())
