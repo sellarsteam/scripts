@@ -49,7 +49,7 @@ class Parser(api.Parser):
                     break
                 if element.get('href')[0] != '/':
                     links.append(api.Target(element.get('href'), self.name, 0))
-                counter += 1
+                    counter += 1
 
             for link in links:
                 try:

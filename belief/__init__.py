@@ -13,7 +13,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://beliefmoscow.com/collection/obuv'
+        self.link: str = 'https://beliefmoscow.com/'
         self.interval: int = 1
         self.user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
 
@@ -34,32 +34,34 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             links = []
-            counter = 0
             for element in etree.HTML(
                     self.provider.get(self.link, headers={'user-agent': self.user_agent})
-            ).xpath('//a[@class="product_preview-image\n                product_preview-image--cover"]'):
-                if counter == 5:
-                    break
-
+            ).xpath('//a[@class="product_preview-link"]'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     links.append(api.Target('https://beliefmoscow.com' + element.get('href'), self.name, 0))
-                counter += 1
 
             for link in links:
                 try:
                     if HashStorage.check_target(link.hash()):
                         page_content: etree.Element = etree.HTML(
                             self.provider.get(link.name, headers={'user-agent': self.user_agent}))
-                        sizes = [api.Size(str(size_data.text).split(' /')[0])
-                                 for size_data in
-                                 page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')]
+                        try:
+                            sizes = [
+                                api.Size(str(size_data.text).split(' /')[0])
+                                for size_data in
+                                page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')
+                            ]
+                        except IndexError:
+                            HashStorage.add_target(link.hash())
+                            continue
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
                         HashStorage.add_target(link.hash())
+
                         result.append(
                             IRelease(
                                 link.name,
-                                'russian-retailers',
+                                'belief',
                                 name,
                                 page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
                                 '',

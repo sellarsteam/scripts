@@ -35,7 +35,6 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            links = []
             for element in etree.HTML(
                     self.provider.get(
                         self.link,
@@ -54,7 +53,7 @@ class Parser(api.Parser):
                             result.append(
                                 IRelease(
                                     element.get('href'),
-                                    'russian-retailers',
+                                    'brandshop',
                                     name,
                                     page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
                                     '',

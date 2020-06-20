@@ -1,90 +1,99 @@
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
 
 from source import api
-from source.api import IndexType, TargetType, StatusType
-from source.logger import Logger
+from source import logger
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.cache import HashStorage
+from source.library import SubProvider
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage):
-        super().__init__(name, log, provider, storage)
-        self.catalog: str = 'https://sneakerhead.ru/isnew/'
-        self.user_agent = generate_user_agent()
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
+        super().__init__(name, log, provider_)
+        self.link: str = 'https://sneakerhead.ru/isnew/shoes/sneakers/'
         self.interval: int = 1
+        self.user_agent = generate_user_agent()
 
-    def index(self) -> IndexType:
-        return api.IInterval(self.name, 3)
+    @property
+    def catalog(self) -> CatalogType:
+        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
 
-    def targets(self) -> List[TargetType]:
-        return [
-            api.TInterval(
-                element.get('href').split('/')[3],
-                self.name,
-                f'https://sneakerhead.ru{element.get("href")}', self.interval
-            )
-            for element in etree.HTML(self.provider.get(self.catalog, headers={'user-agent': self.user_agent}))
-                .xpath('//a[@class="product-card__link"]')
-            if ('Кроссовки' in element.text
-                or 'Обувь' in element.text) and ('Yeezy' in element.text or 'Jordan'
-                                                 in element.text or 'Nike' in element.text)
-        ]
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(minutes=1)) \
+            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
-    def execute(self, target: TargetType) -> StatusType:
-        try:
-            if isinstance(target, api.TInterval):
-                available: bool = False
-                content: etree.Element = etree.HTML(self.provider.get(target.data,
-                                                                      headers={'user-agent': self.user_agent}))
-                if content.xpath('//div[@class="sizes-chart-item selected"]') != () and \
-                        content.xpath('//a[@class="size_range_name "]') != []:
-                    available = True
-            else:
-                return api.SFail(self.name, 'Unknown target type')
-        except etree.XMLSyntaxError:
-            return api.SFail(self.name, 'Exception XMLDecodeError')
-        except KeyError:
-            return api.SFail(self.name, 'Wrong scheme')
-        if available:
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    content.xpath('//meta[@itemprop="name"]')[0].get('content'),
-                    target.data,
-                    'russian-retailers',
-                    content.xpath('//meta[@itemprop="image"]')[0].get('content'),
-                    '',
-                    (api.currencies['RUB'], float(content.xpath('//meta[@itemprop="price"]')[0].get('content'))),
-                    {},
-                    tuple((size.text.replace('\n', '')).replace(' ', '') for size in (content.xpath(
-                        '//div[@class="flex-row sizes-chart-items-tab"]'))[0].xpath(
-                        'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')),
-                    (
-                        (
-                            'StockX',
-                            'https://stockx.com/search/sneakers?s=' + target.name.replace('Кроссовки', '')
-                                .replace(' ', '%20')
-                        ),
-                        ('Cart', 'https://sneakerhead.ru/cart'),
-                        ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+        result = []
+        if mode == 0:
+            for element in etree.HTML(
+                    self.provider.get(
+                        self.link,
+                        headers={'user-agent': self.user_agent}
                     )
-                )
-            )
-        else:
-            return api.SSuccess(
-                self.name,
-                api.Result(
-                    'Sold out',
-                    target.data,
-                    'tech',
-                    '',
-                    '',
-                    (api.currencies['USD'], 1),
-                    {},
-                    tuple(),
-                    (('StockX', 'https://stockx.com/search/sneakers?s='),
-                     ('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA'))
-                )
-            )
+            ).xpath('//a[@class="product-card__link"]'):
+                if 'yeezy' in element.get('title').lower() or 'air' in element.get('title').lower() or \
+                        'sacai' in element.get('title').lower() \
+                        or 'dunk' in element.get('title').lower() or 'retro' in element.get('title').lower():
+                    try:
+                        if HashStorage.check_target(
+                                api.Target('https://sneakerhead.ru' + element.get('href'), self.name, 0).hash()):
+                            page_content = etree.HTML(
+                                self.provider.get('https://sneakerhead.ru' + element.get('href'),
+                                                  headers={'user-agent': self.user_agent}))
+                            sizes = [
+                                size.text.replace('\n', '').replace(' ', '')
+                                for size in
+                                page_content.xpath('//div[@class="flex-row sizes-chart-items-tab"]')[0].xpath(
+                                    'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')
+                            ]
+                            name = page_content.xpath('//meta[@itemprop="name"]')[0].get('content')
+                            HashStorage.add_target(api.Target('https://sneakerhead.ru' + element.get('href')
+                                                              , self.name, 0).hash())
+                            try:
+                                if sizes[0][-1].isdigit():
+                                    symbol = ' US'
+                                else:
+                                    symbol = ''
+                            except IndexError:
+                                symbol = ''
+                            result.append(
+                                IRelease(
+                                    'https://sneakerhead.ru' + element.get('href'),
+                                    'sneakerhead',
+                                    name,
+                                    page_content.xpath('//meta[@itemprop="image"]')[0].get('content'),
+                                    '',
+                                    api.Price(
+                                        api.CURRENCIES['RUB'],
+                                        float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
+                                    ),
+                                    api.Sizes(api.SIZE_TYPES[''], [api.Size(size + symbol) for size in sizes]),
+                                    [
+                                        FooterItem(
+                                            'StockX',
+                                            'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
+                                            replace('"', '').replace('\n', '').replace(' ', '')
+                                        ),
+                                        FooterItem('Cart', 'https://sneakerhead.ru/cart'),
+                                        FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                    ],
+                                    {'Site': 'Sneakerhead'}
+                                )
+                            )
+                    except etree.XMLSyntaxError:
+                        raise etree.XMLSyntaxError('XMLDecodeEroor')
+            if result or content.expired:
+                content.timestamp = self.time_gen()
+                content.expired = False
+
+            result.append(content)
+        return result

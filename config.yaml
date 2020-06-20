@@ -9,7 +9,6 @@ blacklist:
   - slamjam
   - shopnicekicks
   - footpatrol
-  - solebox
 whitelist:
   folders: []
   scripts: []

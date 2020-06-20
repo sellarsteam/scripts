@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
-from re import findall
 from typing import List, Union
 
 from jsonpath2 import Path
 from lxml import etree
+from user_agent import generate_user_agent
 
 from source import api
 from source import logger
@@ -16,13 +16,8 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://kith.com/collections/mens-footwear'
+        self.link: str = 'https://kith.com/products.json?limit=1000'
         self.interval: int = 1
-        self.user_agent = 'Pinterest/0.2 (+https://www.pinterest.com/bot.html)Mozilla/5.0 ' \
-                          '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)' \
-                          'Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 ' \
-                          '(KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 ' \
-                          '(compatible; Pinterestbot/1.0; +https://www.pinterest.com/bot.html)'
 
     @property
     def catalog(self) -> CatalogType:
@@ -40,76 +35,81 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            links = []
-            counter = 0
-            catalog_links = etree.HTML(
-                self.provider.get(self.link, headers={'user-agent': self.user_agent}, proxy=True)
-            ).xpath('//div[@class="product-card__information"]/a')
-
-            if not catalog_links:
-                raise ConnectionResetError('Shopify banned this IP')
-
-            for element in catalog_links:
-                if counter == 5:
-                    break
-                if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
-                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
-                    links.append(api.Target('https://kith.com' + element.get('href'), self.name, 0))
-                counter += 1
-
-            for link in links:
-                if HashStorage.check_target(link.hash()):
-                    try:
-                        get_content = self.provider.get(link.name, headers={'user-agent': self.user_agent}, proxy=True)
-                        page_content = etree.Element = etree.HTML(get_content)
-                        sizes_data = Path.parse_str('$.product.variants.*').match(
-                            loads(findall(r'var meta = {.*}', get_content)[0]
-                                  .replace('var meta = ', '')))
-                    except etree.XMLSyntaxError:
-                        raise etree.XMLSyntaxError('Exception XMLDecodeError')
-                    except JSONDecodeError:
-                        raise JSONDecodeError('Exception JSONDecodeError')
-                    except IndexError:
-                        HashStorage.add_target(link.hash())
-                        continue
-                    name = page_content.xpath('//meta[@property="og:title"]')[0].get('content').split(' -')[0]
-                    HashStorage.add_target(link.hash())
-                    available_sizes = list((element.get('data-value'))
-                                           for element in
-                                           page_content.xpath('//div[@class="swatch clearfix"]')[0].xpath('div'))
-                    try:
-                        if float(available_sizes[-1]) > 15:
-                            symbol = 'EU'
-                        else:
-                            symbol = 'US'
-                    except TypeError:
-                        continue
-                    sizes = [api.Size(str(size_data.current_value['public_title']) + f' {symbol}',
-                                      'https://kith.com/cart/' + str(size_data.current_value['id']) + ':1')
-                             for size_data in sizes_data
-                             if size_data.current_value['public_title'].split(' ')[-1] in available_sizes]
-                    result.append(IRelease(
-                        link.name,
-                        'kith',
-                        name,
-                        page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                        '',
-                        api.Price(
-                            api.CURRENCIES['USD'],
-                            float(
-                                page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content').replace(',',
-                                                                                                                    ''))
-                        ),
-                        api.Sizes(api.SIZE_TYPES[''], sizes),
-                        [
-                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                       name.replace(' ', '%20')),
-                            FooterItem('Cart', 'https://kith.com/cart'),
-                            FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                        ],
-                        {'Site': 'Kith'}
-                    )
-                    )
+            try:
+                products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+                if products == '':
+                    result.append(api.CInterval(self.name, 600.))
+                    return result
+                try:
+                    page_content = loads(products)
+                except JSONDecodeError as e:
+                    if etree.HTML(products).xpath('//title')[0].text == 'Page temporarily unavailable':
+                        raise TypeError('Site was banned by shopify')
+                    else:
+                        raise e
+                for element in Path.parse_str('$.products.*').match(page_content):
+                    if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
+                            or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
+                            or 'retro' in element.current_value['handle']:
+                        target = api.Target('https://kith.com/products/' + element.
+                                            current_value['handle'], self.name, 0)
+                        if HashStorage.check_target(target.hash()):
+                            try:
+                                if float(element.current_value['variants'][0]['option2']) > 15:
+                                    symbol = ' EU'
+                                else:
+                                    symbol = ' US'
+                            except TypeError:
+                                continue
+                            except KeyError:
+                                continue
+                            except IndexError:
+                                continue
+                            sizes_data = Path.parse_str('$.variants.*').match(loads(
+                                self.provider.get(target.name + '.js',
+                                                  headers={'user-agent': generate_user_agent()},
+                                                  proxy=True)))
+                            sizes = [
+                                api.Size(
+                                    str(size.current_value['title']) + f' {symbol} [?]',
+                                    f'https://kith.com/cart/{size.current_value["id"]}:1')
+                                for size in sizes_data if size.current_value['available'] is True
+                            ]
+                            try:
+                                price = api.Price(
+                                    api.CURRENCIES['USD'],
+                                    float(element.current_value['variants'][0]['price'])
+                                )
+                            except KeyError:
+                                price = api.Price(
+                                    api.CURRENCIES['USD'],
+                                    float(0)
+                                )
+                            except IndexError:
+                                price = api.Price(
+                                    api.CURRENCIES['USD'],
+                                    float(0)
+                                )
+                            name = element.current_value['title']
+                            HashStorage.add_target(target.hash())
+                            result.append(IRelease(
+                                target.name,
+                                'kith',
+                                name,
+                                element.current_value['images'][0]['src'],
+                                '',
+                                price,
+                                api.Sizes(api.SIZE_TYPES[''], sizes),
+                                [
+                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                               name.replace(' ', '%20')),
+                                    FooterItem('Cart', 'https://kith.com/cart'),
+                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                ],
+                                {'Site': 'Kith'}
+                            ))
+            except JSONDecodeError as e:
+                raise e
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False
