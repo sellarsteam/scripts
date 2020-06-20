@@ -46,13 +46,18 @@ class Parser(api.Parser):
                     if HashStorage.check_target(link.hash()):
                         page_content: etree.Element = etree.HTML(
                             self.provider.get(link.name, headers={'user-agent': self.user_agent}))
-                        sizes = [
-                            api.Size(str(size_data.text).split(' /')[0])
-                            for size_data in
-                            page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')
-                        ]
+                        try:
+                            sizes = [
+                                api.Size(str(size_data.text).split(' /')[0])
+                                for size_data in
+                                page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')
+                            ]
+                        except IndexError:
+                            HashStorage.add_target(link.hash())
+                            continue
                         name = page_content.xpath('//meta[@property="og:title"]')[0].get('content')
                         HashStorage.add_target(link.hash())
+
                         result.append(
                             IRelease(
                                 link.name,

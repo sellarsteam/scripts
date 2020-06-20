@@ -51,7 +51,7 @@ class Parser(api.Parser):
                     if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
                             or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
                             or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://extrabutterny.com/products/' + element.
+                        target = api.Target('https://www.solefiness.com/products/' + element.
                                             current_value['handle'], self.name, 0)
                         if HashStorage.check_target(target.hash()):
                             sizes_data = Path.parse_str('$.variants.*').match(loads(
@@ -60,7 +60,7 @@ class Parser(api.Parser):
                                                   proxy=True)))
                             sizes = [api.Size(str(size.current_value['title']) +
                                               f' [?]',
-                                              f'https://extrabutterny.com/cart/{size.current_value["id"]}:1')
+                                              f'https://www.solefiness.com/cart/{size.current_value["id"]}:1')
                                      for size in sizes_data if size.current_value['available'] is True]
                             try:
                                 price = api.Price(
