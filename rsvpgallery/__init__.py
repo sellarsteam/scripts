@@ -62,7 +62,7 @@ class Parser(api.Parser):
                                 api.Size(
                                     str(size.current_value['title']) +
                                     f' US [{size.current_value["inventory_quantity"]}]',
-                                    f'https://rsvpgallery.com/cart/{size.curren_value["id"]}:1')
+                                    f'https://rsvpgallery.com/cart/{size.current_value["id"]}:1')
                                 for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0
                             ]
                             try:
