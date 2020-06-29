@@ -3,7 +3,10 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
+from requests import get
+from json import loads, JSONDecodeError
 
+from jsonpath2 import Path
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -14,7 +17,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://www.tsum.ru/catalog/search/?q=yeezy'
+        self.link: str = 'https://api.tsum.ru/catalog/search/?q=yeezy'
         self.user_agent = generate_user_agent()
 
     @property
@@ -33,33 +36,31 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(
-                    self.provider.get(
-                        self.link,
-                        headers={'user-agent': self.user_agent}
-                    )
-            ).xpath('//a[@class="product__info"]'):
+            for element in Path.parse_str('$.*').match(loads(self.provider.get(self.link,
+                                                                               headers={
+                                                                                   'user-agent': self.user_agent}))):
                 try:
                     if HashStorage.check_target \
-                                (api.Target('https://www.tsum.ru' + element.get('href'), self.name, 0).hash()):
-                        page_content = etree.HTML(self.provider.get('https://www.tsum.ru' + element.get('href'),
-                                                                    headers={'user-agent': self.user_agent}))
-                        name = page_content.xpath('//span[@class="breadcrumbs__link ng-star-inserted"]')[0].get('title')
+                                (api.Target('https://www.tsum.ru/' + element.current_value['slug']
+                                , self.name, 0).hash()):
+                        name = element.current_value['title']
                         result.append(
                             IRelease(
-                                'https://www.tsum.ru' + element.get('href'),
+                                'https://www.tsum.ru/' + element.current_value['slug'],
                                 'tsum',
                                 name,
-                                page_content.xpath('//img[@class="photo-inspector__image"]')[0].get('src'),
+                                element.current_value['photos'][0]['middle'],
                                 '',
                                 api.Price(
                                     api.CURRENCIES['RUB'],
-                                    float(page_content.xpath('//meta[@property="og:price:amount"]')[0].get('content'))
+                                    float(element.current_value['skuList'][0]['price_original'])
                                 ),
-                                api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text.split(' |')[0] + ' US')
-                                                               for size in page_content.xpath('//span['
-                                                                                              '@class="select__text"]')
-                                                               if '|' in size.text and 'нет в наличии' not in size.text]
+                                api.Sizes(api.SIZE_TYPES[''], [api.Size(size.current_value['size_vendor_name'] + ' US',
+                                                                        f'http://static.sellars.cf/links/tsum?id='
+                                                                        f'{size.current_value["item_id"]}')
+                                                               for size in Path.parse_str('$.skuList.*')
+                                          .match(element.current_value)
+                                                               if size.current_value['availabilityInStock']]
                                 [1:]),
                                 [
                                     FooterItem(
@@ -73,11 +74,16 @@ class Parser(api.Parser):
                                 {'Site': 'TSUM'}
                             )
                         )
-                except etree.XMLSyntaxError:
-                    raise etree.XMLSyntaxError('XMLDecodeError')
+                except JSONDecodeError as e:
+                    raise e
             if result or content.expired:
                 content.timestamp = self.time_gen()
                 content.expired = False
 
             result.append(content)
         return result
+
+
+if __name__ == '__main__':
+    print(get('https://api.tsum.ru/catalog/search/?q=yeezy', headers={
+        'user-agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'}).text)

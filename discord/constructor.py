@@ -22,6 +22,8 @@ def build(item: Union[IAnnounce, IRelease, IRestock]) -> dict:
         },
         'title': ('[ANNOUNCE] ' if isinstance(item, IAnnounce) else
                   '[RESTOCK] ' if isinstance(item, IRestock) else '') + item.name,
+        "color": ('13392636' if isinstance(item, IRelease) else
+                  '15856370' if isinstance(item, IRestock) else '7452157'),
         'timestamp': datetime.utcnow().replace(tzinfo=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         'fields': [],
         'url': item.url

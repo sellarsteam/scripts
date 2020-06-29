@@ -50,7 +50,8 @@ class Parser(api.Parser):
                                 self.provider.get('https://sneakerhead.ru' + element.get('href'),
                                                   headers={'user-agent': self.user_agent}))
                             sizes = [
-                                size.text.replace('\n', '').replace(' ', '')
+                                size.text.replace('\n', '').replace(' ', '') + '+'
+                                + f'http://static.sellars.cf/links/sneakerhead?id={size.get("data-id")}'
                                 for size in
                                 page_content.xpath('//div[@class="flex-row sizes-chart-items-tab"]')[0].xpath(
                                     'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')
@@ -59,7 +60,7 @@ class Parser(api.Parser):
                             HashStorage.add_target(api.Target('https://sneakerhead.ru' + element.get('href')
                                                               , self.name, 0).hash())
                             try:
-                                if sizes[0][-1].isdigit():
+                                if sizes[0][-1].split('+')[0].isdigit():
                                     symbol = ' US'
                                 else:
                                     symbol = ''
@@ -76,7 +77,9 @@ class Parser(api.Parser):
                                         api.CURRENCIES['RUB'],
                                         float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
                                     ),
-                                    api.Sizes(api.SIZE_TYPES[''], [api.Size(size + symbol) for size in sizes]),
+                                    api.Sizes(api.SIZE_TYPES[''], [api.Size(size.split('+')[0] + symbol,
+                                                                            size.split('+')[-1])
+                                                                   for size in sizes]),
                                     [
                                         FooterItem(
                                             'StockX',

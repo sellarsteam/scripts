@@ -13,7 +13,7 @@ from source.library import SubProvider
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://beliefmoscow.com/'
+        self.link: str = 'https://beliefmoscow.com/collection/frontpage?order=&q='
         self.interval: int = 1
         self.user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
 
@@ -48,7 +48,8 @@ class Parser(api.Parser):
                             self.provider.get(link.name, headers={'user-agent': self.user_agent}))
                         try:
                             sizes = [
-                                api.Size(str(size_data.text).split(' /')[0])
+                                api.Size(str(size_data.text).split(' /')[0],
+                                         f"http://static.sellars.cf/links/belief?id={size_data.get('value')}")
                                 for size_data in
                                 page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')
                             ]
