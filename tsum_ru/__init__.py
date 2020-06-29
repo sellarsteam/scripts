@@ -38,7 +38,8 @@ class Parser(api.Parser):
         if mode == 0:
             for element in Path.parse_str('$.*').match(loads(self.provider.get(self.link,
                                                                                headers={
-                                                                                   'user-agent': self.user_agent}))):
+                                                                                   'user-agent': self.user_agent,
+                                                                                   'accept': 'application/json'}))):
                 try:
                     if HashStorage.check_target \
                                 (api.Target('https://www.tsum.ru/' + element.current_value['slug']
@@ -82,8 +83,3 @@ class Parser(api.Parser):
 
             result.append(content)
         return result
-
-
-if __name__ == '__main__':
-    print(get('https://api.tsum.ru/catalog/search/?q=yeezy', headers={
-        'user-agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'}).text)
