@@ -70,12 +70,7 @@ class Parser(api.Parser):
                                     api.CURRENCIES['USD'],
                                     float(element.current_value['variants'][0]['price'])
                                 )
-                            except KeyError:
-                                price = api.Price(
-                                    api.CURRENCIES['USD'],
-                                    float(0)
-                                )
-                            except IndexError:
+                            except (KeyError, IndexError):
                                 price = api.Price(
                                     api.CURRENCIES['USD'],
                                     float(0)

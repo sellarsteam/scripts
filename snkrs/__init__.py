@@ -10,6 +10,7 @@ from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockT
     Price, Sizes, Size
 from source.cache import HashStorage
 from source.logger import Logger
+from source.tools import ExponentialSmart
 
 
 class Parser(api.Parser):
@@ -49,12 +50,12 @@ class Parser(api.Parser):
 
             try:
                 try:
-                    items = loads(self.provider.get(
+                    items = self.provider.request(
                         f'{self.api}{self.item_filter}&filter=seoSlugs({content.name}){self.filter}',
                         headers={'user-agent': generate_user_agent()}
-                    ))['objects'][0]['productInfo']
+                    ).json()['objects'][0]['productInfo']
                 except JSONDecodeError:
-                    self.log.error(f'Bad json: {content.name}')
+                    self.log.error(f'Non JSON response: {content.name}')
                     return [api.TEFail(content, f'Bad json\n{content.hash()}')]
 
                 for i in items:
@@ -103,11 +104,11 @@ class Parser(api.Parser):
 
             if result or has_announce:
                 if isinstance(content, api.TSmart):
-                    content.timestamp = date + 1
+                    content.gen.time = date + 1
                     result.append(content)
                 else:
                     result.append(
-                        api.TSmart(content.name, self.name, 0, date + 1, 100)
+                        api.TSmart(content.name, self.name, 0, ExponentialSmart(date + 1, 100))
                     )
 
                 return result
