@@ -35,13 +35,8 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(
-                    self.provider.request(
-                        self.link,
-                        headers={'user-agent': self.user_agent},
-                        type='get'
-                    ).text
-            ).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
+            for element in etree.HTML( self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
+                    .xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
                 if 'yeezy' in element[0].xpath('a[@class="link link--no-color catalog-item__title '
                                                'ddl_product_link"]/span')[0].text.lower() \
                         or 'jordan' in element[0].xpath('a[@class="link link--no-color catalog-item__title '
@@ -54,8 +49,7 @@ class Parser(api.Parser):
                             try:
                                 page_content: etree.Element = etree \
                                     .HTML(self.provider.request('https://street-beat.ru' + link,
-                                                                headers={'user-agent': self.user_agent},
-                                                                type='get').text)
+                                                                headers={'user-agent': self.user_agent}).text)
                                 json_content = loads(page_content
                                                      .xpath('//script[@type="application/ld+json"]')[1].text)
                             except etree.XMLSyntaxError:
@@ -106,7 +100,7 @@ class Parser(api.Parser):
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeError')
             if result or content.expired:
-                content.timestamp = self.time_gen()
+                content.gen.time = self.time_gen()
                 content.expired = False
 
             result.append(content)

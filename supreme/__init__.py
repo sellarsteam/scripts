@@ -13,6 +13,7 @@ from source.api import CatalogType, TargetType, IRelease, RestockTargetType, Ite
     FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import ExponentialSmart
 
 
 class Parser(api.Parser):
@@ -24,10 +25,13 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7),
-                                                                    weeks=1))
-                          .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
-                          .timestamp(), 5)
+        return api.CSmart(self.name, ExponentialSmart(self.time_gen(), 5))
+
+    @staticmethod
+    def time_gen() -> float:
+        return (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7), weeks=1)) \
+            .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc) \
+            .timestamp()
 
     def execute(
             self,
@@ -36,12 +40,11 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result: list = [content]
         if mode == 0:
-            content.timestamp = (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7), weeks=1)) \
-                .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
+            content.gen.time = self.time_gen()
 
             try:
                 for element in etree.HTML(
-                        self.provider.get(self.link, headers={'user-agent': self.user_agent})
+                    self.provider.request(self.link, headers={'user-agent': self.user_agent}).text
                 ).xpath('//a[@style="height:81px;"]'):
                     if len(element.xpath('div[@class="sold_out_tag"]')) == 0:
                         result.append(
@@ -57,7 +60,7 @@ class Parser(api.Parser):
             except etree.XMLSyntaxError:
                 raise etree.XMLSyntaxError('Exception XMLDecodeError')
         elif mode == 1:
-            page_content = etree.HTML(self.provider.get(content.name, headers={'user-agent': self.user_agent}))
+            page_content = etree.HTML(self.provider.request(content.name, headers={'user-agent': self.user_agent}).text)
             name = page_content.xpath('//h1[@itemprop="name"]')[0].text
             result.append(
                 IRelease(

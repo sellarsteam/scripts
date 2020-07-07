@@ -35,8 +35,7 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            response = self.provider.request(self.link,
-                                             headers={'user-agent': generate_user_agent()}, proxy=True, type='get')
+            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
 
             if response.status_code == 430 or response.status_code == 520:
                 result.append(api.CInterval(self.name, 60.))
@@ -47,7 +46,6 @@ class Parser(api.Parser):
             except JSONDecodeError:
                 raise TypeError('Non JSON response')
             for element in Path.parse_str('$.products.*').match(response):
-                id_ = element.current_value['id']
                 title = element.current_value['title']
                 handle = element.current_value['handle']
                 variants = element.current_value['variants']

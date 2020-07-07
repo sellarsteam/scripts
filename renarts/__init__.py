@@ -35,8 +35,7 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            response = self.provider.request(self.link,
-                                             headers={'user-agent': generate_user_agent()}, proxy=True, type='get')
+            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
 
             if response.status_code == 430 or response.status_code == 520:
                 result.append(api.CInterval(self.name, 600.))
@@ -48,11 +47,11 @@ class Parser(api.Parser):
                 raise TypeError('Non JSON response')
 
             for element in Path.parse_str('$.products.*').match(response):
-                id_ = element.current_value['id']
                 title = element.current_value['title']
                 handle = element.current_value['handle']
                 variants = element.current_value['variants']
-                image = element.current_value['images'][0]['src']
+                image = element.current_value['images'][0]['src'] if len(element.current_value['images']) != 0 \
+                    else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
 
                 del element
 
@@ -64,7 +63,7 @@ class Parser(api.Parser):
                         sizes_data = Path.parse_str('$.product.variants.*').match(
                             self.provider.request(target.name + '/count.json',
                                                   headers={'user-agent': generate_user_agent()},
-                                                  proxy=True, type='get').json())
+                                                  proxy=True).json())
                         sizes = [api.Size(str(size.current_value['option1']) + ' US'
                                                                                f' [{size.current_value["inventory_quantity"]}]',
                                           f'https://renarts.com/cart/{size.current_value["id"]}:1')
@@ -101,7 +100,7 @@ class Parser(api.Parser):
                         ))
 
             if result or content.expired:
-                content.timestamp = self.time_gen()
+                content.gen.time = self.time_gen()
                 content.expired = False
 
             result.append(content)

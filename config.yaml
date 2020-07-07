@@ -9,6 +9,8 @@ blacklist:
   - slamjam
   - shopnicekicks
   - footpatrol
+  - dsm-us
+  - dsm-eu
 whitelist:
   folders: []
   scripts: []

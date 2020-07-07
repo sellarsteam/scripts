@@ -35,8 +35,7 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            response = self.provider.request(self.link,
-                                             headers={'user-agent': generate_user_agent()}, proxy=True, type='get')
+            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
 
             if response.status_code == 430 or response.status_code == 520:
                 result.append(api.CInterval(self.name, 600.))
@@ -48,11 +47,11 @@ class Parser(api.Parser):
                 raise TypeError('Non JSON response')
 
             for element in Path.parse_str('$.products.*').match(response):
-                id_ = element.current_value['id']
                 title = element.current_value['title']
                 handle = element.current_value['handle']
                 variants = element.current_value['variants']
-                image = element.current_value['images'][0]['src']
+                image = element.current_value['images'][0]['src'] if len(element.current_value['images']) != 0 \
+                    else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
 
                 del element
 
@@ -78,8 +77,7 @@ class Parser(api.Parser):
                             for size in Path.parse_str('$.variants.*').match(self.provider.request(
                                 target.name + '.js',
                                 headers={'user-agent': generate_user_agent()},
-                                proxy=True,
-                                type='get'
+                                proxy=True
                             ).json()) if size.current_value['available'] is True
                         ]
 

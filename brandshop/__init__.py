@@ -36,19 +36,15 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(
-                    self.provider.request(
-                        self.link,
-                        headers={'user-agent': self.user_agent}, type='get'
-                    ).text
-            ).xpath('//div[@class="product"]/a'):
+            for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
+                    .xpath('//div[@class="product"]/a'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
-                                self.provider.request(element.get('href'), headers={'user-agent': self.user_agent},
-                                                      type='get').text)
+                                self.provider.request(element.get('href'), headers={'user-agent': self.user_agent}).text
+                            )
                             sizes = [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')]
                             name = page_content.xpath('//span[@itemprop="name"]')[0].text
                             HashStorage.add_target(api.Target(element.get('href'), self.name, 0).hash())
@@ -97,7 +93,7 @@ class Parser(api.Parser):
                         {'Site': 'Brandshop'}
                     ))
             if result or content.expired:
-                content.timestamp = self.time_gen()
+                content.gen.time = self.time_gen()
                 content.expired = False
 
             result.append(content)

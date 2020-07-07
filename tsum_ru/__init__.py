@@ -35,11 +35,8 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in Path.parse_str('$.*').match(self.provider.request(self.link,
-                                                                             headers={
-                                                                                 'user-agent': self.user_agent,
-                                                                                 'accept': 'application/json'},
-                                                                             type='get').json()):
+            for element in Path.parse_str('$.*').match(self.provider.request(
+                    self.link, headers={'user-agent': self.user_agent, 'accept': 'application/json'}).json()):
                 try:
                     if HashStorage.check_target \
                                 (api.Target('https://www.tsum.ru/' + element.current_value['slug'],
@@ -78,7 +75,7 @@ class Parser(api.Parser):
                 except JSONDecodeError as e:
                     raise e
             if result or content.expired:
-                content.timestamp = self.time_gen()
+                content.gen.time = self.time_gen()
                 content.expired = False
 
             result.append(content)

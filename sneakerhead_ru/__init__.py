@@ -35,13 +35,8 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(
-                    self.provider.request(
-                        self.link,
-                        headers={'user-agent': self.user_agent},
-                        type='get'
-                    ).text
-            ).xpath('//a[@class="product-card__link"]'):
+            for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
+                    .xpath('//a[@class="product-card__link"]'):
                 if 'yeezy' in element.get('title').lower() or 'air' in element.get('title').lower() or \
                         'sacai' in element.get('title').lower() \
                         or 'dunk' in element.get('title').lower() or 'retro' in element.get('title').lower():
@@ -50,7 +45,7 @@ class Parser(api.Parser):
                                 api.Target('https://sneakerhead.ru' + element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
                                 self.provider.request('https://sneakerhead.ru' + element.get('href'),
-                                                      headers={'user-agent': self.user_agent}, type='get').text)
+                                                      headers={'user-agent': self.user_agent}).text)
                             sizes = [
                                 size.text.replace('\n', '').replace(' ', '') + '+'
                                 + f'http://static.sellars.cf/links/sneakerhead?id={size.get("data-id")}'
@@ -97,7 +92,7 @@ class Parser(api.Parser):
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeEroor')
             if result or content.expired:
-                content.timestamp = self.time_gen()
+                content.gen.time = self.time_gen()
                 content.expired = False
 
             result.append(content)

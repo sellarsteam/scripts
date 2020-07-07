@@ -35,9 +35,8 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             links = []
-            for element in etree.HTML(
-                    self.provider.request(self.link, headers={'user-agent': self.user_agent}, type='get').text
-            ).xpath('//a[@class="product_preview-link"]'):
+            for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
+                    .xpath('//a[@class="product_preview-link"]'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     links.append(api.Target('https://beliefmoscow.com' + element.get('href'), self.name, 0))
@@ -46,7 +45,7 @@ class Parser(api.Parser):
                 try:
                     if HashStorage.check_target(link.hash()):
                         page_content: etree.Element = etree.HTML(
-                            self.provider.request(link.name, headers={'user-agent': self.user_agent}, type='get').text)
+                            self.provider.request(link.name, headers={'user-agent': self.user_agent}).text)
                         try:
                             sizes = [
                                 api.Size(str(size_data.text).split(' /')[0],
@@ -85,7 +84,7 @@ class Parser(api.Parser):
                 except etree.XMLSyntaxError:
                     raise etree.XMLSyntaxError('Exception XMLDecodeError')
             if result or content.expired:
-                content.timestamp = self.time_gen()
+                content.gen.time = self.time_gen()
                 content.expired = False
 
             result.append(content)
