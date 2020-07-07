@@ -9,6 +9,7 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
@@ -20,7 +21,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 10))
 
     @staticmethod
     def time_gen() -> float:
@@ -35,10 +36,11 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             for element in etree.HTML(
-                    self.provider.get(
+                    self.provider.request(
                         self.link,
-                        headers={'user-agent': self.user_agent}
-                    )
+                        headers={'user-agent': self.user_agent},
+                        type='get'
+                    ).text
             ).xpath('//a[@class="product-card__link"]'):
                 if 'yeezy' in element.get('title').lower() or 'air' in element.get('title').lower() or \
                         'sacai' in element.get('title').lower() \
@@ -47,8 +49,8 @@ class Parser(api.Parser):
                         if HashStorage.check_target(
                                 api.Target('https://sneakerhead.ru' + element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
-                                self.provider.get('https://sneakerhead.ru' + element.get('href'),
-                                                  headers={'user-agent': self.user_agent}))
+                                self.provider.request('https://sneakerhead.ru' + element.get('href'),
+                                                      headers={'user-agent': self.user_agent}, type='get').text)
                             sizes = [
                                 size.text.replace('\n', '').replace(' ', '') + '+'
                                 + f'http://static.sellars.cf/links/sneakerhead?id={size.get("data-id")}'

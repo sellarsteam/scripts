@@ -10,6 +10,7 @@ from source.api import CatalogType, TargetType, RestockTargetType, ItemType, Tar
     IAnnounce
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
@@ -21,7 +22,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 15))
 
     @staticmethod
     def time_gen() -> float:
@@ -36,17 +37,18 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             for element in etree.HTML(
-                    self.provider.get(
+                    self.provider.request(
                         self.link,
-                        headers={'user-agent': self.user_agent}
-                    )
+                        headers={'user-agent': self.user_agent}, type='get'
+                    ).text
             ).xpath('//div[@class="product"]/a'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
-                                self.provider.get(element.get('href'), headers={'user-agent': self.user_agent}))
+                                self.provider.request(element.get('href'), headers={'user-agent': self.user_agent},
+                                                      type='get').text)
                             sizes = [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')]
                             name = page_content.xpath('//span[@itemprop="name"]')[0].text
                             HashStorage.add_target(api.Target(element.get('href'), self.name, 0).hash())

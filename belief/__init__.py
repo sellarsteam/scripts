@@ -8,6 +8,7 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
@@ -19,7 +20,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 10))
 
     @staticmethod
     def time_gen() -> float:
@@ -35,7 +36,7 @@ class Parser(api.Parser):
         if mode == 0:
             links = []
             for element in etree.HTML(
-                    self.provider.get(self.link, headers={'user-agent': self.user_agent})
+                    self.provider.request(self.link, headers={'user-agent': self.user_agent}, type='get').text
             ).xpath('//a[@class="product_preview-link"]'):
                 if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
                         or 'dunk' in element.get('href') or 'retro' in element.get('href'):
@@ -45,7 +46,7 @@ class Parser(api.Parser):
                 try:
                     if HashStorage.check_target(link.hash()):
                         page_content: etree.Element = etree.HTML(
-                            self.provider.get(link.name, headers={'user-agent': self.user_agent}))
+                            self.provider.request(link.name, headers={'user-agent': self.user_agent}, type='get').text)
                         try:
                             sizes = [
                                 api.Size(str(size_data.text).split(' /')[0],

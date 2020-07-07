@@ -72,8 +72,8 @@ class Parser(api.Parser):
 
                         sizes = [
                             api.Size(
-                                f'{title} {symbol} [?]',
-                                f'https://kith.com/cart/{id_}:1'
+                                f'{size.current_value["title"]} {symbol} [?]',
+                                f'https://kith.com/cart/{size.current_value["id"]}:1'
                             )
                             for size in Path.parse_str('$.variants.*').match(self.provider.request(
                                 target.name + '.js',
@@ -82,6 +82,10 @@ class Parser(api.Parser):
                                 type='get'
                             ).json()) if size.current_value['available'] is True
                         ]
+
+                        if not sizes:
+                            HashStorage.add_target(target.hash())
+                            continue
 
                         try:
                             price = api.Price(

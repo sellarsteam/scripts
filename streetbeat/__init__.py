@@ -10,6 +10,7 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
@@ -20,7 +21,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 20))
 
     @staticmethod
     def time_gen() -> float:
@@ -35,10 +36,11 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             for element in etree.HTML(
-                    self.provider.get(
+                    self.provider.request(
                         self.link,
-                        headers={'user-agent': self.user_agent}
-                    )
+                        headers={'user-agent': self.user_agent},
+                        type='get'
+                    ).text
             ).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
                 if 'yeezy' in element[0].xpath('a[@class="link link--no-color catalog-item__title '
                                                'ddl_product_link"]/span')[0].text.lower() \
@@ -51,8 +53,9 @@ class Parser(api.Parser):
                                 api.Target('https://street-beat.ru' + link, self.name, 0).hash()):
                             try:
                                 page_content: etree.Element = etree \
-                                    .HTML(self.provider.get('https://street-beat.ru' + link,
-                                                            headers={'user-agent': self.user_agent}))
+                                    .HTML(self.provider.request('https://street-beat.ru' + link,
+                                                                headers={'user-agent': self.user_agent},
+                                                                type='get').text)
                                 json_content = loads(page_content
                                                      .xpath('//script[@type="application/ld+json"]')[1].text)
                             except etree.XMLSyntaxError:

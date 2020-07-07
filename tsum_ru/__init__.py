@@ -1,9 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from lxml import etree
 from user_agent import generate_user_agent
-from requests import get
 from json import loads, JSONDecodeError
 
 from jsonpath2 import Path
@@ -12,6 +10,7 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
@@ -22,7 +21,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 21, 5, 1.2)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 10))
 
     @staticmethod
     def time_gen() -> float:
@@ -36,14 +35,15 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in Path.parse_str('$.*').match(loads(self.provider.get(self.link,
-                                                                               headers={
-                                                                                   'user-agent': self.user_agent,
-                                                                                   'accept': 'application/json'}))):
+            for element in Path.parse_str('$.*').match(self.provider.request(self.link,
+                                                                             headers={
+                                                                                 'user-agent': self.user_agent,
+                                                                                 'accept': 'application/json'},
+                                                                             type='get').json()):
                 try:
                     if HashStorage.check_target \
-                                (api.Target('https://www.tsum.ru/' + element.current_value['slug']
-                                , self.name, 0).hash()):
+                                (api.Target('https://www.tsum.ru/' + element.current_value['slug'],
+                                            self.name, 0).hash()):
                         name = element.current_value['title']
                         result.append(
                             IRelease(
