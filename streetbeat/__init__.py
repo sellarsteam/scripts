@@ -21,12 +21,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 20))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
+            .replace(second=7, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
