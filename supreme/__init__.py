@@ -83,6 +83,7 @@ class Parser(api.Parser):
 
             for style in json_data['styles']:
                 if HashStorage.check_item(content.hash()):
+                    style_id = style['id']
                     image = f'https:{style["image_url_hi"]}'
                     result.append(
                         IRelease(
@@ -95,7 +96,9 @@ class Parser(api.Parser):
                                       float(price)),
                             api.Sizes(
                                 api.SIZE_TYPES[''],
-                                [api.Size(size['name'])
+                                [api.Size(size['name'],
+                                          f'https://static.sellars.cf/links?site=supreme&style='
+                                          f'{style_id}&size={size["id"]}')
                                  for size in style['sizes']]
                             ),
                             [

@@ -53,7 +53,7 @@ class Parser(api.Parser):
                                     float(element.current_value['skuList'][0]['price_original'])
                                 ),
                                 api.Sizes(api.SIZE_TYPES[''], [api.Size(size.current_value['size_vendor_name'] + ' US',
-                                                                        f'http://static.sellars.cf/links/tsum?id='
+                                                                        f'http://static.sellars.cf/links?site=tsum&id='
                                                                         f'{size.current_value["item_id"]}')
                                                                for size in Path.parse_str('$.skuList.*')
                                           .match(element.current_value)

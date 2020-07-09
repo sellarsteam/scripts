@@ -48,7 +48,7 @@ class Parser(api.Parser):
                                                       headers={'user-agent': self.user_agent}).text)
                             sizes = [
                                 size.text.replace('\n', '').replace(' ', '') + '+'
-                                + f'http://static.sellars.cf/links/sneakerhead?id={size.get("data-id")}'
+                                + f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
                                 for size in
                                 page_content.xpath('//div[@class="flex-row sizes-chart-items-tab"]')[0].xpath(
                                     'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')

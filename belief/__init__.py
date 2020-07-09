@@ -49,7 +49,7 @@ class Parser(api.Parser):
                         try:
                             sizes = [
                                 api.Size(str(size_data.text).split(' /')[0],
-                                         f"http://static.sellars.cf/links/belief?id={size_data.get('value')}")
+                                         f"http://static.sellars.cf/links?site=belief&id={size_data.get('value')}")
                                 for size_data in
                                 page_content.xpath('//select[@id="variant-select"]')[0].xpath('option')
                             ]

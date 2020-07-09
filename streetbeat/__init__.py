@@ -60,13 +60,13 @@ class Parser(api.Parser):
                             for size in page_content.xpath('//ul[@class="sizes__table current"]//li'):
                                 if size.get('class') == 'last':
                                     available_sizes.append(api.Size(f'{str(size.xpath("label")[0].text)} RU [LAST]',
-                                                                    'http://static.sellars.cf/links/streetbeat?id='
+                                                                    'http://static.sellars.cf/links?site=streetbeat&id='
                                                                     + size.xpath("input")[0].get('data-sku-id')))
                                 elif size.get('class') == 'missing':
                                     continue
                                 else:
                                     available_sizes.append(api.Size(f'{str(size.xpath("label")[0].text)} RU',
-                                                                    'http://static.sellars.cf/links/streetbeat?id='
+                                                                    'http://static.sellars.cf/links?site=streetbeat&id='
                                                                     + size.xpath("input")[0].get('data-sku-id')))
 
                             name = page_content \
