@@ -3,7 +3,6 @@ from datetime import timezone, timedelta, datetime
 from time import time
 from typing import List, Union
 
-from lxml import etree
 from requests.exceptions import SSLError
 from user_agent import generate_user_agent
 
@@ -11,79 +10,106 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, IRelease, RestockTargetType, ItemType, TargetEndType, \
     FooterItem
-from source.cache import HashStorage
 from source.library import SubProvider
 from source.tools import ExponentialSmart
+from source.cache import HashStorage
 
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://www.supremenewyork.com/shop/all'
+        self.link: str = 'https://www.supremenewyork.com/shop.json'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, ExponentialSmart(self.time_gen(), 5))
+        return api.CSmart(self.name, ExponentialSmart(self.time_gen(), 2, 30))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7), weeks=1)) \
-            .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc) \
-            .timestamp()
+            .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
             mode: int,
             content: Union[CatalogType, TargetType]
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
-        result: list = [content]
+        result: list = []
+
         if mode == 0:
-            content.gen.time = self.time_gen()
+            content.timestamp = (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7), weeks=1)) \
+                .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
+
+            response = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy=True,
+                                             type='get')
+
+            if response.status_code == 403:
+                result.append(content)
+                return content
 
             try:
-                for element in etree.HTML(
-                    self.provider.request(self.link, headers={'user-agent': self.user_agent}).text
-                ).xpath('//a[@style="height:81px;"]'):
-                    if len(element.xpath('div[@class="sold_out_tag"]')) == 0:
+                for category in response.json()['products_and_categories'].values():
+                    for element in category:
                         result.append(
                             api.TScheduled(
-                                'https://www.supremenewyork.com/' + element.get('href'),
+                                f'https://www.supremenewyork.com/shop/{element["id"]}.json',
                                 self.name,
-                                0,
+                                (element['name'],
+                                 float(element['price_euro']) / 100,
+                                 element['category_name']
+                                 ),
                                 time()
                             )
                         )
+
             except SSLError:
                 raise SSLError('Site is down')
-            except etree.XMLSyntaxError:
-                raise etree.XMLSyntaxError('Exception XMLDecodeError')
+            except (KeyError, AttributeError):
+                raise Exception('Wrong scheme')
+
+            if result or content.expired:
+                content.gen.time = self.time_gen()
+                content.expired = False
+
         elif mode == 1:
-            page_content = etree.HTML(self.provider.request(content.name, headers={'user-agent': self.user_agent}).text)
-            name = page_content.xpath('//h1[@itemprop="name"]')[0].text
-            result.append(
-                IRelease(
-                    content.name,
-                    'supreme-nyc',
-                    name,
-                    'https://' + page_content.xpath('//img[@itemprop="image"]')[0].get('src').replace('//', ''),
-                    page_content.xpath('//p[@itemprop="description"]')[0].text,
-                    api.Price(api.CURRENCIES['EUR'],
-                              float(page_content.xpath('//span[@itemprop="price"]')[0].text.replace('€', ''))),
-                    api.Sizes(api.SIZE_TYPES[''],
-                              [api.Size(size.text) for size in page_content.xpath('//option[@value]')]),
-                    [
-                        FooterItem('StockX', 'https://stockx.com/search?s=' +
-                                   page_content.xpath('//h1[@itemprop="name"]')
-                                   [0].text.replace(' ', '%20').replace('®', '')),
-                        FooterItem('Cart', 'https://www.supremenewyork.com/shop/cart'),
-                        FooterItem('Mobile', 'https://www.supremenewyork.com/mobile#products/' +
-                                   page_content.xpath('//form[@class="add"]')[0].get('action').split('/')[2]),
-                        FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                    ],
-                    {'Site': 'Supreme'}
-                )
-            )
+            json_data = self.provider.request(content.name, headers={'user-agent': self.user_agent}, proxy=True,
+                                              type='get').json()
+
+            name = content.data[0]
+            price = content.data[1]
+            category = content.data[2].lower()
+
+            for style in json_data['styles']:
+                if HashStorage.check_item(content.hash()):
+                    image = f'https:{style["image_url_hi"]}'
+                    result.append(
+                        IRelease(
+                            content.name[:-5],
+                            f'supreme-{category}',
+                            name,
+                            image,
+                            '',
+                            api.Price(api.CURRENCIES['EUR'],
+                                      float(price)),
+                            api.Sizes(
+                                api.SIZE_TYPES[''],
+                                [api.Size(size['name'])
+                                 for size in style['sizes']]
+                            ),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search?s='
+                                           + name.replace(' ', '%20').replace('®', '')),
+                                FooterItem('Cart', 'https://www.supremenewyork.com/shop/cart'),
+                                FooterItem('Mobile', 'https://www.supremenewyork.com/mobile#products/' +
+                                           content.name[:-5].split('/')[-1])
+                            ],
+                            {'Site': 'Supreme'}
+
+                        )
+                    )
             HashStorage.add_target(content.hash())
+
+        result.append(content)
         return result
