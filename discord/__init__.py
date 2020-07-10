@@ -171,7 +171,7 @@ class EventsExecutor(api.EventsExecutor):
             Message(
                 10,
                 item.channel,
-                {'embeds': [build(item)]}
+                {'embeds': [build(item)], 'username': 'Sellars Bot'}
             )
         )
 

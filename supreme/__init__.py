@@ -39,26 +39,22 @@ class Parser(api.Parser):
         result: list = []
 
         if mode == 0:
-            content.timestamp = (datetime.utcnow() + timedelta(days=-((datetime.utcnow().weekday() - 3) % 7), weeks=1)) \
-                .replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
-
-            response = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy=True,
-                                             type='get')
+            content.timestamp = self.time_gen()
+            response = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy=True)
 
             if response.status_code == 403:
-                result.append(content)
-                return content
+                raise Exception('Site was banned')
 
             try:
-                for category in response.json()['products_and_categories'].values():
-                    for element in category:
+                for c in response.json()['products_and_categories'].values():
+                    for e in c:
                         result.append(
                             api.TScheduled(
-                                f'https://www.supremenewyork.com/shop/{element["id"]}.json',
+                                f'https://www.supremenewyork.com/shop/{e["id"]}.json',
                                 self.name,
-                                (element['name'],
-                                 float(element['price_euro']) / 100,
-                                 element['category_name']
+                                (e['name'],
+                                 float(e['price_euro']) / 100,
+                                 e['category_name']
                                  ),
                                 time()
                             )
@@ -74,12 +70,10 @@ class Parser(api.Parser):
                 content.expired = False
 
         elif mode == 1:
-            json_data = self.provider.request(content.name, headers={'user-agent': self.user_agent}, proxy=True,
-                                              type='get').json()
+            json_data = self.provider.request(
+                content.name, headers={'user-agent': self.user_agent}, proxy=True, type='get').json()
 
             name = content.data[0]
-            price = content.data[1]
-            category = content.data[2].lower()
 
             for style in json_data['styles']:
                 if HashStorage.check_item(content.hash()):
@@ -88,18 +82,18 @@ class Parser(api.Parser):
                     result.append(
                         IRelease(
                             content.name[:-5],
-                            f'supreme-{category}',
+                            f'supreme-{content.data[2].lower()}',
                             name,
                             image,
                             '',
-                            api.Price(api.CURRENCIES['EUR'],
-                                      float(price)),
+                            api.Price(api.CURRENCIES['EUR'], float(content.data[1])),
                             api.Sizes(
                                 api.SIZE_TYPES[''],
-                                [api.Size(size['name'],
-                                          f'https://static.sellars.cf/links?site=supreme&style='
-                                          f'{style_id}&size={size["id"]}')
-                                 for size in style['sizes']]
+                                [
+                                    api.Size(size['name'], f'https://static.sellars.cf/links?site=supreme&style='
+                                                           f'{style_id}&size={size["id"]}')
+                                    for size in style['sizes']
+                                ]
                             ),
                             [
                                 FooterItem('StockX', 'https://stockx.com/search?s='
@@ -109,7 +103,6 @@ class Parser(api.Parser):
                                            content.name[:-5].split('/')[-1])
                             ],
                             {'Site': 'Supreme'}
-
                         )
                     )
             HashStorage.add_target(content.hash())
