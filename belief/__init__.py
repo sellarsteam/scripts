@@ -2,6 +2,8 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
+from scripts.keywords_finding import check_name
+import yaml
 
 from source import api
 from source import logger
@@ -16,6 +18,20 @@ class Parser(api.Parser):
         super().__init__(name, log, provider_)
         self.link: str = 'https://beliefmoscow.com/collection/frontpage?order=&q='
         self.interval: int = 1
+
+        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
+
+        if isinstance(raw, dict):
+            if 'absolute' in raw and isinstance(raw['absolute'], list) \
+                    and 'positive' in raw and isinstance(raw['positive'], list) \
+                    and 'negative' in raw and isinstance(raw['negative'], list):
+                self.absolute_keywords = raw['absolute']
+                self.positive_keywords = raw['positive']
+                self.negative_keywords = raw['negative']
+            else:
+                raise TypeError('Keywords must be list')
+        else:
+            raise TypeError('Types of keywords must be in dict')
         self.user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
 
     @property
@@ -37,8 +53,8 @@ class Parser(api.Parser):
             links = []
             for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
                     .xpath('//a[@class="product_preview-link"]'):
-                if 'yeezy' in element.get('href') or 'air' in element.get('href') or 'sacai' in element.get('href') \
-                        or 'dunk' in element.get('href') or 'retro' in element.get('href'):
+                if check_name(element.get('href'), self.absolute_keywords,
+                              self.positive_keywords, self.negative_keywords):
                     links.append(api.Target('https://beliefmoscow.com' + element.get('href'), self.name, 0))
 
             for link in links:

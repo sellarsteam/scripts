@@ -4,6 +4,8 @@ from typing import List, Union
 
 from jsonpath2 import Path
 from user_agent import generate_user_agent
+import yaml
+from scripts.keywords_finding import check_name
 
 from source import api
 from source import logger
@@ -18,6 +20,20 @@ class Parser(api.Parser):
         super().__init__(name, log, provider_)
         self.link: str = 'https://www.ericemanuel.com/products.json?limit=100'
         self.interval: int = 1
+
+        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
+
+        if isinstance(raw, dict):
+            if 'absolute' in raw and isinstance(raw['absolute'], list) \
+                    and 'positive' in raw and isinstance(raw['positive'], list) \
+                    and 'negative' in raw and isinstance(raw['negative'], list):
+                self.absolute_keywords = raw['absolute']
+                self.positive_keywords = raw['positive']
+                self.negative_keywords = raw['negative']
+            else:
+                raise TypeError('Keywords must be list')
+        else:
+            raise TypeError('Types of keywords must be in dict')
 
     @property
     def catalog(self) -> CatalogType:
@@ -57,7 +73,8 @@ class Parser(api.Parser):
 
                 title_ = title.lower()
 
-                if any(i in title_ for i in ('yeezy', 'air', 'sacai', 'retro', 'dunk')):
+                if check_name(handle, self.absolute_keywords, self.positive_keywords, self.negative_keywords) \
+                        or check_name(title_, self.absolute_keywords, self.positive_keywords, self.negative_keywords):
                     target = api.Target('https://www.ericemanuel.com/products/' + handle, self.name, 0)
                     if HashStorage.check_target(target.hash()):
                         sizes_data = Path.parse_str('$.variants.*').match((

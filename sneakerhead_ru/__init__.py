@@ -3,6 +3,8 @@ from typing import List, Union
 
 from lxml import etree
 from user_agent import generate_user_agent
+import yaml
+from scripts.keywords_finding import check_name
 
 from source import api
 from source import logger
@@ -17,6 +19,20 @@ class Parser(api.Parser):
         super().__init__(name, log, provider_)
         self.link: str = 'https://sneakerhead.ru/isnew/shoes/sneakers/'
         self.interval: int = 1
+
+        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
+
+        if isinstance(raw, dict):
+            if 'absolute' in raw and isinstance(raw['absolute'], list) \
+                    and 'positive' in raw and isinstance(raw['positive'], list) \
+                    and 'negative' in raw and isinstance(raw['negative'], list):
+                self.absolute_keywords = raw['absolute']
+                self.positive_keywords = raw['positive']
+                self.negative_keywords = raw['negative']
+            else:
+                raise TypeError('Keywords must be list')
+        else:
+            raise TypeError('Types of keywords must be in dict')
         self.user_agent = generate_user_agent()
 
     @property
@@ -37,9 +53,8 @@ class Parser(api.Parser):
         if mode == 0:
             for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
                     .xpath('//a[@class="product-card__link"]'):
-                if 'yeezy' in element.get('title').lower() or 'air' in element.get('title').lower() or \
-                        'sacai' in element.get('title').lower() \
-                        or 'dunk' in element.get('title').lower() or 'retro' in element.get('title').lower():
+                if check_name(element.get('title').lower(),
+                              self.absolute_keywords, self.positive_keywords, self.negative_keywords):
                     try:
                         if HashStorage.check_target(
                                 api.Target('https://sneakerhead.ru' + element.get('href'), self.name, 0).hash()):
