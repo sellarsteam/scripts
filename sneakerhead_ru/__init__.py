@@ -62,11 +62,10 @@ class Parser(api.Parser):
                                 self.provider.request('https://sneakerhead.ru' + element.get('href'),
                                                       headers={'user-agent': self.user_agent}).text)
                             sizes = [
-                                size.text.replace('\n', '').replace(' ', '') + '+'
+                                size.text.replace('\n', '').replace(' ', '') + ' US' + '+'
                                 + f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
-                                for size in
-                                page_content.xpath('//div[@class="flex-row sizes-chart-items-tab"]')[0].xpath(
-                                    'div[@class="sizes-chart-item selected" or @class="sizes-chart-item"]')
+                                for size in page_content.xpath('//ul[@class="product-sizes__list '
+                                                                'is-visible"]/li/button')
                             ]
                             name = page_content.xpath('//meta[@itemprop="name"]')[0].get('content')
                             HashStorage.add_target(api.Target('https://sneakerhead.ru' + element.get('href')
