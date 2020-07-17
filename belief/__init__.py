@@ -62,7 +62,7 @@ class Parser(api.Parser):
 
                     target = api.Target(f'https://beliefmoscow.com{product["url"]}', self.name, 0)
 
-                    if HashStorage.check_item(target.hash()):
+                    if HashStorage.check_target(target.hash()):
 
                         url = f'https://beliefmoscow.com{product["url"]}'
                         name = product['title']
@@ -78,6 +78,9 @@ class Parser(api.Parser):
                                           [api.Size(f"{size['title'].split(' /')[0]} [{size['quantity']}]",
                                                     f"http://static.sellars.cf/links?site=belief&id={size['id']}")
                                            for size in product['variants'] if size['quantity'] > 0])
+
+                        if len(product['variants']) == 0:
+                            continue
 
                         HashStorage.add_target(target.hash())
 
@@ -99,6 +102,39 @@ class Parser(api.Parser):
                                 {'Site': 'Belief Moscow'}
                             )
                         )
+
+                    else:
+
+                        url = f'https://beliefmoscow.com{product["url"]}'
+                        name = product['title']
+                        price = api.Price(
+                            api.CURRENCIES['RUB'],
+                            float(product['variants'][0]['price'])
+
+                        )
+                        image = product['images'][0]['medium_url'] if len(product['images']) != 0 \
+                            else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
+
+                        if len(product['variants']) == 0:
+                            HashStorage.remove_item(
+                                IRelease(
+                                    url,
+                                    'belief',
+                                    name,
+                                    image,
+                                    '',
+                                    price,
+                                    api.Sizes(api.SIZE_TYPES[''], []),
+                                    [
+                                        FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                                   name.replace(' ', '%20')),
+                                        FooterItem('Cart', 'https://beliefmoscow.com/cart'),
+                                        FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                    ],
+                                    {'Site': 'Belief Moscow'}
+                                ).hash()
+                            )
+
             if result or content.expired:
                 content.gen.time = self.time_gen()
                 content.expired = False
