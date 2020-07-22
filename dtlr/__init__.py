@@ -111,9 +111,10 @@ class Parser(api.Parser):
                             {'Site': 'DTLR Villa Store'}
                         ))
 
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
+            if isinstance(content, api.CSmart):
+                if result or content.expired:
+                    content.gen.time = self.time_gen()
+                    content.expired = False
 
             result.append(content)
         return result

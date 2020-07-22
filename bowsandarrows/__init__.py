@@ -52,6 +52,7 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+
             if response.status_code == 430 or response.status_code == 520:
                 result.append(api.CInterval(self.name, 600.))
                 return result
@@ -123,9 +124,10 @@ class Parser(api.Parser):
                             {'Site': 'Bows And Arrows'}
                         ))
 
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
+            if isinstance(content, api.CSmart):
+                if result or content.expired:
+                    content.gen.time = self.time_gen()
+                    content.expired = False
 
             result.append(content)
         return result

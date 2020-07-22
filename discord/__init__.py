@@ -53,7 +53,7 @@ class EventsExecutor(api.EventsExecutor):
 
         self.state = 1
         self.messages = queue.PriorityQueue(1024)
-        self.thread = threading.Thread(name='Telegram-Bot', target=self.loop, daemon=True)
+        self.thread = threading.Thread(name='Discord-Bot', target=self.loop, daemon=True)
         self.thread.start()
         self.log.info('Thread started')
 
