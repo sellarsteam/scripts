@@ -53,9 +53,30 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
-                    .xpath('//div[@class="product"]/a'):
-                if check_name(element.get('href'), self.absolute_keywords,
-                              self.positive_keywords, self.negative_keywords):
+                    .xpath('//div[@class="product"]/a[@class="product-image"]'):
+
+                if element.get('href') == 'javascript:void(0);':
+                    result.append(IAnnounce(
+                        'https://brandshop.ru/New/',
+                        'russian-retailers',
+                        element.xpath('img')[0].get('alt'),
+                        element.xpath('img')[0].get('src'),
+                        'Подробности скоро',
+                        api.Price(api.CURRENCIES['RUB'], float(0)),
+                        api.Sizes(api.SIZE_TYPES[''], []),
+                        [
+                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                       element.xpath('img')[0].get('alt')
+                                       .replace(' ', '%20').replace('"', '').replace('\n', '').replace(' ', '')),
+                            FooterItem('Cart', 'https://brandshop.ru/cart'),
+                            FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                        ],
+                        {'Site': 'Brandshop'}
+                    ))
+
+                elif check_name(element.xpath('img')[0].get('alt').lower(), self.absolute_keywords,
+                                self.positive_keywords, self.negative_keywords):
+
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):
                             page_content = etree.HTML(
@@ -90,24 +111,6 @@ class Parser(api.Parser):
                             )
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeEroor')
-                elif element.get('href') == 'javascript:void(0);':
-                    result.append(IAnnounce(
-                        'https://brandshop.ru/New/',
-                        'russian-retailers',
-                        element.xpath('img')[0].get('alt'),
-                        element.xpath('img')[0].get('src'),
-                        'Подробности скоро',
-                        api.Price(api.CURRENCIES['RUB'], float(0)),
-                        api.Sizes(api.SIZE_TYPES[''], []),
-                        [
-                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                       element.xpath('img')[0].get('alt')
-                                       .replace(' ', '%20').replace('"', '').replace('\n', '').replace(' ', '')),
-                            FooterItem('Cart', 'https://brandshop.ru/cart'),
-                            FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                        ],
-                        {'Site': 'Brandshop'}
-                    ))
             if result or content.expired:
                 content.gen.time = self.time_gen()
                 content.expired = False
