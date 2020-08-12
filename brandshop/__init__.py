@@ -58,7 +58,7 @@ class Parser(api.Parser):
                 if element.get('href') == 'javascript:void(0);':
                     result.append(IAnnounce(
                         'https://brandshop.ru/New/',
-                        'russian-retailers',
+                        'brandshop',
                         element.xpath('img')[0].get('alt'),
                         element.xpath('img')[0].get('src'),
                         'Подробности скоро',
