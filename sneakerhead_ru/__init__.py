@@ -98,6 +98,7 @@ class Parser(api.Parser):
                                             replace('"', '').replace('\n', '').replace(' ', '')
                                         ),
                                         FooterItem('Cart', 'https://sneakerhead.ru/cart'),
+                                        FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=sneakerhead&monitor={"https://sneakerhead.ru" + element.get("href")}'),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],
                                     {'Site': 'Sneakerhead'}

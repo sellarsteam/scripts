@@ -104,6 +104,7 @@ class Parser(api.Parser):
                                             replace('"', '').replace('\n', '').replace(' ', '')
                                         ),
                                         FooterItem('Cart', 'https://brandshop.ru/cart'),
+                                        FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=brandshop&monitor={element.get("href")}'),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],
                                     {'Site': 'Brandshop'}

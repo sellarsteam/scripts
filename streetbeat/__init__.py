@@ -106,6 +106,7 @@ class Parser(api.Parser):
                                             'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
                                             replace('"', '').replace('\n', '').replace(' ', '')
                                         ),
+                                        FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=streetbeat&monitor={"https://street-beat.ru" + link}'),
                                         FooterItem('Cart', 'https://street-beat.ru/cart'),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],

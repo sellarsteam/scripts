@@ -65,6 +65,7 @@ class Parser(api.Parser):
                                         'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
                                         replace('"', '').replace('\n', '').replace(' ', '').replace('Кроссовки', '')
                                     ),
+                                    FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=tsum&monitor={"https://www.tsum.ru/" + element.current_value["slug"]}'),
                                     FooterItem('Cart', 'https://www.tsum.ru/cart'),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],
