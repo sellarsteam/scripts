@@ -17,13 +17,13 @@ def build(item: Union[IAnnounce, IRelease, IRestock]) -> dict:
             'url': item.url
         },
         'footer': {
-            'text': 'Sellars Monitor',
-            'icon_url': 'https://www.gravatar.com/avatar/6ad5eb9719955fc8ff9021f50b91b9f0?d=retro'
+            'text': 'Sellars Monitors',
+            'icon_url': 'https://vk.com/doc210515946_566140005?hash=278a5eb4b63e373dfe&dl=8e1637784bef33de38'
         },
         'title': ('[ANNOUNCE] ' if isinstance(item, IAnnounce) else
                   '[RESTOCK] ' if isinstance(item, IRestock) else '') + item.name,
-        "color": ('13392636' if isinstance(item, IRelease) else
-                  '15856370' if isinstance(item, IRestock) else '7452157'),
+        "color": ('31487' if isinstance(item, IRelease) else
+                  '15396079' if isinstance(item, IRestock) else '15396079'),
         'timestamp': datetime.utcnow().replace(tzinfo=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         'fields': [],
         'url': item.url
