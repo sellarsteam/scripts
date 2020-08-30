@@ -103,7 +103,7 @@ class Parser(api.Parser):
                         HashStorage.add_target(target.hash())
                         result.append(IRelease(
                             target.name,
-                            'shopify-filtered',
+                            'octobershop',
                             title,
                             image,
                             '',
