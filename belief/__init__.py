@@ -15,7 +15,7 @@ from source.tools import LinearSmart
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://beliefmoscow.com/collection/frontpage.json?order=&q=adidas,nike,jordan,yeezy'
+        self.link: str = 'https://beliefmoscow.com/collection/frontpage.json?order=&q=nike'
         self.interval: int = 1
 
         raw = yaml.safe_load(open('./scripts/keywords.yaml'))
