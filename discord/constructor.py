@@ -1,4 +1,3 @@
-import urllib.parse
 from datetime import datetime
 from typing import List, Union
 
@@ -10,20 +9,16 @@ currencies: tuple = ('', '£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł'
 sizes_column_size = 5
 
 
-def build(item: Union[IAnnounce, IRelease, IRestock]) -> dict:
+def build(item: Union[IAnnounce, IRelease, IRestock], data: dict) -> dict:
     embed = {
-        'author': {
-            'name': '{0.scheme}://{0.netloc}/'.format(urllib.parse.urlparse(item.url)),
-            'url': item.url
-        },
         'footer': {
-            'text': 'Sellars Monitors',
-            'icon_url': 'https://vk.com/doc210515946_566140005?hash=278a5eb4b63e373dfe&dl=8e1637784bef33de38'
+            'text': data['footer'],
+            'icon_url': data['image']
         },
         'title': ('[ANNOUNCE] ' if isinstance(item, IAnnounce) else
                   '[RESTOCK] ' if isinstance(item, IRestock) else '') + item.name,
-        "color": ('31487' if isinstance(item, IRelease) else
-                  '15396079' if isinstance(item, IRestock) else '15396079'),
+        "color": (int(data['colors'][0]) if isinstance(item, IRelease) else
+                  int(data['colors'][2]) if isinstance(item, IRestock) else int(data['colors'][1])),
         'timestamp': datetime.utcnow().replace(tzinfo=pytz.timezone('Europe/Moscow')).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         'fields': [],
         'url': item.url

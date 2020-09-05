@@ -23,6 +23,7 @@ class Message:
     channel: str = field(compare=False)
     content: dict = field(compare=False)
     tries: int = field(default=5, repr=False)
+    group: str = field(default='sellars')
 
     def retry(self) -> bool:
         if self.tries == 0:
@@ -38,6 +39,11 @@ class EventsExecutor(api.EventsExecutor):
     def __init__(self, name: str, log: Logger):
         super().__init__(name, log)
         self.active = False
+        self.standart_data = {
+            'colors': [31487, 15396079, 15396079],
+            'image': 'https://sun9-57.userapi.com/V1xwr_A5UOXgOUK4qXTJ6PpIvzr87ZtGfz4KuQ/SE-aHG4jFHw.jpg',
+            'footer': 'Sellars Monitors'
+        }
         if os.path.isfile(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'):
             raw = yaml.safe_load(open(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'))
             if isinstance(raw, dict):
@@ -46,6 +52,8 @@ class EventsExecutor(api.EventsExecutor):
                     self.active = True
                 else:
                     self.log.error('secret.yaml must contain channels')
+                if 'groups' in raw and isinstance(raw['groups'], dict):
+                    self.groups = raw['groups']
             else:
                 self.log.error('secret.yaml must contain dict')
         else:
@@ -67,11 +75,23 @@ class EventsExecutor(api.EventsExecutor):
                     try:
                         if msg.retry():
                             if msg.channel in self.channels:
-                                response = requests.post(
-                                    self.channels[msg.channel],
-                                    data=json.dumps(msg.content),
-                                    headers=self.headers
-                                )
+                                if isinstance(self.channels[msg.channel], list):
+
+                                    for channel_data in self.channels[msg.channel]:
+                                        if channel_data['name'] == msg.group:
+                                            response = requests.post(
+                                                channel_data['webhook'],
+                                                data=json.dumps(msg.content),
+                                                headers=self.headers
+                                            )
+
+                                else:
+                                    response = requests.post(
+                                        self.channels[msg.channel],
+                                        data=json.dumps(msg.content),
+                                        headers=self.headers
+                                    )
+
                                 if response.status_code == 400:
                                     self.log.error(f'Message lost: {response.text}')
                                     print(json.dumps(msg.content))
@@ -167,13 +187,27 @@ class EventsExecutor(api.EventsExecutor):
         self.item(item)
 
     def item(self, item: Union[IAnnounce, IRelease, IRestock]):
-        self.messages.put(
-            Message(
-                10,
-                item.channel,
-                {'embeds': [build(item)], 'username': 'Sellars Bot'}
+        if isinstance(self.channels[item.channel], list):
+            for channel in self.channels[item.channel]:
+                data = self.groups[channel['name']]
+                group = channel['name']
+
+                self.messages.put(
+                    Message(
+                        10,
+                        item.channel,
+                        {'embeds': [build(item, data)], 'username': f'{item.channel.capitalize()}'},
+                        group=group
+                    )
+                )
+        else:
+            self.messages.put(
+                Message(
+                    10,
+                    item.channel,
+                    {'embeds': [build(item, self.standart_data)], 'username': f'{item.channel.capitalize()}'}
+                )
             )
-        )
 
     def e_target_end_fail(self, target_end: TEFail) -> None:
         self.messages.put(
