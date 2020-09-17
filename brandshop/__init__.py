@@ -85,31 +85,58 @@ class Parser(api.Parser):
                             sizes = [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')]
                             name = page_content.xpath('//span[@itemprop="name"]')[0].text
                             HashStorage.add_target(api.Target(element.get('href'), self.name, 0).hash())
-                            result.append(
-                                IRelease(
-                                    element.get('href'),
-                                    'brandshop',
-                                    name,
-                                    page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                                    '',
-                                    api.Price(
-                                        api.CURRENCIES['RUB'],
-                                        float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
-                                    ),
-                                    api.Sizes(api.SIZE_TYPES[''], sizes),
-                                    [
-                                        FooterItem(
-                                            'StockX',
-                                            'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
-                                            replace('"', '').replace('\n', '').replace(' ', '')
+                            try:
+                                is_only_offline = \
+                                    page_content.xpath('//button[@class="btn btn-fluid btn-transparent"]')[0].text \
+                                    == 'Доступен только в офлайн-магазине'
+                            except Exception:
+                                is_only_offline = False
+
+                            if is_only_offline:
+                                result.append(
+                                    IRelease(
+                                        element.get('href'),
+                                        'brandshop-offline',
+                                        name,
+                                        page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                                        '',
+                                        api.Price(
+                                            api.CURRENCIES['RUB'],
+                                            float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
                                         ),
-                                        FooterItem('Cart', 'https://brandshop.ru/cart'),
-                                        FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=brandshop&monitor={element.get("href")}'),
-                                        FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                                    ],
-                                    {'Site': 'Brandshop'}
+                                        api.Sizes(api.SIZE_TYPES[''], sizes),
+                                        [
+                                            FooterItem('Cart', 'https://brandshop.ru/cart'),
+                                            FooterItem('Login', 'https://brandshop.ru/login')
+                                        ],
+                                        {
+                                            'Site': 'Brandshop',
+                                            'Location': page_content.xpath('//div[@class="access"]')[0].text
+                                        }
+                                    )
                                 )
-                            )
+
+                            else:
+                                result.append(
+                                    IRelease(
+                                        element.get('href'),
+                                        'brandshop',
+                                        name,
+                                        page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                                        '',
+                                        api.Price(
+                                            api.CURRENCIES['RUB'],
+                                            float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
+                                        ),
+                                        api.Sizes(api.SIZE_TYPES[''], sizes),
+                                        [
+                                            FooterItem('Cart', 'https://brandshop.ru/cart'),
+                                            FooterItem('Login', 'https://brandshop.ru/login')
+                                        ],
+                                        {'Site': 'Brandshop'}
+                                    )
+                                )
+
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeEroor')
             if result or content.expired:
