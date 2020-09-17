@@ -7,6 +7,45 @@ from source.logger import Logger
 
 from requests import post
 
+regions = {
+    'EU': '🇪🇺',
+    'IT': '🇮🇹',
+    'WW': '🇺🇳',
+    'JP': '🇯🇵',
+    'US': '🇺🇸',
+    'DE': '🇩🇪',
+    'ES': '🇪🇸',
+    'CA': '🇨🇦',
+    'GB': '🇬🇧',
+    'NZ': '🇳🇿',
+    'AU': '🇦🇺',
+    'ZA': '🇿🇦',
+    'HK': '🇭🇰',
+    'AE': '🇦🇪',
+    'KR': '🇰🇷',
+    'FR': '🇫🇷',
+    'PH': '🇵🇭',
+    'TH': '🇹🇭',
+    'DK': '🇩🇰',
+    'BR': '🇧🇷',
+    'MY': '🇲🇾',
+    'TR': '🇹🇷',
+    'SK': '🇸🇰',
+    'NL': '🇳🇱',
+    'CZ': '🇨🇿',
+    'ID': '🇮🇩',
+    'RU': '🇷🇺',
+    'FI': '🇫🇮',
+    'PL': '🇵🇱',
+    'CH': '🇨🇭',
+    'AT': '🇦🇹',
+    'RO': '🇷🇴',
+    'HR': '🇭🇷',
+    'HU': '🇭🇺',
+    'BE': '🇧🇪',
+    'KW': '🇰🇼'
+}
+
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: Logger, provider: api.SubProvider):
@@ -52,7 +91,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> api.CatalogType:
-        return api.CInterval(self.name, 120)
+        return api.CInterval(self.name, 20)
 
     def execute(
             self,
@@ -73,7 +112,7 @@ class Parser(api.Parser):
             result.append(content)
 
             result.extend([
-                api.TInterval(shoe['id'], self.name, 0, 30)
+                api.TInterval(shoe['id'], self.name, 0, 3)
                 for shoe in self.shoes
             ])
 
@@ -118,11 +157,17 @@ class Parser(api.Parser):
                         slug = shoes_data['slug']
 
                         type_raffle = raffle['type']
+
                         if raffle['hasPostage']:
                             postage = 'You will need to pay for the shipment'
                         else:
                             postage = 'Postage is free'
-                        location = raffle['locale']
+
+                        try:
+                            location = f'{raffle["locale"]} {regions[raffle["locale"]]}'
+                        except Exception:
+                            location = raffle["locale"]
+
                         shop = f'[{raffle["retailer"]["name"]}]({raffle["retailer"]["url"]})'
 
                         try:
@@ -134,7 +179,7 @@ class Parser(api.Parser):
                         result.append(
                             IRelease(
                                 url,
-                                'raffles',
+                                f'raffles-{type_raffle.lower()}',
                                 f'{name}\n[PID: {pid}]',
                                 image_url,
                                 postage,
