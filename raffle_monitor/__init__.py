@@ -91,7 +91,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> api.CatalogType:
-        return api.CInterval(self.name, 20)
+        return api.CInterval(self.name, 120)
 
     def execute(
             self,
@@ -112,7 +112,7 @@ class Parser(api.Parser):
             result.append(content)
 
             result.extend([
-                api.TInterval(shoe['id'], self.name, 0, 3)
+                api.TInterval(shoe['id'], self.name, 0, 30)
                 for shoe in self.shoes
             ])
 
