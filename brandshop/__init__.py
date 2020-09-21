@@ -93,6 +93,17 @@ class Parser(api.Parser):
                                 is_only_offline = False
 
                             if is_only_offline:
+                                location = page_content.xpath('//div[@class="access"]')[0].text
+                                if 'петров' in location.lower():
+                                    taxi_link = 'https://3.redirect.appmetrica.yandex.com/route?end-lat=55.767851&end' \
+                                                '-lon=37.618764&appmetrica_tracking_id=1178268795219780156&app_code=3'
+                                elif 'полян' in location.lower():
+                                    taxi_link = 'https://3.redirect.appmetrica.yandex.com/route?end-lat=55.730548&end' \
+                                                '-lon=37.623233&appmetrica_tracking_id=1178268795219780156&app_code=3'
+                                else:
+                                    taxi_link = 'https://3.redirect.appmetrica.yandex.com/route?end-lat=55.730548&end' \
+                                                '-lon=37.623233&appmetrica_tracking_id=1178268795219780156&app_code=3'
+
                                 result.append(
                                     IRelease(
                                         element.get('href'),
@@ -111,7 +122,8 @@ class Parser(api.Parser):
                                         ],
                                         {
                                             'Site': 'Brandshop',
-                                            'Location': page_content.xpath('//div[@class="access"]')[0].text
+                                            'Location': location,
+                                            'Taxi': f"[Вызов такси до магазина]({taxi_link}) 🚕"
                                         }
                                     )
                                 )
