@@ -1,11 +1,11 @@
 requests==2.24.0
 user_agent==0.1.9
 cfscrape==2.1.1
-lxml==4.5.1
+lxml==4.5.2
 jsonpath2==0.4.4
 scripts==2.0
 pytz==2020.1
-cloudscraper==1.2.40
-python-dotenv==0.13.0
+cloudscraper==1.2.46
+python-dotenv==0.14.0
 python-telegram-bot==12.8
 PyYAML==5.3.1
