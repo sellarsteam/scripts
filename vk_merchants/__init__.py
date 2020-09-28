@@ -51,8 +51,14 @@ def key_words():
 
 
 def get_post_id(merchant_id, token, provider):
-    content = provider.request(
-        f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52').json()
+    ok, content = provider.request(
+        f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52')
+
+    if not ok:
+        raise content
+
+
+    content = content.json()
     try:
         if content['response']['items'][0]['is_pinned']:
             return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
@@ -119,8 +125,17 @@ class Parser(api.Parser):
                             self.number_of_token = 0
                         self.counter = 0
                     token = self.tokens[self.number_of_token]
-                    content = self.provider.request(f"https://api.vk.com/method/wall.getById?posts={target[0].name}"
-                                                      f"&access_token={token}&v=5.52").json()
+                    ok, content = self.provider.request(f"https://api.vk.com/method/wall.getById?posts={target[0].name}"
+                                                      f"&access_token={token}&v=5.52")
+
+                    if not ok:
+                        if isinstance(content, ConnectionError):
+                            return [api.CInterval(self.name, 600.)]
+                        else:
+                            raise content
+
+                    content = content.json()
+
                     self.counter += 1
                     text = content['response'][0]['text']
                     available = False

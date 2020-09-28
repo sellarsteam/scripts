@@ -3,6 +3,7 @@ from json import loads, JSONDecodeError
 from typing import List, Union
 
 from lxml import etree
+from requests import exceptions
 from user_agent import generate_user_agent
 import yaml
 from scripts.keywords_finding import check_name
@@ -37,12 +38,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=7, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=1, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -51,8 +52,16 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML( self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
-                    .xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
+
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
+                    return [api.CInterval(self.name, 600.)]
+                else:
+                    raise response
+
+            for element in etree.HTML(response.text).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
                 if check_name(element[0].xpath('a[@class="link link--no-color catalog-item__title '
                                                'ddl_product_link"]/span')[0].text.lower(),
                               self.absolute_keywords, self.positive_keywords, self.negative_keywords):
@@ -62,9 +71,17 @@ class Parser(api.Parser):
                         if HashStorage.check_target(
                                 api.Target('https://street-beat.ru' + link, self.name, 0).hash()):
                             try:
-                                page_content: etree.Element = etree \
-                                    .HTML(self.provider.request('https://street-beat.ru' + link,
-                                                                headers={'user-agent': self.user_agent}).text)
+
+                                ok, page_content = self.provider.request('https://street-beat.ru' + link,
+                                                                         headers={'user-agent': self.user_agent})
+
+                                if not ok:
+                                    if isinstance(response, exceptions.Timeout):
+                                        return [api.CInterval(self.name, 600.)]
+                                    else:
+                                        raise response
+
+                                page_content: etree.Element = etree.HTML(page_content.text)
                                 json_content = loads(page_content
                                                      .xpath('//script[@type="application/ld+json"]')[1].text)
                             except etree.XMLSyntaxError:
@@ -106,7 +123,8 @@ class Parser(api.Parser):
                                             'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
                                             replace('"', '').replace('\n', '').replace(' ', '')
                                         ),
-                                        FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=streetbeat&monitor={"https://street-beat.ru" + link}'),
+                                        FooterItem('Urban QT',
+                                                   f'https://autofill.cc/api/v1/qt?storeId=streetbeat&monitor={"https://street-beat.ru" + link}'),
                                         FooterItem('Cart', 'https://street-beat.ru/cart'),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],

@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
+from requests import exceptions
 from user_agent import generate_user_agent
-from json import loads, JSONDecodeError
+from json import JSONDecodeError
 
 from jsonpath2 import Path
 from source import api
@@ -21,12 +22,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=7, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=1, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -35,8 +36,21 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in Path.parse_str('$.*').match(self.provider.request(
-                    self.link, headers={'user-agent': self.user_agent, 'accept': 'application/json'}).json()):
+
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent, 'accept': 'application/json'})
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
+                    return [api.CInterval(self.name, 600.)]
+                else:
+                    raise response
+
+            try:
+                json_response = response.json()
+            except JSONDecodeError:
+                return [api.CInterval(self.name, 600.)]
+
+            for element in Path.parse_str('$.*').match(json_response):
                 try:
                     if HashStorage.check_target(
                             api.Target('https://www.tsum.ru/' + element.current_value['slug'], self.name, 0).hash()):

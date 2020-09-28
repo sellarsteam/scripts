@@ -3,6 +3,7 @@ from typing import List, Union
 
 import yaml
 from scripts.keywords_finding import check_name
+from requests import exceptions
 
 from source import api
 from source import logger
@@ -36,12 +37,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 6, 10))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -50,9 +51,16 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            json_response = self.provider.request(self.link, headers={'user-agent': self.user_agent}).json()
 
-            for item in json_response:
+            ok, json_response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+
+            if not ok:
+                if isinstance(json_response, exceptions.Timeout):
+                    return result
+                else:
+                    raise result
+
+            for item in json_response.json():
 
                 if check_name(item['Name'].lower(), self.absolute_keywords,
                               self.positive_keywords, self.negative_keywords):
@@ -86,7 +94,7 @@ class Parser(api.Parser):
                                     FooterItem('Cart', 'https://www.basketshop.ru/catalog/basket/'),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],
-                                {'Site': 'Basketshop (StreetBall)'}
+                                {'Site': '[Basketshop](https://www.basketshop.ru/)'}
                             )
                         )
 
@@ -95,4 +103,5 @@ class Parser(api.Parser):
                 content.expired = False
 
             result.append(content)
+
         return result

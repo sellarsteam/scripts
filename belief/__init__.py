@@ -3,10 +3,12 @@ from typing import List, Union
 
 from scripts.keywords_finding import check_name
 import yaml
+from requests import exceptions, get
+from json import JSONDecodeError
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, CInterval
 from source.cache import HashStorage
 from source.library import SubProvider
 from source.tools import LinearSmart
@@ -35,12 +37,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=7, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -50,8 +52,23 @@ class Parser(api.Parser):
         result = []
 
         if mode == 0:
+            result.append(content)
 
-            page_content = self.provider.request(self.link, headers={'user-agent': self.user_agent}).json()
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
+                    return result
+                else:
+                    raise result
+
+            try:
+                page_content = response.json()
+
+            except JSONDecodeError:
+
+                result.append(api.CInterval(self.name, 300))
+                return result
 
             for product in page_content['products']:
 
@@ -143,3 +160,10 @@ class Parser(api.Parser):
 
             result.append(content)
         return result
+
+
+if __name__ == '__main__':
+    link: str = 'https://beliefmoscow.com/collection/frontpage.json?order=&q=nike'
+    user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
+    while True:
+        print(get(link, headers={'user-agent': user_agent}).json())

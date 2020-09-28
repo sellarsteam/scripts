@@ -5,6 +5,7 @@ from lxml import etree
 from user_agent import generate_user_agent
 import yaml
 from scripts.keywords_finding import check_name
+from requests import exceptions
 
 from source import api
 from source import logger
@@ -38,12 +39,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 6, 10))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=7, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -52,7 +53,18 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
+
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+
+            if not ok:
+
+                if isinstance(response, exceptions.Timeout) or isinstance(response, exceptions.ConnectionError):
+                    return [api.CInterval(self.name, 300)]
+
+                else:
+                    raise response
+
+            for element in etree.HTML(response.text) \
                     .xpath('//div[@class="product"]/a[@class="product-image"]'):
 
                 if element.get('href') == 'javascript:void(0);':
@@ -79,9 +91,23 @@ class Parser(api.Parser):
 
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):
+
+                            ok, response_item = self.provider.request(element.get('href'),
+                                                                      headers={'user-agent': self.user_agent})
+
+                            if not ok:
+
+                                if isinstance(response, exceptions.Timeout) \
+                                        or isinstance(response, exceptions.ConnectionError):
+                                    return [api.CInterval(self.name, 300)]
+
+                                else:
+                                    raise response
+
                             page_content = etree.HTML(
-                                self.provider.request(element.get('href'), headers={'user-agent': self.user_agent}).text
+                                response_item.text
                             )
+
                             sizes = [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')]
                             name = page_content.xpath('//span[@itemprop="name"]')[0].text
                             HashStorage.add_target(api.Target(element.get('href'), self.name, 0).hash())
@@ -156,4 +182,5 @@ class Parser(api.Parser):
                 content.expired = False
 
             result.append(content)
+
         return result

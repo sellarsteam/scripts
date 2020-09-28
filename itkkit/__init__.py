@@ -49,12 +49,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -63,18 +63,19 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(post(url=self.link, data=self.post_data, headers=self.headers).text).xpath(
+            try:
+                response = post(url=self.link, data=self.post_data, headers=self.headers)
+            except (ConnectionError, TimeoutError):
+                return [api.CInterval(self.name, 300)]
+
+            for element in etree.HTML(response.text).xpath(
                     '//div[@class="grid-row"]/div/a'):
 
                 if 'Sold' not in element.xpath('div[@class="catalog-item__title"]')[0].xpath(
                         'div[@class="catalog-item__title-name"]')[0].text:
                     try:
                         if HashStorage.check_target(
-                                api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
-                            page_content = etree.HTML(
-                                self.provider.request('https://www.itkkit.ru' + element.get('href'),
-                                                      headers={'user-agent': self.user_agent}).text
-                            )
+                                 api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
 
                             sizes = api.Sizes(
                                 api.SIZE_TYPES[''], [api.Size(size.replace(' US', '') + ' US')

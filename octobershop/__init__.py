@@ -6,6 +6,7 @@ from jsonpath2 import Path
 from user_agent import generate_user_agent
 import yaml
 from scripts.keywords_finding import check_name
+from requests import exceptions
 
 from source import api
 from source import logger
@@ -37,12 +38,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 30))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 6, 10))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=2, microsecond=250000, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -51,16 +52,19 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+            ok, response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
+                    return [api.CInterval(self.name, 600.)]
 
             if response.status_code == 430 or response.status_code == 520:
-                result.append(api.CInterval(self.name, 600.))
-                return result
+                return [api.CInterval(self.name, 600.)]
 
             try:
                 response = response.json()
             except JSONDecodeError:
-                raise TypeError('Non JSON response')
+                return [api.CInterval(self.name, 600.)]
 
             for element in Path.parse_str('$.products.*').match(response):
                 title = element.current_value['title']
@@ -77,10 +81,24 @@ class Parser(api.Parser):
                         or check_name(title_, self.absolute_keywords, self.positive_keywords, self.negative_keywords):
                     target = api.Target('https://oktyabrskateshop.ru/products/' + handle, self.name, 0)
                     if HashStorage.check_target(target.hash()):
-                        sizes_data = Path.parse_str('$.variants.*').match((
-                            self.provider.request(target.name + '.js',
-                                                  headers={'user-agent': generate_user_agent()},
-                                                  proxy=True).json()))
+
+                        ok, response = self.provider.request(target.name + '.js',
+                                                             headers={'user-agent': generate_user_agent()},
+                                                             proxy=True)
+
+                        if not ok:
+                            if isinstance(response, exceptions.Timeout):
+                                return [api.CInterval(self.name, 900.)]
+
+                        if response.status_code == 430 or response.status_code == 520:
+                            return [api.CInterval(self.name, 900.)]
+
+                        try:
+                            response = response.json()
+                        except JSONDecodeError:
+                            return [api.CInterval(self.name, 900.)]
+
+                        sizes_data = Path.parse_str('$.variants.*').match(response)
                         sizes = [
                             api.Size(
                                 str(size.current_value['option1']),

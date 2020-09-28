@@ -1,3 +1,4 @@
+from json import JSONDecodeError
 from typing import List, Union
 
 from source import api
@@ -101,9 +102,12 @@ class Parser(api.Parser):
         result = []
 
         if mode == 0:
-            catalog_data = post(
-                self.graphql_url, json=self.post_catalog_body
-            ).json()
+            try:
+                catalog_data = post(
+                    self.graphql_url, json=self.post_catalog_body
+                ).json()
+            except (ConnectionError, JSONDecodeError):
+                return [api.CInterval(self.name, 600.)]
 
             for item in catalog_data['data']['search']['products']:
                 self.shoes.append({'id': item['id'], 'name': item['name'], 'pid': item['pid'],
@@ -121,9 +125,12 @@ class Parser(api.Parser):
         elif mode == 1:
             self.post_raffles_body['variables']['productId'] = int(content.name)
 
-            raffles_data = post(
-                self.graphql_url, json=self.post_raffles_body
-            ).json()
+            try:
+                raffles_data = post(
+                    self.graphql_url, json=self.post_raffles_body
+                ).json()
+            except (ConnectionError, JSONDecodeError):
+                return [api.CInterval(self.name, 600.)]
 
             for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
                 try:

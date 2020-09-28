@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
+from requests import exceptions
 from user_agent import generate_user_agent
 import yaml
 from scripts.keywords_finding import check_name
@@ -38,12 +39,12 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 3, 15))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=500, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -52,7 +53,16 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            for element in etree.HTML(self.provider.request(self.link, headers={'user-agent': self.user_agent}).text) \
+
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
+                    return [api.CInterval(self.name, 600.)]
+                else:
+                    raise response
+
+            for element in etree.HTML(response.text) \
                     .xpath('//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]'):
 
                 link = element.get('href')
@@ -64,10 +74,18 @@ class Parser(api.Parser):
                     try:
                         if HashStorage.check_target(api.Target('https://www.revolveclothing.ru' +
                                                                link, self.name, 0).hash()):
-                            page_content = etree.HTML(
-                                self.provider.request('https://www.revolveclothing.ru' + element.get('href'),
-                                                      headers={'user-agent': self.user_agent}).text
-                            )
+
+                            ok, page_response = self.provider.request(
+                                'https://www.revolveclothing.ru' + element.get('href'),
+                                headers={'user-agent': self.user_agent})
+
+                            if not ok:
+                                if isinstance(response, exceptions.Timeout):
+                                    return [api.CInterval(self.name, 600.)]
+                                else:
+                                    raise response
+
+                            page_content = etree.HTML(page_response.text)
 
                             sizes = [api.Size(f"{size.get('value')} [{size.get('data-qty')}]")
                                      for size in page_content.xpath('//ul[@class="size-options"]/li/input')
@@ -78,7 +96,6 @@ class Parser(api.Parser):
                                                               + link, self.name, 0).hash())
 
                             if sizes:
-
                                 result.append(
                                     IRelease(
                                         'https://www.revolveclothing.ru' + link,
@@ -88,7 +105,8 @@ class Parser(api.Parser):
                                         'БЕСПЛАТНАЯ ДОСТАВКА ЗАКАЗОВ ОТ 100$',
                                         api.Price(
                                             api.CURRENCIES['USD'],
-                                            float(page_content.xpath('//meta[@property="wanelo:product:price"]')[0].get('content'))
+                                            float(page_content.xpath('//meta[@property="wanelo:product:price"]')[0].get(
+                                                'content'))
                                         ),
                                         api.Sizes(api.SIZE_TYPES[''], sizes),
                                         [

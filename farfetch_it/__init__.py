@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from source import api
+from requests import exceptions
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
@@ -33,9 +34,18 @@ class Parser(api.Parser):
         result = []
 
         if mode == 0:
-            json_response = self.provider.request(self.link, headers={'user-agent': self.user_agent}).json()
 
-            for item in json_response['listingItems']['items']:
+            ok, json_response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+
+            if not ok:
+
+                if isinstance(json_response, exceptions.Timeout):
+                    return [api.CInterval(self.name, 300)]
+
+                else:
+                    raise json_response
+
+            for item in json_response.json()['listingItems']['items']:
 
                 if item['priceInfo']['isOnSale'] is True or item['priceInfo']['finalPrice'] < 250:
                     link = f'https://www.farfetch.com{item["url"]}'
