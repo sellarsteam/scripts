@@ -65,6 +65,7 @@ class Parser(api.Parser):
         if mode == 0:
             try:
                 response = post(url=self.link, data=self.post_data, headers=self.headers)
+
             except (ConnectionError, TimeoutError):
                 return [api.CInterval(self.name, 300)]
 
@@ -78,12 +79,13 @@ class Parser(api.Parser):
                                  api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
 
                             sizes = api.Sizes(
-                                api.SIZE_TYPES[''], [api.Size(size.replace(' US', '') + ' US')
-                                                     for size in element
-                                                         .xpath('div[@class="catalog-item__img-wrapper"]'
-                                                                '/div[@class="catalog-item__img-hover"]/div')
-                                                     [0].text.split(' US ')
-                                                     ]
+                                api.SIZE_TYPES[''],
+                                [
+                                    api.Size(size.replace(' US', '') + ' US')
+                                    for size in element.xpath('div[@class="catalog-item__img-wrapper"]'
+                                                              '/div[@class="catalog-item__img-hover"]/div')[0].text
+                                    .split(' US ')
+                                ]
                             )
 
                             name = element.xpath('div[@class="catalog-item__title"]/div')[-1].text

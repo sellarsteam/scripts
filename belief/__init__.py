@@ -3,12 +3,12 @@ from typing import List, Union
 
 from scripts.keywords_finding import check_name
 import yaml
-from requests import exceptions, get
-from json import JSONDecodeError
+from requests import exceptions
+from ujson import loads
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, CInterval
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
 from source.tools import LinearSmart
@@ -54,23 +54,21 @@ class Parser(api.Parser):
         if mode == 0:
             result.append(content)
 
-            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
 
             if not ok:
-                if isinstance(response, exceptions.Timeout):
+                if isinstance(resp, exceptions.Timeout):
                     return result
                 else:
                     raise result
 
             try:
-                page_content = response.json()
+                json = loads(resp.content)
 
-            except JSONDecodeError:
+            except ValueError:
+                return [api.CInterval(self.name, 300)]
 
-                result.append(api.CInterval(self.name, 300))
-                return result
-
-            for product in page_content['products']:
+            for product in json['products']:
 
                 if check_name(product['permalink'], self.absolute_keywords, self.positive_keywords,
                               self.negative_keywords) \
@@ -147,7 +145,8 @@ class Parser(api.Parser):
                                         FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                                    name.replace(' ', '%20')),
                                         FooterItem('Cart', 'https://beliefmoscow.com/cart'),
-                                        FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'),
+                                        FooterItem('Urban QT',
+                                                   f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],
                                     {'Site': 'Belief Moscow'}
@@ -160,10 +159,3 @@ class Parser(api.Parser):
 
             result.append(content)
         return result
-
-
-if __name__ == '__main__':
-    link: str = 'https://beliefmoscow.com/collection/frontpage.json?order=&q=nike'
-    user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
-    while True:
-        print(get(link, headers={'user-agent': user_agent}).json())

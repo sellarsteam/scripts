@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
+from ujson import loads
 
 from source import api
 from requests import exceptions
@@ -35,17 +36,23 @@ class Parser(api.Parser):
 
         if mode == 0:
 
-            ok, json_response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
 
             if not ok:
 
-                if isinstance(json_response, exceptions.Timeout):
+                if isinstance(resp, exceptions.Timeout):
                     return [api.CInterval(self.name, 300)]
 
                 else:
-                    raise json_response
+                    raise resp
 
-            for item in json_response.json()['listingItems']['items']:
+            try:
+                json = loads(resp.content)
+
+            except ValueError:
+                return [api.CInterval(self.name, 300)]
+
+            for item in json['listingItems']['items']:
 
                 if item['priceInfo']['isOnSale'] is True or item['priceInfo']['finalPrice'] < 250:
                     link = f'https://www.farfetch.com{item["url"]}'

@@ -4,6 +4,7 @@ from typing import List, Union
 import yaml
 from scripts.keywords_finding import check_name
 from requests import exceptions
+from ujson import loads
 
 from source import api
 from source import logger
@@ -52,15 +53,21 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
 
-            ok, json_response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
 
             if not ok:
-                if isinstance(json_response, exceptions.Timeout):
+                if isinstance(resp, exceptions.Timeout):
                     return result
                 else:
                     raise result
 
-            for item in json_response.json():
+            try:
+                json = loads(resp.content)
+
+            except ValueError:
+                return [api.CInterval(self.name, 300)]
+
+            for item in json:
 
                 if check_name(item['Name'].lower(), self.absolute_keywords,
                               self.positive_keywords, self.negative_keywords):
@@ -103,5 +110,4 @@ class Parser(api.Parser):
                 content.expired = False
 
             result.append(content)
-
         return result

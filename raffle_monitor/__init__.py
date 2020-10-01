@@ -1,4 +1,3 @@
-from json import JSONDecodeError
 from typing import List, Union
 
 from source import api
@@ -7,6 +6,7 @@ from source.cache import HashStorage
 from source.logger import Logger
 
 from requests import post
+from ujson import loads
 
 regions = {
     'EU': '🇪🇺',
@@ -103,10 +103,8 @@ class Parser(api.Parser):
 
         if mode == 0:
             try:
-                catalog_data = post(
-                    self.graphql_url, json=self.post_catalog_body
-                ).json()
-            except (ConnectionError, JSONDecodeError):
+                catalog_data = loads(post(self.graphql_url, json=self.post_catalog_body).content)
+            except (ConnectionError, ValueError):
                 return [api.CInterval(self.name, 600.)]
 
             for item in catalog_data['data']['search']['products']:
@@ -126,82 +124,73 @@ class Parser(api.Parser):
             self.post_raffles_body['variables']['productId'] = int(content.name)
 
             try:
-                raffles_data = post(
-                    self.graphql_url, json=self.post_raffles_body
-                ).json()
-            except (ConnectionError, JSONDecodeError):
+                raffles_data = loads(post(self.graphql_url, json=self.post_raffles_body).content)
+            except (ConnectionError, ValueError):
                 return [api.CInterval(self.name, 600.)]
 
             for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
-                try:
-                    end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
-                               f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
-                except AttributeError:
-                    end_date = 'No date'
 
-                if True:  # TODO My Shift+Tab Doesn't work and i can't delete tabulation :(
+                url = raffle['url']
+                target = api.Target(url, self.name, 0)
 
-                    url = raffle['url']
-                    target = api.Target(url, self.name, 0)
+                if HashStorage.check_target(target.hash()):
+                    HashStorage.add_target(target.hash())
 
-                    if HashStorage.check_target(target.hash()):
-                        HashStorage.add_target(target.hash())
+                    shoes_data = {}
 
-                        shoes_data = {}
+                    for shoe in self.shoes:
+                        if int(shoe['id']) == int(content.name):
+                            shoes_data = shoe
+                            break
 
-                        for shoe in self.shoes:
-                            if int(shoe['id']) == int(content.name):
-                                shoes_data = shoe
-                                break
+                    name = shoes_data['name']
+                    pid = shoes_data['pid']
+                    price = api.Price(
+                        api.CURRENCIES['USD'],
+                        float(shoes_data['price'])
+                    )
+                    image_url = shoes_data['imageUrl']
+                    slug = shoes_data['slug']
 
-                        name = shoes_data['name']
-                        pid = shoes_data['pid']
-                        price = api.Price(
-                            api.CURRENCIES['USD'],
-                            float(shoes_data['price'])
+                    type_raffle = raffle['type']
+
+                    if raffle['hasPostage']:
+                        postage = 'You will need to pay for the shipment'
+                    else:
+                        postage = 'Postage is free'
+
+                    try:
+                        location = f'{raffle["locale"]} {regions[raffle["locale"]]}'
+                    except KeyError:
+                        location = raffle["locale"]
+
+                    shop = f'[{raffle["retailer"]["name"]}]({raffle["retailer"]["url"]})'
+
+                    try:
+                        end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
+                                   f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
+                    except AttributeError:
+                        end_date = 'No date'
+
+                    result.append(
+                        IRelease(
+                            url,
+                            f'raffles-{type_raffle.lower()}',
+                            f'{name}\n[PID: {pid}]',
+                            image_url,
+                            postage,
+                            price,
+                            api.Sizes(api.SIZE_TYPES[''], []),
+                            [
+                                FooterItem('StockX', f'https://stockx.com/search/sneakers?s={pid}')
+                            ],
+                            {
+                                'Retailer': shop + f' [{location}]',
+                                'Type Of Raffle': type_raffle,
+                                'End of raffle': end_date
+                            }
+
                         )
-                        image_url = shoes_data['imageUrl']
-                        slug = shoes_data['slug']
-
-                        type_raffle = raffle['type']
-
-                        if raffle['hasPostage']:
-                            postage = 'You will need to pay for the shipment'
-                        else:
-                            postage = 'Postage is free'
-
-                        try:
-                            location = f'{raffle["locale"]} {regions[raffle["locale"]]}'
-                        except Exception:
-                            location = raffle["locale"]
-
-                        shop = f'[{raffle["retailer"]["name"]}]({raffle["retailer"]["url"]})'
-
-                        try:
-                            end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
-                                       f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
-                        except AttributeError:
-                            end_date = 'No date'
-
-                        result.append(
-                            IRelease(
-                                url,
-                                f'raffles-{type_raffle.lower()}',
-                                f'{name}\n[PID: {pid}]',
-                                image_url,
-                                postage,
-                                price,
-                                api.Sizes(api.SIZE_TYPES[''], []),
-                                [
-                                    FooterItem('StockX', f'https://stockx.com/search/sneakers?s={pid}')
-                                ],
-                                {
-                                    'Retailer': shop + f' [{location}]',
-                                    'Type Of Raffle': type_raffle,
-                                    'End of raffle': end_date
-                                }
-
-                            )
-                        )
+                    )
             result.append(content)
             return result

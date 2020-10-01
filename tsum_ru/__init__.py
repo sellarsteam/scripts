@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from requests import exceptions
+from ujson import loads
 from user_agent import generate_user_agent
 from json import JSONDecodeError
 
@@ -37,20 +38,21 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
 
-            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent, 'accept': 'application/json'})
+            ok, resp = self.provider.request(self.link,
+                                             headers={'user-agent': self.user_agent, 'accept': 'application/json'})
 
             if not ok:
-                if isinstance(response, exceptions.Timeout):
+                if isinstance(resp, exceptions.Timeout):
                     return [api.CInterval(self.name, 600.)]
                 else:
-                    raise response
+                    raise resp
 
             try:
-                json_response = response.json()
-            except JSONDecodeError:
+                json = loads(resp.content)
+            except ValueError:
                 return [api.CInterval(self.name, 600.)]
 
-            for element in Path.parse_str('$.*').match(json_response):
+            for element in Path.parse_str('$.*').match(json):
                 try:
                     if HashStorage.check_target(
                             api.Target('https://www.tsum.ru/' + element.current_value['slug'], self.name, 0).hash()):
@@ -66,20 +68,28 @@ class Parser(api.Parser):
                                     api.CURRENCIES['RUB'],
                                     float(element.current_value['skuList'][0]['price_original'])
                                 ),
-                                api.Sizes(api.SIZE_TYPES[''], [api.Size(size.current_value['size_vendor_name'] + ' US',
-                                                                        f'http://static.sellars.cf/links?site=tsum&id='
-                                                                        f'{size.current_value["item_id"]}')
-                                                               for size in Path.parse_str('$.skuList.*')
-                                          .match(element.current_value)
-                                                               if size.current_value['availabilityInStock']]
-                                [1:]),
+                                api.Sizes(
+                                    api.SIZE_TYPES[''],
+                                    [
+                                        api.Size(
+                                            size.current_value['size_vendor_name'] + ' US',
+                                            f'http://static.sellars.cf/'
+                                            f'links?site=tsum&id={size.current_value["item_id"]}'
+                                        ) for size in Path.parse_str('$.skuList.*').match(element.current_value)
+                                        if size.current_value['availabilityInStock']
+                                    ][1:]
+                                ),
                                 [
                                     FooterItem(
                                         'StockX',
                                         'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
                                         replace('"', '').replace('\n', '').replace(' ', '').replace('Кроссовки', '')
                                     ),
-                                    FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=tsum&monitor={"https://www.tsum.ru/" + element.current_value["slug"]}'),
+                                    FooterItem(
+                                        'Urban QT',
+                                        f'https://autofill.cc/api/v1/qt?storeId=tsum&monitor='
+                                        f'{"https://www.tsum.ru/" + element.current_value["slug"]}'
+                                    ),
                                     FooterItem('Cart', 'https://www.tsum.ru/cart'),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],

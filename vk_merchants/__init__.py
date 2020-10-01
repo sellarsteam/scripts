@@ -3,6 +3,7 @@ from json import JSONDecodeError
 from typing import List, Union
 
 import yaml
+from ujson import loads
 from user_agent import generate_user_agent
 
 from source import api
@@ -57,8 +58,8 @@ def get_post_id(merchant_id, token, provider):
     if not ok:
         raise content
 
+    content = loads(content.content)
 
-    content = content.json()
     try:
         if content['response']['items'][0]['is_pinned']:
             return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
@@ -95,8 +96,11 @@ class Parser(api.Parser):
     def catalog(self) -> CatalogType:
         return api.CInterval(self.name, 1200.)
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = [content]
         if mode == 0:
             targets = []
@@ -125,16 +129,20 @@ class Parser(api.Parser):
                             self.number_of_token = 0
                         self.counter = 0
                     token = self.tokens[self.number_of_token]
-                    ok, content = self.provider.request(f"https://api.vk.com/method/wall.getById?posts={target[0].name}"
-                                                      f"&access_token={token}&v=5.52")
+                    ok, resp = self.provider.request(
+                        f'https://api.vk.com/method/wall.getById?posts={target[0].name}&access_token={token}&v=5.52')
 
                     if not ok:
-                        if isinstance(content, ConnectionError):
+                        if isinstance(resp, ConnectionError):
                             return [api.CInterval(self.name, 600.)]
                         else:
-                            raise content
+                            raise resp
 
-                    content = content.json()
+                    try:
+                        content = loads(resp.content)
+
+                    except ValueError:
+                        return [api.CInterval(self.name, 600.)]
 
                     self.counter += 1
                     text = content['response'][0]['text']
