@@ -16,6 +16,7 @@ from source import api
 from source import codes
 from source.api import TEFail, IAnnounce, IRelease, IRestock
 from source.logger import Logger
+from source.library import ScriptStorage
 
 
 currencies: tuple = ('', '£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)', '$(AUD)')
@@ -154,8 +155,8 @@ class EventsExecutor(api.EventsExecutor):
     channels: Dict[str, List[Hook]]
     groups: Dict[str, Group]
 
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: Logger, storage: ScriptStorage):
+        super().__init__(name, log, storage)
         self.active = False
 
         self.channels = {}
@@ -169,8 +170,8 @@ class EventsExecutor(api.EventsExecutor):
         self.log.info('Thread started')
 
     def config(self):
-        if os.path.isfile(f'{__path__[0]}/secret.yaml'):
-            raw = yaml.safe_load(open(f'{__path__[0]}/secret.yaml'))
+        if self.storage.check('secret.yaml'):
+            raw = yaml.safe_load(self.storage.file('secret.yaml'))
             if isinstance(raw, dict):
                 if 'groups' in raw and isinstance(raw['groups'], dict):
                     if 'list' in raw['groups'] and isinstance(raw['groups']['list'], dict):
@@ -207,7 +208,7 @@ class EventsExecutor(api.EventsExecutor):
                                         hooks.append(
                                             Hook(i[0], i[1], self.groups[i[2]] if len(i) > 2 else default_group))
                                     else:
-                                        self.log.error(f'hook must contain (id, key[, group])')
+                                        self.log.error(f'hook (channel "{k}") must contain (id, key[, group])')
                             self.channels[k] = hooks
                         else:
                             del hooks
@@ -221,7 +222,7 @@ class EventsExecutor(api.EventsExecutor):
             else:
                 raise TypeError('secret.yaml must contain object')
         else:
-            raise FileExistsError('secret.yaml does not exist')
+            raise FileNotFoundError('secret.yaml not found')
 
     def loop(self):
         errors = 0

@@ -110,9 +110,6 @@ Temporary Items
 .nfs*
 
 
-# Discord script
-discord/secret.yaml
-
 # Vk script
 vk_merchants/secret.yaml
 
