@@ -4,37 +4,22 @@ from typing import List, Union
 from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
-import yaml
 from scripts.keywords_finding import check_name
 
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider
+from source.library import SubProvider, ScriptStorage
 from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
-        super().__init__(name, log, provider_)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider_, storage)
         self.link: str = 'https://www.revolveclothing.ru/shoes-sneakers/br/2aec17/?navsrc=subshoes&filters=designer' \
                          '&sortBy=newest&designer=adidas%20Originals&designer=Jordan&designer=Nike'
         self.interval: int = 1
-
-        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
-
-        if isinstance(raw, dict):
-            if 'absolute' in raw and isinstance(raw['absolute'], list) \
-                    and 'positive' in raw and isinstance(raw['positive'], list) \
-                    and 'negative' in raw and isinstance(raw['negative'], list):
-                self.absolute_keywords = raw['absolute']
-                self.positive_keywords = raw['positive']
-                self.negative_keywords = raw['negative']
-            else:
-                raise TypeError('Keywords must be list')
-        else:
-            raise TypeError('Types of keywords must be in dict')
         self.user_agent = generate_user_agent()
 
     @property
@@ -68,8 +53,7 @@ class Parser(api.Parser):
                 link = element.get('href')
                 name = link.split('/')[1]
 
-                if check_name(name.lower(), self.absolute_keywords,
-                              self.positive_keywords, self.negative_keywords):
+                if check_name(name.lower()):
 
                     try:
                         if HashStorage.check_target(api.Target('https://www.revolveclothing.ru' +

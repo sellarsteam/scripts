@@ -15,8 +15,8 @@ from source.tools import ExponentialSmart
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage: api.ScriptStorage):
+        super().__init__(name, log, provider, storage)
         self.url = 'https://www.nike.com/ru/launch/t/'
         self.api = 'https://api.nike.com/product_feed/threads/v2/'
         self.filter: str = '&filter=marketplace(RU)&filter=language(ru)' \

@@ -1,39 +1,25 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-import yaml
-from scripts.keywords_finding import check_name
 from requests import exceptions
 from ujson import loads
+
+from scripts.keywords_finding import check_name
 
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider
+from source.library import SubProvider, ScriptStorage
 from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
-        super().__init__(name, log, provider_)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider_, storage)
         self.link: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/' \
                          '552ccef36636b41010072dc3/?&categoryIds=26,10&categoryPaths=' \
                          'new&session=5ea424867c84cf0001e5d423&pvid=638364803722894&isDebug=false&format=json'
-
-        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
-
-        if isinstance(raw, dict):
-            if 'absolute' in raw and isinstance(raw['absolute'], list) \
-                    and 'positive' in raw and isinstance(raw['positive'], list) \
-                    and 'negative' in raw and isinstance(raw['negative'], list):
-                self.absolute_keywords = raw['absolute']
-                self.positive_keywords = raw['positive']
-                self.negative_keywords = raw['negative']
-            else:
-                raise TypeError('Keywords must be list')
-        else:
-            raise TypeError('Types of keywords must be in dict')
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
 
     @property
@@ -69,8 +55,7 @@ class Parser(api.Parser):
 
             for item in json:
 
-                if check_name(item['Name'].lower(), self.absolute_keywords,
-                              self.positive_keywords, self.negative_keywords):
+                if check_name(item['Name'].lower()):
 
                     url = item['Url']
 

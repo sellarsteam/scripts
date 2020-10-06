@@ -4,6 +4,7 @@ from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.logger import Logger
+from source.library import ScriptStorage
 
 from requests import post
 from ujson import loads
@@ -49,8 +50,8 @@ regions = {
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider):
-        super().__init__(name, log, provider)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider, storage)
         self.graphql_url = 'https://api.soleretriever.com/graphql/'
 
         self.shoes = []  # List with shoes data

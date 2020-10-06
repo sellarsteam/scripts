@@ -5,36 +5,21 @@ from typing import List, Union
 from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
-import yaml
 from scripts.keywords_finding import check_name
 
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider
+from source.library import SubProvider, ScriptStorage
 from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
-        super().__init__(name, log, provider_)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider_, storage)
         self.link: str = 'https://street-beat.ru/cat/man/krossovki/nike;jordan;adidas-originals/?sort=create&order=desc'
         self.user_agent = generate_user_agent()
-
-        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
-
-        if isinstance(raw, dict):
-            if 'absolute' in raw and isinstance(raw['absolute'], list) \
-                    and 'positive' in raw and isinstance(raw['positive'], list) \
-                    and 'negative' in raw and isinstance(raw['negative'], list):
-                self.absolute_keywords = raw['absolute']
-                self.positive_keywords = raw['positive']
-                self.negative_keywords = raw['negative']
-            else:
-                raise TypeError('Keywords must be list')
-        else:
-            raise TypeError('Types of keywords must be in dict')
 
     @property
     def catalog(self) -> CatalogType:
@@ -63,8 +48,8 @@ class Parser(api.Parser):
 
             for element in etree.HTML(response.text).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
                 if check_name(element[0].xpath('a[@class="link link--no-color catalog-item__title '
-                                               'ddl_product_link"]/span')[0].text.lower(),
-                              self.absolute_keywords, self.positive_keywords, self.negative_keywords):
+                                               'ddl_product_link"]/span')[0].text.lower()):
+
                     link = element[0] \
                         .xpath('a[@class="link link--no-color catalog-item__title ddl_product_link"]')[0].get('href')
                     try:

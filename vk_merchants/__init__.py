@@ -10,7 +10,7 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider
+from source.library import SubProvider, ScriptStorage, CoreStorage
 
 vk_merchants = (
     ('507698109', 'Ren Chris'),
@@ -73,14 +73,14 @@ def get_post_id(merchant_id, token, provider):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
-        super().__init__(name, log, provider_)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider_, storage)
         self.user_agent = generate_user_agent()
         self.counter = 0
         self.number_of_token = 0
         self.interval: int = 1
-        if os.path.isfile(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'):
-            raw = yaml.safe_load(open(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'))
+        if self.storage.check('secret.yaml'):
+            raw = yaml.safe_load(self.storage.file('secret.yaml'))
             if isinstance(raw, dict):
                 if isinstance(raw['token'], list):
                     self.tokens = raw['token']
