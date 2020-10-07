@@ -1,15 +1,15 @@
-import os
-from json import loads, JSONDecodeError
+from json import JSONDecodeError
 from typing import List, Union
 
 import yaml
+from ujson import loads
 from user_agent import generate_user_agent
 
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider
+from source.library import SubProvider, ScriptStorage
 
 vk_merchants = (
     ('507698109', 'Ren Chris'),
@@ -51,8 +51,14 @@ def key_words():
 
 
 def get_post_id(merchant_id, token, provider):
-    content = loads(provider.get(
-        f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52'))
+    ok, content = provider.request(
+        f'https://api.vk.com/method/wall.get?owner_id={merchant_id[0]}&count=2&access_token={token}&v=5.52')
+
+    if not ok:
+        raise content
+
+    content = loads(content.content)
+
     try:
         if content['response']['items'][0]['is_pinned']:
             return f"{merchant_id[0]}_{content['response']['items'][1]['id']}"
@@ -66,14 +72,14 @@ def get_post_id(merchant_id, token, provider):
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
-        super().__init__(name, log, provider_)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider_, storage)
         self.user_agent = generate_user_agent()
         self.counter = 0
         self.number_of_token = 0
         self.interval: int = 1
-        if os.path.isfile(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'):
-            raw = yaml.safe_load(open(os.path.dirname(os.path.realpath(__file__)) + '/secret.yaml'))
+        if self.storage.check('secret.yaml'):
+            raw = yaml.safe_load(self.storage.file('secret.yaml'))
             if isinstance(raw, dict):
                 if isinstance(raw['token'], list):
                     self.tokens = raw['token']
@@ -89,8 +95,11 @@ class Parser(api.Parser):
     def catalog(self) -> CatalogType:
         return api.CInterval(self.name, 1200.)
 
-    def execute(self, mode: int, content: Union[CatalogType, TargetType]) -> List[
-        Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
+    def execute(
+            self,
+            mode: int,
+            content: Union[CatalogType, TargetType]
+    ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = [content]
         if mode == 0:
             targets = []
@@ -119,8 +128,21 @@ class Parser(api.Parser):
                             self.number_of_token = 0
                         self.counter = 0
                     token = self.tokens[self.number_of_token]
-                    content = loads(self.provider.get(f"https://api.vk.com/method/wall.getById?posts={target[0].name}"
-                                                      f"&access_token={token}&v=5.52"))
+                    ok, resp = self.provider.request(
+                        f'https://api.vk.com/method/wall.getById?posts={target[0].name}&access_token={token}&v=5.52')
+
+                    if not ok:
+                        if isinstance(resp, ConnectionError):
+                            return [api.CInterval(self.name, 600.)]
+                        else:
+                            raise resp
+
+                    try:
+                        content = loads(resp.content)
+
+                    except ValueError:
+                        return [api.CInterval(self.name, 600.)]
+
                     self.counter += 1
                     text = content['response'][0]['text']
                     available = False

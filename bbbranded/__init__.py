@@ -1,27 +1,43 @@
 from datetime import datetime, timedelta, timezone
-from json import loads, JSONDecodeError
+from json import JSONDecodeError
 from typing import List, Union
 
+import yaml
 from jsonpath2 import Path
-from lxml import etree
 from user_agent import generate_user_agent
 
+from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://www.bbbranded.com/products.json?limit=1000'
+        self.link: str = 'https://www.bbbranded.com/products.json?limit=100'
         self.interval: int = 1
+
+        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
+
+        if isinstance(raw, dict):
+            if 'absolute' in raw and isinstance(raw['absolute'], list) \
+                    and 'positive' in raw and isinstance(raw['positive'], list) \
+                    and 'negative' in raw and isinstance(raw['negative'], list):
+                self.absolute_keywords = raw['absolute']
+                self.positive_keywords = raw['positive']
+                self.negative_keywords = raw['negative']
+            else:
+                raise TypeError('Keywords must be list')
+        else:
+            raise TypeError('Types of keywords must be in dict')
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 30))
 
     @staticmethod
     def time_gen() -> float:
@@ -35,81 +51,77 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
+            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+
+            if response.status_code == 430 or response.status_code == 520:
+                result.append(api.CInterval(self.name, 600.))
+                return result
             try:
-                products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
-                if products == '':
-                    result.append(api.CInterval(self.name, 600.))
-                    return result
-                try:
-                    page_content = loads(products)
-                except JSONDecodeError as e:
-                    if etree.HTML(products).xpath('//title')[0].text == 'Page temporarily unavailable':
-                        raise TypeError('Site was banned by shopify')
-                    else:
-                        raise e
-                for element in Path.parse_str('$.products.*').match(page_content):
-                    if 'yeezy' in element.current_value['handle'] or 'air' in element.current_value['handle'] \
-                            or 'sacai' in element.current_value['handle'] or 'dunk' in element.current_value['handle'] \
-                            or 'retro' in element.current_value['handle']:
-                        target = api.Target('https://www.bbbranded.com/products/' + element.
-                                            current_value['handle'], self.name, 0)
-                        if HashStorage.check_target(target.hash()):
-                            try:
-                                sizes_data = Path.parse_str('$.product.variants.*').match(loads(
-                                    self.provider.get(target.name + '/count.json',
-                                                      headers={'user-agent': generate_user_agent()},
-                                                      proxy=True)))
-                                sizes = [api.Size(str(size.current_value['option2']) + ' US' +
-                                                  f' [{size.current_value["inventory_quantity"]}]',
-                                                  f'https://www.bbbranded.com/cart/{size.current_value["id"]}:1')
-                                         for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
-                            except IndexError:
-                                sizes = []
-                            try:
-                                price = api.Price(
-                                    api.CURRENCIES['USD'],
-                                    float(element.current_value['variants'][0]['price'])
-                                )
-                            except KeyError:
-                                price = api.Price(
-                                    api.CURRENCIES['USD'],
-                                    float(0)
-                                )
-                            except IndexError:
-                                price = api.Price(
-                                    api.CURRENCIES['USD'],
-                                    float(0)
-                                )
-                            try:
-                                image = element.current_value['images'][0]['src']
-                            except IndexError:
-                                image = ''
-                            try:
-                                name = element.current_value['title']
-                            except IndexError:
-                                name = ''
+                response = response.json()
+            except JSONDecodeError:
+                raise TypeError('Non JSON response')
+
+            for element in Path.parse_str('$.products.*').match(response):
+                title = element.current_value['title']
+                handle = element.current_value['handle']
+                variants = element.current_value['variants']
+                image = element.current_value['images'][0]['src'] if len(element.current_value['images']) != 0 \
+                    else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
+
+                del element
+
+                title_ = title.lower()
+
+                if check_name(handle, self.absolute_keywords, self.positive_keywords, self.negative_keywords) \
+                        or check_name(title_, self.absolute_keywords, self.positive_keywords, self.negative_keywords):
+                    target = api.Target('https://www.bbbranded.com/products/' + handle, self.name, 0)
+                    if HashStorage.check_target(target.hash()):
+                        sizes_data = Path.parse_str('$.product.variants.*').match(
+                            self.provider.request(target.name + '/count.json',
+                                                  headers={'user-agent': generate_user_agent()},
+                                                  proxy=True).json())
+                        sizes = [
+                            api.Size(
+                                f'{size.current_value["option2"]} US [{size.current_value["inventory_quantity"]}]',
+                                f'https://www.bbbranded.com/cart/{size.current_value["id"]}:1'
+                            )
+                            for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
+
+                        if not sizes:
                             HashStorage.add_target(target.hash())
-                            result.append(IRelease(
-                                target.name,
-                                'shopify-filtered',
-                                name,
-                                image,
-                                '',
-                                price,
-                                api.Sizes(api.SIZE_TYPES[''], sizes),
-                                [
-                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                               name.replace(' ', '%20')),
-                                    FooterItem('Cart', 'https://bbbranded.com/cart'),
-                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                                ],
-                                {'Site': 'BBBranded'}
-                            ))
-            except JSONDecodeError as e:
-                raise e
-            if result or content.expired:
-                content.timestamp = self.time_gen()
-                content.expired = False
+                            continue
+                        try:
+                            price = api.Price(
+                                api.CURRENCIES['USD'],
+                                float(variants[0]['price'])
+                            )
+                        except (KeyError, IndexError):
+                            price = api.Price(
+                                api.CURRENCIES['USD'],
+                                float(0)
+                            )
+                        HashStorage.add_target(target.hash())
+                        result.append(IRelease(
+                            target.name,
+                            'shopify-filtered',
+                            title,
+                            image,
+                            '',
+                            price,
+                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           title.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://bbbranded.com/cart'),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            {'Site': 'BBBranded'}
+                        ))
+
+            if isinstance(content, api.CSmart):
+                if result or content.expired:
+                    content.gen.time = self.time_gen()
+                    content.expired = False
 
             result.append(content)
         return result

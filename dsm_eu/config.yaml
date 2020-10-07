@@ -1,5 +1,5 @@
 name: dsm-eu
-core: ^0.8.4.dev5
+core: ^0.9
 version: 1.0.0rc1
 keep: yes
 max-errors: 1

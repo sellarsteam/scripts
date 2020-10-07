@@ -1,5 +1,5 @@
 name: footpatrol
-core: ^0.8.4.dev5
+core: _0.9
 version: 1.0.0rc1
 keep: yes
 max-errors: 1

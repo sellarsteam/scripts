@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from json import loads, JSONDecodeError
+from json import JSONDecodeError
 from typing import List, Union
 
 from jsonpath2 import Path
@@ -10,17 +10,18 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
 from source.library import SubProvider
+from source.tools import LinearSmart
 
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
         super().__init__(name, log, provider_)
-        self.link: str = 'https://shop.travisscott.com/products.json?limit=1000'
+        self.link: str = 'https://shop.travisscott.com/products.json?limit=100'
         self.interval: int = 1
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, self.time_gen(), 2, exp=30.)
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 30))
 
     @staticmethod
     def time_gen() -> float:
@@ -34,62 +35,72 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            try:
-                products = self.provider.get(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
-                if products == '{"products":[]}':
-                    result.append(api.CInterval(self.name, 600.))
-                    return result
+            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
 
-                for element in Path.parse_str('$.products.*').match(loads(products)):
-                    target = api.Target('https://shop.travisscott.com/products/' + element.
-                                        current_value['handle'], self.name, 0)
-                    if HashStorage.check_target(target.hash()):
-                        sizes_data = Path.parse_str('$.product.variants.*').match(loads(
-                            self.provider.get(target.name + '/count.json',
+            if response.status_code == 430 or response.status_code == 520:
+                result.append(api.CInterval(self.name, 600.))
+                return result
+
+            try:
+                response = response.json()
+            except JSONDecodeError:
+                raise TypeError('Non JSON response')
+
+            for element in Path.parse_str('$.products.*').match(response):
+                title = element.current_value['title']
+                handle = element.current_value['handle']
+                variants = element.current_value['variants']
+                image = element.current_value['images'][0]['src'] if len(element.current_value['images']) != 0 \
+                    else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
+
+                del element
+
+                title_ = title.lower()
+                target = api.Target('https://shop.travisscott.com/products/' + handle, self.name, 0)
+                if HashStorage.check_target(target.hash()):
+                    sizes_data = Path.parse_str('$.product.variants.*').match(
+                        self.provider.request(target.name + '.js',
                                               headers={'user-agent': generate_user_agent()},
-                                              proxy=True)))
-                        sizes = [api.Size(str(size.current_value['title']).upper() +
-                                          f' [{size.current_value["inventory_quantity"]}]',
-                                          f'https://shop.travisscott.com/cart/{size.current_value["id"]}:1')
-                                 for size in sizes_data if int(size.current_value["inventory_quantity"]) > 0]
-                        try:
-                            price = api.Price(
-                                api.CURRENCIES['USD'],
-                                float(element.current_value['variants'][0]['price'])
-                            )
-                        except KeyError:
-                            price = api.Price(
-                                api.CURRENCIES['USD'],
-                                float(0)
-                            )
-                        except IndexError:
-                            price = api.Price(
-                                api.CURRENCIES['USD'],
-                                float(0)
-                            )
-                        name = element.current_value['title']
+                                              proxy=True).json())
+                    sizes = [api.Size(str(size.current_value['title']) +
+                                      f' [{size.current_value["inventory_quantity"]}]',
+                                      f'https://shop.travisscott.com/cart/{size.current_value["id"]}:1')
+                             for size in sizes_data if size.current_value['available'] is True]
+
+                    if not sizes:
                         HashStorage.add_target(target.hash())
-                        result.append(IRelease(
-                            target.name,
-                            'travis-scott',
-                            name,
-                            element.current_value['images'][0]['src'],
-                            '',
-                            price,
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
-                            [
-                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                           name.replace(' ', '%20')),
-                                FooterItem('Cart', 'https://shop.travisscott.com/cart'),
-                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                            ],
-                            {'Site': 'Travis Scott'}
-                        ))
-            except JSONDecodeError as e:
-                raise e
-            if result or content.expired:
-                content.timestamp = self.time_gen()
-                content.expired = False
+                        continue
+
+                    try:
+                        price = api.Price(
+                            api.CURRENCIES['USD'],
+                            float(variants[0]['price'])
+                        )
+                    except (KeyError, IndexError):
+                        price = api.Price(api.CURRENCIES['USD'], 0.)
+
+                    HashStorage.add_target(target.hash())
+                    result.append(IRelease(
+                        target.name,
+                        'travis-scott',
+                        title,
+                        image,
+                        '',
+                        price,
+                        api.Sizes(api.SIZE_TYPES[''], sizes),
+                        [
+                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                       title.replace(' ', '%20')),
+                            FooterItem('Cart', 'https://shop.travisscott.com/cart'),
+                            FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                        ],
+                        {'Site': 'Travis Scott'}
+                    ))
+
+            if isinstance(content, api.CSmart):
+                if result or content.expired:
+                    content.gen.time = self.time_gen()
+                    content.expired = False
 
             result.append(content)
         return result

@@ -1,5 +1,8 @@
 # Scripts
 *.zip
+
+analytic/data.db
+
 test/
 
 ### Idea
@@ -107,6 +110,8 @@ Temporary Items
 .nfs*
 
 
-# Discord script
-discord/secret.yaml
+# Vk script
 vk_merchants/secret.yaml
+
+# Keywords 
+keywords.yaml

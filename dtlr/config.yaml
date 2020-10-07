@@ -1,5 +1,5 @@
 name: dtlr
-core: ^0.8.4.dev5
+core: ^9.0
 version: 1.0.0rc1
 keep: yes
 max-errros: 1
