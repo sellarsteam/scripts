@@ -1,23 +1,21 @@
-import os
 import queue
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
-from pytz import timezone
 
 import requests
 import yaml
+from pytz import timezone
 from ujson import dumps
 
 from source import __version__, __copyright__
 from source import api
 from source import codes
 from source.api import TEFail, IAnnounce, IRelease, IRestock
-from source.logger import Logger
 from source.library import ScriptStorage
-
+from source.logger import Logger
 
 currencies: tuple = ('', '£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)', '$(AUD)')
 sizes_column_size = 5
@@ -181,7 +179,8 @@ class EventsExecutor(api.EventsExecutor):
                                     v['tag'],
                                     v['bot'] if 'bot' in v and isinstance(v['bot'], str) else '',
                                     v['image'] if 'image' in v and isinstance(v['image'], str) else '',
-                                    tuple(v['colors']) if 'colors' in v and isinstance(v['colors'], list) and len(v['colors']) == 3 else (0, 0, 0)
+                                    tuple(v['colors']) if 'colors' in v and isinstance(v['colors'], list) and
+                                                          len(v['colors']) == 3 else (0, 0, 0)
                                 )
                             else:
                                 self.log.error(f'group "{k}" has no tag. skipping...')

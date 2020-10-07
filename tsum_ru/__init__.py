@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from json import JSONDecodeError
 from typing import List, Union
 
+from jsonpath2 import Path
 from requests import exceptions
 from ujson import loads
 from user_agent import generate_user_agent
-from json import JSONDecodeError
 
-from jsonpath2 import Path
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem

@@ -1,4 +1,3 @@
-
 def check_name(data: str, absolute_keywords: list, positive_keywords: list, negative_keywords: list) -> bool:
     result = False
 

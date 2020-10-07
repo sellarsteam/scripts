@@ -10,9 +10,9 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, IRelease, RestockTargetType, ItemType, TargetEndType, \
     FooterItem
+from source.cache import HashStorage
 from source.library import SubProvider
 from source.tools import ExponentialSmart
-from source.cache import HashStorage
 
 
 class Parser(api.Parser):

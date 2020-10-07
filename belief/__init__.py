@@ -5,8 +5,6 @@ from requests import exceptions
 from ujson import loads
 
 from scripts.keywords_finding import check_name
-
-
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -96,7 +94,10 @@ class Parser(api.Parser):
                                     FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                                name.replace(' ', '%20')),
                                     FooterItem('Cart', 'https://beliefmoscow.com/cart'),
-                                    FooterItem('Urban QT', f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'),
+                                    FooterItem(
+                                        'Urban QT',
+                                        f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'
+                                    ),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],
                                 {'Site': 'Belief Moscow'}
@@ -129,8 +130,10 @@ class Parser(api.Parser):
                                         FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                                    name.replace(' ', '%20')),
                                         FooterItem('Cart', 'https://beliefmoscow.com/cart'),
-                                        FooterItem('Urban QT',
-                                                   f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'),
+                                        FooterItem(
+                                            'Urban QT',
+                                            f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'
+                                        ),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],
                                     {'Site': 'Belief Moscow'}

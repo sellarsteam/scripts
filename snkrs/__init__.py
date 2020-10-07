@@ -3,8 +3,8 @@ from json import JSONDecodeError
 from time import mktime, strptime, time
 from typing import List, Union
 
-from user_agent import generate_user_agent
 from requests import exceptions as excs
+from user_agent import generate_user_agent
 
 from source import api
 from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, \
@@ -59,8 +59,8 @@ class Parser(api.Parser):
 
             try:
                 ok, resp = self.provider.request(
-                        f'{self.api}{self.item_filter}&filter=seoSlugs({content.name}){self.filter}',
-                        headers={'user-agent': generate_user_agent()}
+                    f'{self.api}{self.item_filter}&filter=seoSlugs({content.name}){self.filter}',
+                    headers={'user-agent': generate_user_agent()}
                 )
 
                 if not ok:

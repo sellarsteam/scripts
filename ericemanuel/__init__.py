@@ -2,11 +2,11 @@ from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from typing import List, Union
 
+import yaml
 from jsonpath2 import Path
 from user_agent import generate_user_agent
-import yaml
-from scripts.keywords_finding import check_name
 
+from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -77,10 +77,11 @@ class Parser(api.Parser):
                         or check_name(title_, self.absolute_keywords, self.positive_keywords, self.negative_keywords):
                     target = api.Target('https://www.ericemanuel.com/products/' + handle, self.name, 0)
                     if HashStorage.check_target(target.hash()):
-                        sizes_data = Path.parse_str('$.variants.*').match((
-                                self.provider.request(target.name + '.js',
-                                                  headers={'user-agent': generate_user_agent()},
-                                                  proxy=True).json()))
+                        sizes_data = Path.parse_str('$.variants.*').match(
+                            self.provider.request(
+                                target.name + '.js',
+                                headers={'user-agent': generate_user_agent()},
+                                proxy=True).json())
                         sizes = [
                             api.Size(
                                 str(size.current_value['option1']) + ' US [?]',
@@ -110,7 +111,7 @@ class Parser(api.Parser):
                             api.Sizes(api.SIZE_TYPES[''], sizes),
                             [
                                 FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                               title.replace(' ', '%20')),
+                                           title.replace(' ', '%20')),
                                 FooterItem('Cart', 'https://www.ericemanuel.com/cart'),
                                 FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             ],

@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
-from json import loads, JSONDecodeError
+from json import JSONDecodeError
 from typing import List, Union
 
+import yaml
 from jsonpath2 import Path
 from user_agent import generate_user_agent
-import yaml
-from scripts.keywords_finding import check_name
 
+from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem

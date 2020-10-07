@@ -1,4 +1,3 @@
-import os
 from json import JSONDecodeError
 from typing import List, Union
 
@@ -10,7 +9,7 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage, CoreStorage
+from source.library import SubProvider, ScriptStorage
 
 vk_merchants = (
     ('507698109', 'Ren Chris'),

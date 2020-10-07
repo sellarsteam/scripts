@@ -5,8 +5,8 @@ from typing import List, Union
 from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
-from scripts.keywords_finding import check_name
 
+from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem

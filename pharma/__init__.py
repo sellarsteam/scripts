@@ -2,9 +2,9 @@ from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from typing import List, Union
 
+import yaml
 from jsonpath2 import Path
 from user_agent import generate_user_agent
-import yaml
 
 from scripts.keywords_finding import check_name
 from source import api
@@ -85,8 +85,9 @@ class Parser(api.Parser):
                                                   proxy=True).json())
                         sizes = [
                             api.Size(
-                             str(size.current_value['option1']) + ' EU [?]',
-                              f'https://shop.pharmabergen.no/cart/{size.current_value["id"]}:1')
+                                str(size.current_value['option1']) + ' EU [?]',
+                                f'https://shop.pharmabergen.no/cart/{size.current_value["id"]}:1'
+                            )
                             for size in sizes_data if size.current_value['available'] is True
                         ]
 

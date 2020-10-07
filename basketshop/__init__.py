@@ -5,7 +5,6 @@ from requests import exceptions
 from ujson import loads
 
 from scripts.keywords_finding import check_name
-
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem

@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
+
+from requests import exceptions
 from ujson import loads
 
 from source import api
-from requests import exceptions
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
@@ -58,7 +59,6 @@ class Parser(api.Parser):
                     link = f'https://www.farfetch.com{item["url"]}'
 
                     if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
-
                         product_id = item['id']
                         name = f"{item['brand']['name']} {item['shortDescription']}"
                         price = api.Price(api.CURRENCIES['EUR'], float(item['priceInfo']['finalPrice']),

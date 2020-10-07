@@ -1,13 +1,13 @@
-from lxml import etree
-
 from datetime import datetime
 from json import loads, JSONDecodeError
 from time import time
 from typing import List, Union
 
+from lxml import etree
+
 from source import api
 from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, \
-    Price, Sizes, Size, IRelease, IAnnounce
+    Price, Sizes, IRelease, IAnnounce
 from source.cache import HashStorage
 from source.logger import Logger
 from source.tools import ExponentialSmart
@@ -20,7 +20,6 @@ class Parser(api.Parser):
         self.availability_link = 'https://www.adidas.ru/api/products/sku/availability'
         self.data_link = 'https://www.adidas.ru/api/products/sku'
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
-
 
     @property
     def catalog(self) -> api.CatalogType:
@@ -76,8 +75,7 @@ class Parser(api.Parser):
                             api.FooterItem('Cart', 'https://www.adidas.ru/cart'),
                             api.FooterItem('Login', 'https://www.adidas.ru/account-login')
                         ]
-                        )
-                    )
+                    ))
                 else:
                     sizes_was_loaded = False
 
@@ -111,8 +109,7 @@ class Parser(api.Parser):
                             api.FooterItem('Login', 'https://www.adidas.ru/account-login')
                         ],
                         {'Date': str(datetime.utcfromtimestamp(date.timestamp() + 21600).strftime('%Y/%m/%d %H:%M'))}
-                        )
-                    )
+                    ))
 
                 if result:
                     if isinstance(content, api.TSmart):
@@ -130,5 +127,3 @@ class Parser(api.Parser):
             except JSONDecodeError:
                 self.log.error(f'Non JSON response: {content.name}')
                 return [api.TEFail(content, f'Bad json\n{content.hash()}')]
-
-

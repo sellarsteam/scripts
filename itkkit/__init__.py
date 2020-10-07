@@ -2,13 +2,13 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
+from requests import post
 from user_agent import generate_user_agent
 
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from requests import post
 from source.library import SubProvider, ScriptStorage
 from source.tools import LinearSmart
 
@@ -61,8 +61,7 @@ class Parser(api.Parser):
                         'div[@class="catalog-item__title-name"]')[0].text:
                     try:
                         if HashStorage.check_target(
-                                 api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
-
+                                api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
                             sizes = api.Sizes(
                                 api.SIZE_TYPES[''],
                                 [

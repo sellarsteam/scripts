@@ -2,11 +2,11 @@ from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from typing import List, Union
 
+import yaml
 from jsonpath2 import Path
 from user_agent import generate_user_agent
-import yaml
-from scripts.keywords_finding import check_name
 
+from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -111,7 +111,7 @@ class Parser(api.Parser):
                             api.Sizes(api.SIZE_TYPES[''], sizes),
                             [
                                 FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                            title.replace(' ', '%20')),
+                                           title.replace(' ', '%20')),
                                 FooterItem('Cart', 'https://bbbranded.com/cart'),
                                 FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             ],

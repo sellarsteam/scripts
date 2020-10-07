@@ -68,8 +68,8 @@ class Parser(api.Parser):
                              for size in sizes_data if size.current_value['available'] is True]
 
                     if not sizes:
-                            HashStorage.add_target(target.hash())
-                            continue
+                        HashStorage.add_target(target.hash())
+                        continue
 
                     try:
                         price = api.Price(

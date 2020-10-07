@@ -1,13 +1,13 @@
 from typing import List, Union
 
+from requests import post
+from ujson import loads
+
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.logger import Logger
 from source.library import ScriptStorage
-
-from requests import post
-from ujson import loads
+from source.logger import Logger
 
 regions = {
     'EU': '🇪🇺',
