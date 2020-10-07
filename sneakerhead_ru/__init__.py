@@ -3,7 +3,6 @@ from typing import List, Union
 
 from lxml import etree
 from requests import exceptions
-from user_agent import generate_user_agent
 
 from scripts.keywords_finding import check_name
 from source import api
@@ -17,9 +16,17 @@ from source.tools import LinearSmart
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://sneakerhead.ru/isnew/shoes/sneakers/'
+        self.link: str = 'https://sneakerhead.ru/shoes/adidas-originals-or-jordan-or-nike-or-nike-sb/?sort' \
+                         '=date_avail_desc '
         self.interval: int = 1
-        self.user_agent = generate_user_agent()
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
+            'Host': 'sneakerhead.ru',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+        }
 
     @property
     def catalog(self) -> CatalogType:
@@ -38,7 +45,7 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
 
-            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, response = self.provider.request(self.link, headers=self.headers)
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):
@@ -46,69 +53,61 @@ class Parser(api.Parser):
                 else:
                     raise response
 
-            for element in etree.HTML(response.text).xpath('//a[@class="product-card__link"]'):
-                if check_name(element.get('title').lower()):
+            for element in etree.HTML(response.text).xpath('//div[@class="product-cards__item"]'):
+
+                if check_name(element[0].xpath('meta[@itemprop="description"]')[0].get('content').lower()):
 
                     try:
-                        if HashStorage.check_target(
-                                api.Target('https://sneakerhead.ru' + element.get('href'), self.name, 0).hash()):
 
-                            ok, page_content = self.provider.request('https://sneakerhead.ru' + element.get('href'),
-                                                                     headers={'user-agent': self.user_agent})
+                        link = 'https://sneakerhead.ru' + element[0].xpath('h5[@class="product-card__title"]/a')[0].get(
+                            'href')
 
-                            if not ok:
-                                if isinstance(response, exceptions.Timeout):
-                                    return [api.CInterval(self.name, 600.)]
-                                else:
-                                    raise response
+                        if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
 
-                            page_content = etree.HTML(page_content.text)
-                            sizes = [
-                                size.text.replace('\n', '').replace(' ', '') + '+'
-                                + f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
-                                for size in page_content.xpath('//ul[@class="product-sizes__list '
-                                                               'is-visible"]/li/button')
-                            ]
-                            name = page_content.xpath('//meta[@itemprop="name"]')[0].get('content')
-                            HashStorage.add_target(api.Target('https://sneakerhead.ru' + element.get('href')
-                                                              , self.name, 0).hash())
-                            try:
-                                if sizes[0][-1].split('+')[0].isdigit():
-                                    symbol = ' US'
-                                else:
-                                    symbol = ''
-                            except IndexError:
-                                symbol = ''
+                            name = element[0].xpath('meta[@itemprop="description"]')[0].get('content')
+                            image = 'https://sneakerhead.ru' + \
+                                    element[0].xpath('div[@class="product-card__image"]/div/picture/source')[0] \
+                                    .get('data-src')
+                            price = api.Price(
+                                api.CURRENCIES['RUB'],
+                                float(element[0].xpath('div[@class="product-card__price"]/meta[@itemprop="price"]')[0]
+                                      .get('content'))
+                            )
+
+                            sizes = api.Sizes(
+                                api.SIZE_TYPES[''],
+                                [
+                                    api.Size(
+                                        str(size.text),
+                                        f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
+                                    )
+                                    for size in element[0].xpath('div[@class="product-card__hover"]/dl/dd')
+                                ]
+                            )
+
+                            HashStorage.add_target(api.Target(link, self.name, 0).hash())
+
                             result.append(
                                 IRelease(
-                                    'https://sneakerhead.ru' + element.get('href'),
+                                    link,
                                     'sneakerhead',
                                     name,
-                                    page_content.xpath('//meta[@itemprop="image"]')[0].get('content'),
+                                    image,
                                     '',
-                                    api.Price(
-                                        api.CURRENCIES['RUB'],
-                                        float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
-                                    ),
-                                    api.Sizes(api.SIZE_TYPES[''], [api.Size(size.split('+')[0] + symbol,
-                                                                            size.split('+')[-1])
-                                                                   for size in sizes]),
+                                    price,
+                                    sizes,
                                     [
-                                        FooterItem(
-                                            'StockX',
-                                            'https://stockx.com/search/sneakers?s=' + name.replace(' ', '%20').
-                                            replace('"', '').replace('\n', '').replace(' ', '')
-                                        ),
                                         FooterItem('Cart', 'https://sneakerhead.ru/cart'),
+                                        FooterItem('Login', 'https://sneakerhead.ru/login'),
                                         FooterItem('Urban QT',
-                                                   f'https://autofill.cc/api/v1/qt?storeId=sneakerhead&monitor={"https://sneakerhead.ru" + element.get("href")}'),
-                                        FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                                   f'https://autofill.cc/api/v1/qt?storeId=sneakerhead&monitor={link}')
                                     ],
-                                    {'Site': 'Sneakerhead'}
+                                    {'Site': '[Sneakerhead](https://sneakerhead.ru)'}
                                 )
                             )
+
                     except etree.XMLSyntaxError:
-                        raise etree.XMLSyntaxError('XMLDecodeEroor')
+                        raise etree.XMLSyntaxError('XMLDecodeError')
             if result or content.expired:
                 content.gen.time = self.time_gen()
                 content.expired = False
