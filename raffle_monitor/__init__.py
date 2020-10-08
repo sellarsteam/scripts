@@ -211,7 +211,7 @@ class Parser(api.Parser):
                             price,
                             api.Sizes(api.SIZE_TYPES[''], []),
                             [
-                                FooterItem('StockX', f'https://stockx.com/search/sneakers?s={pid}')
+                                FooterItem('StockX', f'https://stockx.com/search/sneakers?s={pid.replace(" ", "")}')
                             ],
                             {
                                 'Retailer': shop + f' [{location}]',
