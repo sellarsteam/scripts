@@ -132,8 +132,6 @@ class Parser(api.Parser):
                 self.shoes.append({'id': item['id'], 'name': item['name'], 'pid': item['pid'],
                                    'price': item['price'], 'imageUrl': item['imageUrl'], 'slug': item['slug']})
 
-            print(self.shoes)
-
             result.append(content)
 
             result.extend([
