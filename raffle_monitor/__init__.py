@@ -1,7 +1,7 @@
 from typing import List, Union
 
-from requests import post
-from ujson import loads
+from requests import post, exceptions
+from ujson import loads, dumps
 
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, IRelease, FooterItem
@@ -54,6 +54,19 @@ class Parser(api.Parser):
         super().__init__(name, log, provider, storage)
         self.graphql_url = 'https://api.soleretriever.com/graphql/'
 
+        self.headers = {
+            'Content-Type': 'application/json',
+            'Accept': ''
+        }
+
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+        }
+
         self.shoes = []  # List with shoes data
 
         self.post_catalog_body = {  # It's body for post request of catalog with shoes
@@ -103,14 +116,23 @@ class Parser(api.Parser):
         result = []
 
         if mode == 0:
-            try:
-                catalog_data = loads(post(self.graphql_url, json=self.post_catalog_body).content)
-            except (ConnectionError, ValueError):
-                return [api.CInterval(self.name, 600.)]
+
+            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.post_catalog_body),
+                                             headers=self.headers, method='post')
+
+            if not ok:
+                if isinstance(resp, exceptions.Timeout):
+                    return [api.CInterval(self.name, 300)]
+                else:
+                    raise result
+
+            catalog_data = loads(resp.content)
 
             for item in catalog_data['data']['search']['products']:
                 self.shoes.append({'id': item['id'], 'name': item['name'], 'pid': item['pid'],
                                    'price': item['price'], 'imageUrl': item['imageUrl'], 'slug': item['slug']})
+
+            print(self.shoes)
 
             result.append(content)
 
@@ -124,10 +146,16 @@ class Parser(api.Parser):
         elif mode == 1:
             self.post_raffles_body['variables']['productId'] = int(content.name)
 
-            try:
-                raffles_data = loads(post(self.graphql_url, json=self.post_raffles_body).content)
-            except (ConnectionError, ValueError):
-                return [api.CInterval(self.name, 600.)]
+            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.post_raffles_body),
+                                             headers=self.headers, method='post')
+
+            if not ok:
+                if isinstance(resp, exceptions.Timeout):
+                    return [api.CInterval(self.name, 300)]
+                else:
+                    raise result
+
+            raffles_data = loads(resp.content)
 
             for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
 

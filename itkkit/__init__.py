@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
-from requests import post
-from user_agent import generate_user_agent
+from requests import exceptions, post
+from ujson import dumps
 
 from source import api
 from source import logger
@@ -17,20 +17,19 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
         self.link: str = 'https://www.itkkit.ru/ajax/RetailRocket.php'
-        self.post_data = {"query": "UpSellItemToItems", "rr_params": [155660], "temp": 'new'}
+        self.post_data = 'query=UpSellItemToItems&rr_params=152554&temp=new","mode":"text/html'
         self.headers = {
             'Host': 'www.itkkit.ru',
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept': '*/*',
             'Accept-Language': 'en-US,en;q=0.5',
             'Accept-Encoding': 'gzip, deflate, br',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Content-Length': '49',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Origin': 'https://www.itkkit.ru',
             'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'max-age=0'
+            'Referer': 'https://www.itkkit.ru/catalog/product/152554_air-jordan-1-retro-high-og-court-purple/'
         }
-        self.user_agent = generate_user_agent()
 
     @property
     def catalog(self) -> CatalogType:
@@ -48,18 +47,27 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            try:
-                response = post(url=self.link, data=self.post_data, headers=self.headers)
+            ok, response = self.provider.request(url=self.link, data=self.post_data,
+                                                 headers=self.headers, method='post')
 
-            except (ConnectionError, TimeoutError):
-                return [api.CInterval(self.name, 300)]
+            if not ok:
+
+                if isinstance(response, exceptions.Timeout):
+
+                    return [api.CInterval(self.name, 300)]
+
+                else:
+
+                    raise result
 
             for element in etree.HTML(response.text).xpath(
-                    '//div[@class="grid-row"]/div/a'):
+                    '//a[@class="catalog-item catalog-item--compact link link--primary"]'):
 
-                if 'Sold' not in element.xpath('div[@class="catalog-item__title"]')[0].xpath(
+                if 'Sold' in element[0].xpath('div[@class="catalog-item__title"]')[0].xpath(
                         'div[@class="catalog-item__title-name"]')[0].text:
                     try:
+
+                        print(element.get('href'))
                         if HashStorage.check_target(
                                 api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
                             sizes = api.Sizes(
