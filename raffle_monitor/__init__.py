@@ -55,11 +55,6 @@ class Parser(api.Parser):
         self.graphql_url = 'https://api.soleretriever.com/graphql/'
 
         self.headers = {
-            'Content-Type': 'application/json',
-            'Accept': ''
-        }
-
-        self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
             'Accept-Language': 'en-US,en;q=0.5',
             'Connection': 'keep-alive',
