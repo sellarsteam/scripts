@@ -4,13 +4,12 @@ from typing import List, Union
 from lxml import etree
 from requests import exceptions
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, \
     IAnnounce
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -63,7 +62,7 @@ class Parser(api.Parser):
                 parts_of_name = element.xpath('div[@class="catalog-item__title"]/div')
                 name = f'{parts_of_name[0].text} {parts_of_name[1].text.split("] ")[-1]}'
 
-                if check_name(name.lower()):
+                if Keywords.check(name.lower()):
 
                     try:
                         if HashStorage.check_target(

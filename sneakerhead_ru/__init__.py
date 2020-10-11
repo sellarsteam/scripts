@@ -4,12 +4,11 @@ from typing import List, Union
 from lxml import etree
 from requests import exceptions
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -54,7 +53,7 @@ class Parser(api.Parser):
 
             for element in etree.HTML(response.text).xpath('//div[@class="product-cards__item"]'):
 
-                if check_name(element[0].xpath('meta[@itemprop="description"]')[0].get('content').lower()):
+                if Keywords.check(element[0].xpath('meta[@itemprop="description"]')[0].get('content').lower()):
 
                     try:
 

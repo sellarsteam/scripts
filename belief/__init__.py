@@ -4,12 +4,11 @@ from typing import List, Union
 from requests import exceptions
 from ujson import loads
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -62,7 +61,7 @@ class Parser(api.Parser):
 
             for product in json['products']:
 
-                if check_name(product['permalink'].lower()) or check_name(product['title'].lower()):
+                if Keywords.check(product['permalink'].lower()) or Keywords.check(product['title'].lower()):
 
                     target = api.Target(f'https://beliefmoscow.com{product["url"]}', self.name, 0)
 

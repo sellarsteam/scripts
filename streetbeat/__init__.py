@@ -6,12 +6,11 @@ from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -47,8 +46,8 @@ class Parser(api.Parser):
                     raise response
 
             for element in etree.HTML(response.text).xpath('//div[@class="col-xl-3 col-md-4 col-xs-6 view-type_"]'):
-                if check_name(element[0].xpath('a[@class="link link--no-color catalog-item__title '
-                                               'ddl_product_link"]/span')[0].text.lower()):
+                if Keywords.check(element[0].xpath('a[@class="link link--no-color catalog-item__title '
+                                                   'ddl_product_link"]/span')[0].text.lower()):
 
                     link = element[0] \
                         .xpath('a[@class="link link--no-color catalog-item__title ddl_product_link"]')[0].get('href')

@@ -4,12 +4,11 @@ from typing import List, Union
 from requests import exceptions
 from ujson import loads
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -54,7 +53,9 @@ class Parser(api.Parser):
 
             for item in json:
 
-                if check_name(item['Name'].lower()):
+                if Keywords.check(item['Name'].lower()):
+
+                    print(item['Name'].lower())
 
                     url = item['Url']
 

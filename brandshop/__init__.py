@@ -5,13 +5,12 @@ from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, \
     IAnnounce
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -71,7 +70,7 @@ class Parser(api.Parser):
                         {'Site': 'Brandshop'}
                     ))
 
-                elif check_name(element.xpath('img')[0].get('alt').lower()):
+                elif Keywords.check(element.xpath('img')[0].get('alt').lower()):
 
                     try:
                         if HashStorage.check_target(api.Target(element.get('href'), self.name, 0).hash()):

@@ -7,12 +7,11 @@ from requests import exceptions
 from ujson import loads
 from user_agent import generate_user_agent
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -64,7 +63,7 @@ class Parser(api.Parser):
 
                 title_ = title.lower()
 
-                if check_name(handle) or check_name(title_):
+                if Keywords.check(handle) or Keywords.check(title_):
 
                     target = api.Target('https://oktyabrskateshop.ru/products/' + handle, self.name, 0)
                     if HashStorage.check_target(target.hash()):
@@ -118,7 +117,7 @@ class Parser(api.Parser):
                                 FooterItem('Cart', 'https://oktyabrskateshop.ru/cart'),
                                 FooterItem('Login', 'https://oktyabrskateshop.ru/account/login?return_url=%2Faccount')
                             ],
-                            {'Site': 'Oktyabr Skateshop'}
+                            {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)'}
                         ))
 
             if isinstance(content, api.CSmart):

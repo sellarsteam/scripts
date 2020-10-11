@@ -5,12 +5,11 @@ from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider, ScriptStorage, Keywords
 from source.tools import LinearSmart
 
 
@@ -53,7 +52,7 @@ class Parser(api.Parser):
                 link = element.get('href')
                 name = link.split('/')[1]
 
-                if check_name(name.lower()):
+                if Keywords.check(name.lower()):
 
                     try:
                         if HashStorage.check_target(api.Target('https://www.revolveclothing.ru' +
