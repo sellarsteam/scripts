@@ -15,10 +15,11 @@ from source.tools import LinearSmart
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link_new_catalog: str = 'http://api1.imshop.io/v1/clients/streetbeat/items?category=8f02a684-51f9-5d4a' \
-                                     '-a59c-ab7099a9f913&q_vendor[]=Jordan&q_vendor[]=Nike&q_vendor[]=adidas ' \
+        self.link_new_catalog: str = 'http://api1.imshop.io/v1/clients/streetbeat/items?q_category=8f02a684-51f9-5d4a' \
+                                     '-a59c-ab7099a9f913&q_category=2e2077cb-a1f1-5b1f-9cc1-d5c47a4f5123&q_vendor[' \
+                                     ']=Jordan&q_vendor[]=Nike&q_vendor[]=adidas ' \
                                      'Originals&region=Санкт-Петербург&regionWithType=г ' \
-                                     'Санкт-Петербург&area=null&areaWithType=null&city=Санкт-Петербург&cityWithType=г '\
+                                     'Санкт-Петербург&area=null&areaWithType=null&city=Санкт-Петербург&cityWithType=г ' \
                                      'Санкт-Петербург&settlement=null&settlementWithType=null&street=null&house=null' \
                                      '&block=null&apt=null&lat=59.939084&lon=30.315879&streetWithType=null&areaFiasId' \
                                      '=null&cityFiasId=c2deb16a-0330-4f05-821f-1d09c93331e6&regionFiasId=c2deb16a' \
@@ -27,7 +28,7 @@ class Parser(api.Parser):
                                      '&areaKladrId=null&settlementKladrId=null&streetKladrId=null&houseKladrId=null' \
                                      '&federalDistrict=null&fiasId=c2deb16a-0330-4f05-821f-1d09c93331e6&fiasCode' \
                                      '=7800000000000000000&kladrId=7800000000000&postalCode=190000&valueCity' \
-                                     '=Санкт-Петербург&valueCityFull=Санкт-Петербург&valueAddress=&valueAddressFull=г '\
+                                     '=Санкт-Петербург&valueCityFull=Санкт-Петербург&valueAddress=&valueAddressFull=г ' \
                                      'Санкт-Петербург&page=1 '
         self.headers = {
             'Host': 'api1.imshop.io',
