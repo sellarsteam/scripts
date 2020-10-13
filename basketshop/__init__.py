@@ -55,8 +55,6 @@ class Parser(api.Parser):
 
                 if Keywords.check(item['Name'].lower()):
 
-                    print(item['Name'].lower())
-
                     url = item['Url']
 
                     if HashStorage.check_target(api.Target(url, self.name, 0).hash()):
