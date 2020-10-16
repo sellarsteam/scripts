@@ -38,7 +38,7 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
 
-            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy=True)
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):
@@ -46,11 +46,16 @@ class Parser(api.Parser):
                 else:
                     raise response
 
-            for element in etree.HTML(response.text) \
-                    .xpath('//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]'):
+            catalog = etree.HTML(response.text) \
+                    .xpath('//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]')
+
+            if len(catalog) == 0:
+                raise Exception('Catalog is empty')
+
+            for element in catalog:
 
                 link = element.get('href')
-                name = link.split('/')[1]
+                name = link.split('/')[1].replace('-', ' ')
 
                 if Keywords.check(name.lower()):
 
@@ -82,10 +87,10 @@ class Parser(api.Parser):
                                 result.append(
                                     IRelease(
                                         'https://www.revolveclothing.ru' + link,
-                                        'revolveclothing-ru',
+                                        'revolveclothing',
                                         name,
                                         page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                                        'БЕСПЛАТНАЯ ДОСТАВКА ЗАКАЗОВ ОТ 100$',
+                                        'DELIVERY FROM $100 IS FREE',
                                         api.Price(
                                             api.CURRENCIES['USD'],
                                             float(page_content.xpath('//meta[@property="wanelo:product:price"]')[0].get(
@@ -96,7 +101,7 @@ class Parser(api.Parser):
                                             FooterItem('Cart', 'https://www.revolveclothing.ru/r/ShoppingBag.jsp'),
                                             FooterItem('Login', 'https://www.revolveclothing.ru/r/SignIn.jsp')
                                         ],
-                                        {'Site': '[Revolve Clothing](https://www.revolveclothing.ru) 🇷🇺'}
+                                        {'Site': '[Revolve Clothing](https://www.revolveclothing.ru)'}
                                     )
                                 )
 

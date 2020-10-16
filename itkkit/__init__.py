@@ -44,7 +44,7 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            ok, response = self.provider.request(url=self.link, headers=self.headers)
+            ok, response = self.provider.request(url=self.link, headers=self.headers, proxy=True)
 
             if not ok:
 
