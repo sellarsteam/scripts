@@ -5,7 +5,7 @@ from ujson import dumps
 
 from source import api
 from source import logger
-from source.library import ScriptStorage
+from source.tools import ScriptStorage
 
 
 class EventsExecutor(api.EventsExecutor):

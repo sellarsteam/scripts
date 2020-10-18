@@ -8,8 +8,8 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
-from source.tools import LinearSmart
+from source.library import SubProvider
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
@@ -97,9 +97,12 @@ class Parser(api.Parser):
 
                         HashStorage.add_target(api.Target(link, self.name, 0).hash())
 
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
+            if result:
+                if isinstance(content, api.CSmart):
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                    result.append(content)
+                else:
+                    result.append(api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5)))
 
-            result.append(content)
         return result

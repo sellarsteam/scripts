@@ -6,7 +6,7 @@ from ujson import loads, dumps
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import ScriptStorage
+from source.tools import ScriptStorage
 from source.logger import Logger
 
 regions = {

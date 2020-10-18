@@ -10,8 +10,8 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, \
     IAnnounce
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage, Keywords
-from source.tools import LinearSmart
+from source.library import SubProvider, Keywords
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):

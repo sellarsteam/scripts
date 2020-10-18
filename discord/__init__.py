@@ -14,7 +14,7 @@ from source import __version__, __copyright__
 from source import api
 from source import codes
 from source.api import TEFail, IAnnounce, IRelease, IRestock
-from source.library import ScriptStorage
+from source.tools import ScriptStorage
 from source.logger import Logger
 
 currencies: tuple = ('', '£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)', '$(AUD)')

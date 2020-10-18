@@ -9,8 +9,8 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage, Keywords
-from source.tools import LinearSmart
+from source.library import SubProvider, Keywords
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
@@ -25,12 +25,10 @@ class Parser(api.Parser):
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
             'Accept': 'text/html, */*; q=0.01',
             'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             'X-Requested-With': 'XMLHttpRequest',
             'Content-Length': '170',
             'Origin': 'https://street-beat.ru',
-            'Connection': 'keep-alive',
             'Referer': 'https://street-beat.ru/cat/man/krossovki/nike;jordan;adidas-originals/new/',
             'Cookie': 'BITRIX_SM_SALE_UID=777636887; __exponea_etc__=78d10e7f-86f7-11ea-b47f-aab19ae2307c; '
                       'tmr_reqNum=541; tmr_lvid=fb11c3f7ad7147e376f8a66043996c52; tmr_lvidTS=1584766415938; '
