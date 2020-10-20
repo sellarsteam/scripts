@@ -1,4 +1,4 @@
-name: dsm-eu
+name: nrml
 core: ^0.9
 version: 1.0.1rc1
 keep: yes

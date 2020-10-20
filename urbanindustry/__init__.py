@@ -16,8 +16,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://packershoes.com/collections/footwear/products.json?limit=100&_=pf&pf_t_footwear' \
-                         '=footwear%3Asneakers&pf_v_brand=NIKE&pf_v_brand=ADIDAS '
+        self.link: str = 'https://www.urbanindustry.co.uk/collections/shoes/products.json'
 
     @property
     def catalog(self) -> CatalogType:
@@ -26,7 +25,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=500000, tzinfo=timezone.utc).timestamp()
+            .replace(second=1, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -64,14 +63,14 @@ class Parser(api.Parser):
 
                 if Keywords.check(handle) or Keywords.check(title_):
 
-                    target = api.Target('https://packershoes.com/products/' + handle, self.name, 0)
+                    target = api.Target('https://www.urbanindustry.co.uk/products/' + handle, self.name, 0)
 
                     if HashStorage.check_target(target.hash()):
 
                         sizes = [
                             api.Size(
-                                str(size['option1']) + f' US',
-                                f'https://www.packershoes.com/cart/{size["id"]}:1')
+                                str(size['option1']),
+                                f'https://www.urbanindustry.co.uk/cart/{size["id"]}:1')
                             for size in sizes_data if size["available"] is True
                         ]
 
@@ -80,7 +79,7 @@ class Parser(api.Parser):
 
                         try:
                             price = api.Price(
-                                api.CURRENCIES['USD'],
+                                api.CURRENCIES['GBP'],
                                 float(variants[0]['price'])
                             )
                         except (KeyError, IndexError):
@@ -98,10 +97,10 @@ class Parser(api.Parser):
                             [
                                 FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                            title.replace(' ', '%20')),
-                                FooterItem('Cart', 'https://packershoes.com/cart'),
-                                FooterItem('Login', 'https://packershoes.com/account/login')
+                                FooterItem('Cart', 'https://www.urbanindustry.co.uk/cart'),
+                                FooterItem('Login', 'https://www.urbanindustry.co.uk/account/')
                             ],
-                            {'Site': '[Packer Shoes](https://packershoes.com)'}
+                            {'Site': '[Urban Industry](https://www.urbanindustry.co.uk)'}
                         ))
 
             if result or content.expired:
