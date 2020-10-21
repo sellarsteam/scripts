@@ -87,10 +87,12 @@ class Parser(api.Parser):
                                 {'Site': '[Basketshop](https://www.basketshop.ru/)'}
                             )
                         )
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                    result.append(content)
+                else:
+                    result.append(self.catalog())
 
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
-
-            result.append(content)
         return result

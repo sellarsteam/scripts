@@ -97,12 +97,12 @@ class Parser(api.Parser):
 
                         HashStorage.add_target(api.Target(link, self.name, 0).hash())
 
-            if result:
-                if isinstance(content, api.CSmart):
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
                     content.gen.time = self.time_gen()
                     content.expired = False
                     result.append(content)
                 else:
-                    result.append(api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5)))
+                    result.append(self.catalog())
 
         return result

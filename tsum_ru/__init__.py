@@ -98,9 +98,13 @@ class Parser(api.Parser):
                         )
                 except JSONDecodeError as e:
                     raise e
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
 
-            result.append(content)
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                    result.append(content)
+                else:
+                    result.append(self.catalog())
+
         return result

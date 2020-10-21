@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Union
 
 from requests import post, exceptions
@@ -155,7 +156,6 @@ class Parser(api.Parser):
                 target = api.Target(url, self.name, 0)
 
                 if HashStorage.check_target(target.hash()):
-                    HashStorage.add_target(target.hash())
 
                     shoes_data = {}
 
@@ -190,28 +190,40 @@ class Parser(api.Parser):
                     try:
                         end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
                                    f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
-                    except AttributeError:
+                    except ValueError:
                         end_date = 'No date'
 
-                    result.append(
-                        IRelease(
-                            url,
-                            f'raffles-{type_raffle.lower()}',
-                            f'{name}\n[PID: {pid}]',
-                            image_url,
-                            postage,
-                            price,
-                            api.Sizes(api.SIZE_TYPES[''], []),
-                            [
-                                FooterItem('StockX', f'https://stockx.com/search/sneakers?s={pid.replace(" ", "")}')
-                            ],
-                            {
-                                'Retailer': shop + f' [{location}]',
-                                'Type Of Raffle': type_raffle,
-                                'End of raffle': end_date
-                            }
+                    date_now = datetime.today()
+                    date_data = end_date.split('/')
 
-                        )
-                    )
+                    if end_date != 'No date':
+
+                        if date_now <= datetime(year=int(date_data[0]), month=int(date_data[1]),
+                                                day=int(date_data[-1].split(' ')[0])):
+
+                            HashStorage.add_target(target.hash())
+
+                            result.append(
+                                IRelease(
+                                    url,
+                                    f'raffles-{type_raffle.lower()}',
+                                    f'{name}\n[PID: {pid}]',
+                                    image_url,
+                                    postage,
+                                    price,
+                                    api.Sizes(api.SIZE_TYPES[''], []),
+                                    [
+                                        FooterItem('StockX',
+                                                   f'https://stockx.com/search/sneakers?s={pid.replace(" ", "")}')
+                                    ],
+                                    {
+                                        'Retailer': shop + f' [{location}]',
+                                        'Type Of Raffle': type_raffle,
+                                        'End of raffle': end_date,
+                                        'Slug': slug
+                                    }
+
+                                )
+                            )
             result.append(content)
             return result

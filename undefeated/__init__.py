@@ -104,9 +104,12 @@ class Parser(api.Parser):
                             {'Site': '[Undefeated](https://undefeated.com)'}
                         ))
 
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                    result.append(content)
+                else:
+                    result.append(self.catalog())
 
-            result.append(content)
         return result
