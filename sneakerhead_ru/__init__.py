@@ -57,15 +57,14 @@ class Parser(api.Parser):
 
                     try:
 
-                        link = 'https://sneakerhead.ru' + element[0].xpath('h5[@class="product-card__title"]/a')[0].get(
-                            'href')
+                        link = 'https://sneakerhead.ru' + element[0].xpath('h5[@class="product-card__title"]/a')[0] \
+                            .get('href')
 
                         if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
-
                             name = element[0].xpath('meta[@itemprop="description"]')[0].get('content')
                             image = 'https://sneakerhead.ru' + \
-                                    element[0].xpath('div[@class="product-card__image"]/div/picture/source')[0] \
-                                    .get('data-src')
+                                    element[0].xpath(
+                                        'div[@class="product-card__image"]/div/picture/source')[0].get('data-src')
                             price = api.Price(
                                 api.CURRENCIES['RUB'],
                                 float(element[0].xpath('div[@class="product-card__price"]/meta[@itemprop="price"]')[0]

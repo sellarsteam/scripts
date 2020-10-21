@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import List, Union
 
-from requests import post, exceptions
+from requests import exceptions
 from ujson import loads, dumps
 
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.tools import ScriptStorage
 from source.logger import Logger
+from source.tools import ScriptStorage
 
 regions = {
     'EU': '🇪🇺',
@@ -200,7 +200,6 @@ class Parser(api.Parser):
 
                         if date_now <= datetime(year=int(date_data[0]), month=int(date_data[1]),
                                                 day=int(date_data[-1].split(' ')[0])):
-
                             HashStorage.add_target(target.hash())
 
                             result.append(

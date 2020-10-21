@@ -37,7 +37,7 @@ class Parser(api.Parser):
 
         if mode == 0:
 
-            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy = True)
+            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy=True)
 
             if not ok:
 

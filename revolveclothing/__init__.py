@@ -46,8 +46,8 @@ class Parser(api.Parser):
                 else:
                     raise response
 
-            catalog = etree.HTML(response.text) \
-                    .xpath('//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]')
+            catalog = etree.HTML(response.text).xpath(
+                '//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]')
 
             if len(catalog) == 0:
                 raise Exception('Catalog is empty')

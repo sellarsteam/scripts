@@ -6,10 +6,10 @@ from dataclasses import dataclass, field
 from types import FunctionType
 from typing import Dict, Any
 
+import telegram
 import telegram.ext
 from dotenv import load_dotenv
 
-import telegram
 from source import __copyright__, __version__
 from source import api
 from source import codes

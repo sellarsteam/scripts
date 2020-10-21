@@ -96,7 +96,7 @@ class Parser(api.Parser):
                         {
                             'Site': '[DSM London](https://eflash.doverstreetmarket.com)',
                             'Location': 'Europe (London)',
-                         }
+                        }
                     ))
 
             if result or (isinstance(content, api.CSmart) and content.expired):
