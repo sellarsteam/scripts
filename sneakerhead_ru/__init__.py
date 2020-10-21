@@ -107,7 +107,7 @@ class Parser(api.Parser):
                         raise etree.XMLSyntaxError('XMLDecodeError')
 
             if result or (isinstance(content, api.CSmart) and content.expired):
-                if isinstance(content, api.CSmart()):
+                if isinstance(content, api.CSmart):
                     content.gen.time = self.time_gen()
                     content.expired = False
                     result.append(content)
