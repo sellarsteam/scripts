@@ -16,7 +16,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://thepremierstore.com/collections/footwear/products.json'
+        self.link: str = 'https://thepremierstore.com/products.json'
 
     @property
     def catalog(self) -> CatalogType:

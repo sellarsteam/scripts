@@ -18,7 +18,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://oktyabrskateshop.ru/collections/%D0%BE%D0%B1%D1%83%D0%B2%D1%8C/products.json?limit=50'
+        self.link: str = 'https://oktyabrskateshop.ru/products.json?limit=50'
         self.interval: int = 1
 
     @property
