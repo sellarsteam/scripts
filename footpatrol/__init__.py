@@ -51,7 +51,6 @@ class Parser(api.Parser):
                         name = page_content.xpath('//meta[@name="title"]')[0].get('content').split(' |')[0]
                         sizes = [api.Size(size.replace('name:', '').replace('"', '') + ' UK')
                                  for size in findall(r'name:".*"', get_content)]
-                        print(page_content.xpath('//meta[@name="twitter:data1"]')[0].get('content'))
                         HashStorage.add_target(link[0].hash())
                         result.append(IRelease(
                             link[1],

@@ -45,7 +45,6 @@ class Parser(api.Parser):
 
             try:
                 json = loads(response.content)
-                print(response.text)
 
             except ValueError:
                 json = {'products': []}
