@@ -7,13 +7,12 @@ from requests import exceptions
 from ujson import loads
 from user_agent import generate_user_agent
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
-from source.tools import LinearSmart
+from source.library import SubProvider, Keywords
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
@@ -64,7 +63,7 @@ class Parser(api.Parser):
 
                 title_ = title.lower()
 
-                if check_name(handle) or check_name(title_):
+                if Keywords.check(handle) or Keywords.check(title_):
 
                     target = api.Target('https://oktyabrskateshop.ru/products/' + handle, self.name, 0)
                     if HashStorage.check_target(target.hash()):
@@ -118,13 +117,14 @@ class Parser(api.Parser):
                                 FooterItem('Cart', 'https://oktyabrskateshop.ru/cart'),
                                 FooterItem('Login', 'https://oktyabrskateshop.ru/account/login?return_url=%2Faccount')
                             ],
-                            {'Site': 'Oktyabr Skateshop'}
+                            {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)'}
                         ))
 
-            if isinstance(content, api.CSmart):
-                if result or content.expired:
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
                     content.gen.time = self.time_gen()
                     content.expired = False
-
-            result.append(content)
+                    result.append(content)
+                else:
+                    result.append(self.catalog())
         return result

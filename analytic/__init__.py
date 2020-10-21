@@ -5,14 +5,15 @@ from ujson import dumps
 
 from source import api
 from source import logger
+from source.tools import ScriptStorage
 
 
 class EventsExecutor(api.EventsExecutor):
     db: sqlite3.Connection
     lock: threading.RLock
 
-    def __init__(self, name: str, log: logger.Logger):
-        super().__init__(name, log)
+    def __init__(self, name: str, log: logger.Logger, storage: ScriptStorage):
+        super().__init__(name, log, storage)
         self.db = sqlite3.connect(f'{__path__[0]}/data.db', 1, check_same_thread=False)
         self.lock = threading.RLock()
 

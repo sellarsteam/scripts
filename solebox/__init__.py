@@ -17,7 +17,6 @@ class Parser(api.Parser):
                         'scheme': 'https',
                         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,'
                                   '*/*;q=0.8,application/signed-exchange;v=b3',
-                        'accept-encoding': 'gzip, deflate, br',
                         'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
                         'cache-control': 'max-age=0',
                         'upgrade-insecure-requests': '1',

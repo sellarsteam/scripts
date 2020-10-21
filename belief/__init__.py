@@ -4,21 +4,27 @@ from typing import List, Union
 from requests import exceptions
 from ujson import loads
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
-from source.tools import LinearSmart
+from source.library import SubProvider, Keywords
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://beliefmoscow.com/collection/frontpage.json?order=&q=nike'
+        self.link: str = 'https://beliefmoscow.com/collection/all.json'
         self.interval: int = 1
-        self.user_agent = 'Mozilla/5.0 (compatible; YandexAccessibilityBot/3.0; +http://yandex.com/bots)'
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Host': 'beliefmoscow.com',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+            'Cache-Control': 'max-age=0'
+        }
 
     @property
     def catalog(self) -> CatalogType:
@@ -39,7 +45,7 @@ class Parser(api.Parser):
         if mode == 0:
             result.append(content)
 
-            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, resp = self.provider.request(self.link, headers=self.headers)
 
             if not ok:
                 if isinstance(resp, exceptions.Timeout):
@@ -55,7 +61,7 @@ class Parser(api.Parser):
 
             for product in json['products']:
 
-                if check_name(product['permalink']) or check_name(product['title'].lower()):
+                if Keywords.check(product['permalink'].lower()) or Keywords.check(product['title'].lower()):
 
                     target = api.Target(f'https://beliefmoscow.com{product["url"]}', self.name, 0)
 
@@ -71,12 +77,13 @@ class Parser(api.Parser):
                         image = product['images'][0]['medium_url'] if len(product['images']) != 0 \
                             else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
 
-                        sizes = api.Sizes(api.SIZE_TYPES[''],
-                                          [api.Size(f"{size['title'].split(' /')[0]} [{size['quantity']}]",
-                                                    f"http://static.sellars.cf/links?site=belief&id={size['id']}")
-                                           for size in product['variants'] if size['quantity'] > 0])
+                        raw_sizes = [api.Size(f"{size['title'].split(' /')[0]} [{size['quantity']}]",
+                                              f"http://static.sellars.cf/links?site=belief&id={size['id']}")
+                                     for size in product['variants'] if size['quantity'] > 0]
 
-                        if len(product['variants']) == 0:
+                        sizes = api.Sizes(api.SIZE_TYPES[''], raw_sizes)
+
+                        if not raw_sizes:
                             continue
 
                         HashStorage.add_target(target.hash())
@@ -100,7 +107,7 @@ class Parser(api.Parser):
                                     ),
                                     FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                 ],
-                                {'Site': 'Belief Moscow'}
+                                {'Site': '[Belief Moscow](https://beliefmoscow.com)'}
                             )
                         )
 
@@ -136,13 +143,16 @@ class Parser(api.Parser):
                                         ),
                                         FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                                     ],
-                                    {'Site': 'Belief Moscow'}
+                                    {'Site': '[Belief Moscow](https://beliefmoscow.com)'}
                                 ).hash()
                             )
 
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                    result.append(content)
+                else:
+                    result.append(self.catalog())
 
-            result.append(content)
         return result

@@ -9,7 +9,8 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
+from source.library import SubProvider
+from source.tools import ScriptStorage
 
 vk_merchants = (
     ('507698109', 'Ren Chris'),

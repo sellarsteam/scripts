@@ -1,13 +1,14 @@
+from datetime import datetime
 from typing import List, Union
 
-from requests import post
-from ujson import loads
+from requests import exceptions
+from ujson import loads, dumps
 
 from source import api
 from source.api import CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import ScriptStorage
 from source.logger import Logger
+from source.tools import ScriptStorage
 
 regions = {
     'EU': '🇪🇺',
@@ -53,6 +54,13 @@ class Parser(api.Parser):
     def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider, storage)
         self.graphql_url = 'https://api.soleretriever.com/graphql/'
+
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+        }
 
         self.shoes = []  # List with shoes data
 
@@ -103,10 +111,17 @@ class Parser(api.Parser):
         result = []
 
         if mode == 0:
-            try:
-                catalog_data = loads(post(self.graphql_url, json=self.post_catalog_body).content)
-            except (ConnectionError, ValueError):
-                return [api.CInterval(self.name, 600.)]
+
+            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.post_catalog_body),
+                                             headers=self.headers, method='post')
+
+            if not ok:
+                if isinstance(resp, exceptions.Timeout):
+                    return [api.CInterval(self.name, 300)]
+                else:
+                    raise result
+
+            catalog_data = loads(resp.content)
 
             for item in catalog_data['data']['search']['products']:
                 self.shoes.append({'id': item['id'], 'name': item['name'], 'pid': item['pid'],
@@ -124,10 +139,16 @@ class Parser(api.Parser):
         elif mode == 1:
             self.post_raffles_body['variables']['productId'] = int(content.name)
 
-            try:
-                raffles_data = loads(post(self.graphql_url, json=self.post_raffles_body).content)
-            except (ConnectionError, ValueError):
-                return [api.CInterval(self.name, 600.)]
+            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.post_raffles_body),
+                                             headers=self.headers, method='post')
+
+            if not ok:
+                if isinstance(resp, exceptions.Timeout):
+                    return [api.CInterval(self.name, 300)]
+                else:
+                    raise result
+
+            raffles_data = loads(resp.content)
 
             for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
 
@@ -135,7 +156,6 @@ class Parser(api.Parser):
                 target = api.Target(url, self.name, 0)
 
                 if HashStorage.check_target(target.hash()):
-                    HashStorage.add_target(target.hash())
 
                     shoes_data = {}
 
@@ -170,28 +190,39 @@ class Parser(api.Parser):
                     try:
                         end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
                                    f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
-                    except AttributeError:
+                    except ValueError:
                         end_date = 'No date'
 
-                    result.append(
-                        IRelease(
-                            url,
-                            f'raffles-{type_raffle.lower()}',
-                            f'{name}\n[PID: {pid}]',
-                            image_url,
-                            postage,
-                            price,
-                            api.Sizes(api.SIZE_TYPES[''], []),
-                            [
-                                FooterItem('StockX', f'https://stockx.com/search/sneakers?s={pid}')
-                            ],
-                            {
-                                'Retailer': shop + f' [{location}]',
-                                'Type Of Raffle': type_raffle,
-                                'End of raffle': end_date
-                            }
+                    date_now = datetime.today()
+                    date_data = end_date.split('/')
 
-                        )
-                    )
+                    if end_date != 'No date':
+
+                        if date_now <= datetime(year=int(date_data[0]), month=int(date_data[1]),
+                                                day=int(date_data[-1].split(' ')[0])):
+                            HashStorage.add_target(target.hash())
+
+                            result.append(
+                                IRelease(
+                                    url,
+                                    f'raffles-{type_raffle.lower()}',
+                                    f'{name}\n[PID: {pid}]',
+                                    image_url,
+                                    postage,
+                                    price,
+                                    api.Sizes(api.SIZE_TYPES[''], []),
+                                    [
+                                        FooterItem('StockX',
+                                                   f'https://stockx.com/search/sneakers?s={pid.replace(" ", "")}')
+                                    ],
+                                    {
+                                        'Retailer': shop + f' [{location}]',
+                                        'Type Of Raffle': type_raffle,
+                                        'End of raffle': end_date,
+                                        'Slug': slug
+                                    }
+
+                                )
+                            )
             result.append(content)
             return result

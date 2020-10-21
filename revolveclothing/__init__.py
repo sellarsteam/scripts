@@ -5,13 +5,12 @@ from lxml import etree
 from requests import exceptions
 from user_agent import generate_user_agent
 
-from scripts.keywords_finding import check_name
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.cache import HashStorage
-from source.library import SubProvider, ScriptStorage
-from source.tools import LinearSmart
+from source.library import SubProvider, Keywords
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
@@ -39,7 +38,7 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
 
-            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent}, proxy=True)
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):
@@ -47,13 +46,18 @@ class Parser(api.Parser):
                 else:
                     raise response
 
-            for element in etree.HTML(response.text) \
-                    .xpath('//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]'):
+            catalog = etree.HTML(response.text).xpath(
+                '//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]')
+
+            if len(catalog) == 0:
+                raise Exception('Catalog is empty')
+
+            for element in catalog:
 
                 link = element.get('href')
-                name = link.split('/')[1]
+                name = link.split('/')[1].replace('-', ' ')
 
-                if check_name(name.lower()):
+                if Keywords.check(name.lower()):
 
                     try:
                         if HashStorage.check_target(api.Target('https://www.revolveclothing.ru' +
@@ -83,10 +87,10 @@ class Parser(api.Parser):
                                 result.append(
                                     IRelease(
                                         'https://www.revolveclothing.ru' + link,
-                                        'revolveclothing-ru',
+                                        'revolveclothing',
                                         name,
                                         page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
-                                        'БЕСПЛАТНАЯ ДОСТАВКА ЗАКАЗОВ ОТ 100$',
+                                        'DELIVERY FROM $100 IS FREE',
                                         api.Price(
                                             api.CURRENCIES['USD'],
                                             float(page_content.xpath('//meta[@property="wanelo:product:price"]')[0].get(
@@ -97,15 +101,19 @@ class Parser(api.Parser):
                                             FooterItem('Cart', 'https://www.revolveclothing.ru/r/ShoppingBag.jsp'),
                                             FooterItem('Login', 'https://www.revolveclothing.ru/r/SignIn.jsp')
                                         ],
-                                        {'Site': '[Revolve Clothing](https://www.revolveclothing.ru) 🇷🇺'}
+                                        {'Site': '[Revolve Clothing](https://www.revolveclothing.ru)'}
                                     )
                                 )
 
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeEroor')
-            if result or content.expired:
-                content.gen.time = self.time_gen()
-                content.expired = False
 
-            result.append(content)
+            if result or (isinstance(content, api.CSmart) and content.expired):
+                if isinstance(content, api.CSmart()):
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                    result.append(content)
+                else:
+                    result.append(self.catalog())
+
         return result

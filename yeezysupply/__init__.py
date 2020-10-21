@@ -10,7 +10,6 @@ from source.logger import Logger
 headers = {
     'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/79.0.3945.130 Chrome/79.0.3945.130 Safari/537.36',
     'referer': 'https://www.yeezysupply.com',
-    'accept-encoding': 'gzip, deflate, br',
     'connection': 'keep-alive',
     'host': 'www.yeezysupply.com',
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
