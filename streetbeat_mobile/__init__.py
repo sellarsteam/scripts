@@ -63,19 +63,19 @@ class Parser(api.Parser):
 
             if not j_ok:
                 if isinstance(j_response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.)]
+                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
                     raise j_response
 
             elif not y_ok:
                 if isinstance(y_response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.)]
+                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
                     raise y_response
 
             elif not s_ok:
                 if isinstance(s_response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.)]
+                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
                     raise s_response
 

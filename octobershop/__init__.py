@@ -41,16 +41,16 @@ class Parser(api.Parser):
 
             if not ok:
                 if isinstance(resp, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.)]
+                    return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
             if resp.status_code == 430 or resp.status_code == 520:
-                return [api.CInterval(self.name, 600.)]
+                return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
             try:
                 json = loads(resp.content)
 
             except ValueError:
-                return [api.CInterval(self.name, 300)]
+                return [api.CInterval(self.name, 900), api.MAlert('Script go to sleep', self.name)]
 
             for element in Path.parse_str('$.products.*').match(json):
                 title = element.current_value['title']

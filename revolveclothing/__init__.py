@@ -42,7 +42,7 @@ class Parser(api.Parser):
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.)]
+                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
                     raise response
 
@@ -69,7 +69,7 @@ class Parser(api.Parser):
 
                             if not ok:
                                 if isinstance(response, exceptions.Timeout):
-                                    return [api.CInterval(self.name, 600.)]
+                                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                                 else:
                                     raise response
 

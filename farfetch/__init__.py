@@ -42,7 +42,7 @@ class Parser(api.Parser):
             if not ok:
 
                 if isinstance(resp, exceptions.Timeout):
-                    return [api.CInterval(self.name, 300)]
+                    return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
 
                 else:
                     raise resp
@@ -51,7 +51,7 @@ class Parser(api.Parser):
                 json = loads(resp.content)
 
             except ValueError:
-                return [api.CInterval(self.name, 300)]
+                return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
 
             for item in json['listingItems']['items']:
 

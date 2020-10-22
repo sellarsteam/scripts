@@ -57,7 +57,7 @@ class Parser(api.Parser):
                 json = loads(resp.content)
 
             except ValueError:
-                return [api.CInterval(self.name, 300)]
+                return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
 
             for product in json['products']:
 

@@ -43,14 +43,14 @@ class Parser(api.Parser):
 
             if not ok:
                 if isinstance(resp, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.)]
+                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
                     raise resp
 
             try:
                 json = loads(resp.content)
             except ValueError:
-                return [api.CInterval(self.name, 600.)]
+                return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
 
             for element in Path.parse_str('$.*').match(json):
                 try:
