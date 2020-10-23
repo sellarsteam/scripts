@@ -1,4 +1,4 @@
-name: raffle_monitor
+name: raffle-monitor
 core: ^0.9
 version: 1.0.1rc1
 keep: yes
