@@ -104,12 +104,12 @@ class Parser(api.Parser):
                             {'Site': '[Deadstock Canada](https://deadstock.ca)'}
                         ))
 
-            if result or (isinstance(content, api.CSmart) and content.expired):
-                if isinstance(content, api.CSmart):
+            if isinstance(content, api.CSmart):
+                if result or content.expired:
                     content.gen.time = self.time_gen()
                     content.expired = False
-                    result.append(content)
-                else:
-                    result.append(self.catalog())
+                result.append(content)
+            else:
+                result.append(self.catalog())
 
         return result

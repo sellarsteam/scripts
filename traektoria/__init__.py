@@ -15,17 +15,18 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://sneaker-street.ru/krossovki/?sort=p.date_added&order=DESC'
+        self.link: str = 'https://www.traektoria.ru/wear/?brand=adidas%7Enike&SORT=ACTIVE_FROM&ORDER=DESC&bxajaxid' \
+                         '=26cf383ee40d9f97469772becb6e86ca '
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 10, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=3, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -34,8 +35,6 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-
-            counter = 0
 
             ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
 
@@ -46,34 +45,41 @@ class Parser(api.Parser):
                     raise result
 
             lxml_resp = etree.HTML(resp.text)
-            catalog = [element for element in lxml_resp.xpath('//div[@class="main_cont_block_block"]')]
 
-            for item in catalog:
-                link = item.xpath('a[@rel="external"]')[0].get('href')
+            for item in lxml_resp.xpath('//a[@class="p_link"]'):
 
-                counter = counter + 1
+                link = 'https://www.traektoria.ru' + item.get('href')
 
-                if Keywords.check(link.split('/')[-1].lower().replace('-', ' ')):
+                if Keywords.check(link.split('/')[4].split('_')[-1], divider='-'):
 
                     if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
-                        name_data = item.xpath('a/div')
-                        name = name_data[1].text + name_data[2].text
-                        image = 'https://sneaker-street.ru/' + item.xpath('a/div/img')[0].get('src')
 
+                        ok, resp = self.provider.request(link, headers={'user-agent': self.user_agent})
+
+                        if not ok:
+                            if isinstance(resp, exceptions.Timeout):
+                                raise Exception('Timeout')
+                            else:
+                                raise result
+
+                        item_lxml = etree.HTML(resp.text)
+                        name = item_lxml.xpath('//meta[@name="keywords"]')[0].get('content')
+                        image = item_lxml.xpath('//meta[@property="og:image"]')[0].get('content')
                         price = api.Price(api.CURRENCIES['RUB'],
-                                          float(item.xpath(f'//div[@class="main_cont_block_block_b_price "]')[counter - 1].text
-                                                .replace('₽', '').replace(' ', '')))
-
+                                          float(item_lxml.xpath('//meta[@property="og:product:price:amount"]')[0]
+                                                .get('content')))
                         sizes = api.Sizes(api.SIZE_TYPES[''],
-                                          [api.Size(size.text)
-                                           for size in item.xpath('//div[@class="block_product__size"]')
-                                           [counter - 1].xpath('div/span')])
+                                          [api.Size(size.text + ' US')
+                                           for size in item_lxml.xpath('//div[@class="choose_size_column"]/span')])
+
                         stockx_link = f'https://stockx.com/search/sneakers?s={name.replace(" ", "%20")}'
+
+                        HashStorage.add_target(api.Target(link, self.name, 0).hash())
 
                         result.append(
                             IRelease(
                                 link,
-                                'sneakerstreet',
+                                'traektoria',
                                 name,
                                 image,
                                 '',
@@ -81,11 +87,13 @@ class Parser(api.Parser):
                                 sizes,
                                 [
                                     FooterItem('StockX', stockx_link),
-                                    FooterItem('Cart', 'https://sneaker-street.ru/checkout/')
+                                    FooterItem('Cart', 'https://www.traektoria.ru/cart/'),
+                                    FooterItem('Login', 'https://www.traektoria.ru/personal/')
                                 ],
-                                {'Site': '[Sneaker Street](https://sneaker-street.ru/)'}
+                                {'Site': '[Traektoria](https://www.traektoria.ru)'}
                             )
                         )
+
             if isinstance(content, api.CSmart):
                 if result or content.expired:
                     content.gen.time = self.time_gen()
