@@ -84,13 +84,13 @@ class Parser(api.Parser):
             if isinstance(raw, dict):
                 if isinstance(raw['token'], list):
                     self.tokens = raw['token']
-                    self.active = True
                 else:
                     self.log.error('secret.yaml must contain tokens')
             else:
                 self.log.error('secret.yaml must contain dict')
         else:
             self.log.error('secret.yaml doesn\'t exist')
+            raise FileNotFoundError
 
     @property
     def catalog(self) -> CatalogType:

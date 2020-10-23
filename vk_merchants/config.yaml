@@ -1,4 +1,4 @@
-name: vk_merchants
+name: vk-merchants
 core: ^0.9
 version: 1.0.0rc2
 keep: yes
