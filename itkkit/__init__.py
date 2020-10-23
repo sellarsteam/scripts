@@ -50,7 +50,7 @@ class Parser(api.Parser):
 
                 if isinstance(response, exceptions.Timeout):
 
-                    return [api.CInterval(self.name, 300)]
+                    return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
 
                 else:
 

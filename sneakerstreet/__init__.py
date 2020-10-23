@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
+from lxml import etree
 from requests import exceptions
-from ujson import loads
 
 from source import api
 from source import logger
@@ -15,9 +15,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/' \
-                         '552ccef36636b41010072dc3/?&categoryIds=26,10&categoryPaths=' \
-                         'new&session=5ea424867c84cf0001e5d423&pvid=638364803722894&isDebug=false&format=json'
+        self.link: str = 'https://sneaker-street.ru/krossovki/?sort=p.date_added&order=DESC'
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
 
     @property
@@ -27,7 +25,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
+            .replace(second=3, microsecond=0, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -37,43 +35,45 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
 
+            counter = 0
+
             ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
 
             if not ok:
                 if isinstance(resp, exceptions.Timeout):
-                    return result
+                    raise Exception('Timeout')
                 else:
                     raise result
 
-            try:
-                json = loads(resp.content)
+            lxml_resp = etree.HTML(resp.text)
+            catalog = [element for element in lxml_resp.xpath('//div[@class="main_cont_block_block"]')]
 
-            except ValueError:
-                return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
+            for item in catalog:
+                link = item.xpath('a[@rel="external"]')[0].get('href')
 
-            for item in json:
+                counter = counter + 1
 
-                if Keywords.check(item['Name'].lower()):
+                if Keywords.check(link.split('/')[-1].lower().replace('-', ' ')):
 
-                    url = item['Url']
+                    if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
+                        name_data = item.xpath('a/div')
+                        name = name_data[1].text + name_data[2].text
+                        image = 'https://sneaker-street.ru/' + item.xpath('a/div/img')[0].get('src')
 
-                    if HashStorage.check_target(api.Target(url, self.name, 0).hash()):
-                        name = item['Name']
-                        image = item['PictureUrl'].replace(' ', '%20')
+                        price = api.Price(api.CURRENCIES['RUB'],
+                                          float(item.xpath(f'//div[@class="main_cont_block_block_b_price "]')[counter - 1].text
+                                                .replace('₽', '').replace(' ', '')))
 
-                        if item['OldPrice'] == 0:
-                            price = api.Price(api.CURRENCIES['RUB'], float(item['Price']))
-                        else:
-                            price = api.Price(api.CURRENCIES['RUB'], float(item['Price']), float(item['OldPrice']))
-
-                        sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'{size} US')
-                                                               for size in item['Size'].split(';')])
+                        sizes = api.Sizes(api.SIZE_TYPES[''],
+                                          [api.Size(size.text)
+                                           for size in item.xpath('//div[@class="block_product__size"]')
+                                           [counter - 1].xpath('div/span')])
                         stockx_link = f'https://stockx.com/search/sneakers?s={name.replace(" ", "%20")}'
 
                         result.append(
                             IRelease(
-                                url,
-                                'basketshop',
+                                link,
+                                'sneakerstreet',
                                 name,
                                 image,
                                 '',
@@ -81,10 +81,9 @@ class Parser(api.Parser):
                                 sizes,
                                 [
                                     FooterItem('StockX', stockx_link),
-                                    FooterItem('Cart', 'https://www.basketshop.ru/catalog/basket/'),
-                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                    FooterItem('Cart', 'https://sneaker-street.ru/checkout/')
                                 ],
-                                {'Site': '[Basketshop](https://www.basketshop.ru/)'}
+                                {'Site': '[Sneaker Street](https://sneaker-street.ru/)'}
                             )
                         )
             if result or (isinstance(content, api.CSmart) and content.expired):

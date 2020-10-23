@@ -13,7 +13,6 @@ from ujson import dumps
 from source import __version__, __copyright__
 from source import api
 from source import codes
-from source.api import TEFail, IAnnounce, IRelease, IRestock
 from source.logger import Logger
 from source.tools import ScriptStorage
 
@@ -64,10 +63,18 @@ class Hook:
 
 @dataclass(order=True)
 class Message:
-    priority: int = field(repr=False)
+    priority: int
     text: str = field(default='', compare=False)
+    channel: str = field(default='', compare=False)
     item: Optional[api.ItemType] = field(default=None, compare=False)
-    tries: int = field(default=5, repr=False)
+    tries: int = field(default=5, repr=False, compare=False)
+
+    def __post_init__(self):
+        if not self.channel:
+            if self.item:
+                self.channel = self.item.channel
+            else:
+                self.channel = 'tech'
 
     def retry(self) -> bool:
         if self.tries == 0:
@@ -85,10 +92,10 @@ class Message:
         if self.item:
             embed = {
                 'footer': {'text': group.tag},
-                'title': ('[ANNOUNCE] ' if isinstance(self.item, IAnnounce) else
-                          '[RESTOCK] ' if isinstance(self.item, IRestock) else '') + self.item.name,
-                'color': (int(group.colors[0]) if isinstance(self.item, IRelease) else
-                          int(group.colors[2]) if isinstance(self.item, IRestock) else int(group.colors[1])),
+                'title': ('[ANNOUNCE] ' if isinstance(self.item, api.IAnnounce) else
+                          '[RESTOCK] ' if isinstance(self.item, api.IRestock) else '') + self.item.name,
+                'color': (int(group.colors[0]) if isinstance(self.item, api.IRelease) else
+                          int(group.colors[2]) if isinstance(self.item, api.IRestock) else int(group.colors[1])),
                 'timestamp': datetime.utcnow().replace(tzinfo=timezone('Europe/Moscow')).strftime(
                     '%Y-%m-%dT%H:%M:%S.%fZ'),
                 'fields': [],
@@ -232,15 +239,11 @@ class EventsExecutor(api.EventsExecutor):
                     msg: Message = self.messages.get_nowait()
                     try:
                         if msg.retry():
-                            if not msg.item:
-                                channel = 'tech'
-                            elif msg.item.channel in self.channels:
-                                channel = msg.item.channel
-                            else:
-                                self.log.warn(f'Message\'s channel does not exist: {msg.item.channel}')
+                            if msg.channel not in self.channels:
+                                self.log.warn(f'Message\'s channel does not exist: {msg.channel}')
                                 continue
 
-                            for i in self.channels[channel]:
+                            for i in self.channels[msg.channel]:
                                 response = requests.post(
                                     i.build(),
                                     data=dumps(msg.build(i.group)),
@@ -276,17 +279,17 @@ class EventsExecutor(api.EventsExecutor):
             time.sleep(.1 - delta if delta <= .1 else 0)
 
     def e_monitor_starting(self) -> None:
-        self.messages.put(Message(5, f'[INFO]\nMonitor starting\nMonitor {__version__} ({__copyright__})'))
+        self.messages.put(Message(1, f'[INFO]\nMonitor starting\nMonitor {__version__} ({__copyright__})'))
 
     def e_monitor_started(self) -> None:
-        self.messages.put(Message(5, '[INFO]\nMonitor online'))
+        self.messages.put(Message(1, '[INFO]\nMonitor online'))
 
     def e_monitor_stopping(self) -> None:
-        self.messages.put(Message(5, '[INFO]\nMonitor stopping'))
+        self.messages.put(Message(1, '[INFO]\nMonitor stopping'))
 
     def e_monitor_stopped(self) -> None:
         if self.thread.is_alive():
-            self.messages.put(Message(5, '[INFO]\nMonitor offline'))
+            self.messages.put(Message(1, '[INFO]\nMonitor offline'))
             self.log.info(f'Waiting for messages ({self.messages.unfinished_tasks}) to sent')
             self.state = 2
             self.messages.join()
@@ -300,20 +303,28 @@ class EventsExecutor(api.EventsExecutor):
         self.messages.put(Message(3 if str(code.code)[0] == '5' else 4,
                                   f'__**Alert**__\n{code.format()}\nThread: {thread}'))
 
-    def e_item_announced(self, item: IAnnounce) -> None:
+    def e_item(self, item: api.ItemType) -> None:
         self.messages.put(Message(10, item=item))
 
-    def e_item_released(self, item: IRelease) -> None:
-        self.messages.put(Message(10, item=item))
+    def e_target_end(self, target_end: api.TargetEndType) -> None:
+        if isinstance(target_end, api.TEFail):
+            text = "Target Fail"
+        elif isinstance(target_end, api.TESoldOut):
+            text = "Target SoldOut"
+        else:
+            text = "Target Success"
 
-    def e_item_restock(self, item: IRestock) -> None:
-        self.messages.put(Message(10, item=item))
+        self.messages.put(Message(
+            5,
+            f'__[TargetEnd]__\n**{text}**\n'
+            f'\nDescription: {target_end.description}\nScript: {target_end.target.script}'
+        ))
 
-    def e_target_end_fail(self, target_end: TEFail) -> None:
-        self.messages.put(
-            Message(
-                5,
-                f'__**Alert**__ [**WARN**]\n**Target Fail**\n\nScript: {target_end.target.script}\n'
-                f'\nDescription: ```{target_end.description}```'
-            )
-        )
+    def e_message(self, msg: api.MessageType) -> None:
+        if isinstance(msg, api.MAlert):
+            header = '__**Alert Message**__'
+        else:
+            header = '**Information Message*'
+
+        self.messages.put(Message(3 if isinstance(msg, api.MAlert) else 15,
+                                  f'{header}\n{msg.text}\n**Script: __{msg.script}__**', msg.channel))

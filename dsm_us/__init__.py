@@ -38,10 +38,10 @@ class Parser(api.Parser):
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 900.)]
+                    return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
             if response.status_code == 430 or response.status_code == 520:
-                return [api.CInterval(self.name, 900.)]
+                return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
             try:
                 json = loads(response.content)
