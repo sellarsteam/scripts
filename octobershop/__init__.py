@@ -126,5 +126,5 @@ class Parser(api.Parser):
                     content.expired = False
                 result.append(content)
             else:
-                result.append(self.catalog())
+                result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
         return result
