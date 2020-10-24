@@ -190,7 +190,7 @@ class Parser(api.Parser):
                     try:
                         end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
                                    f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
-                    except ValueError:
+                    except (ValueError, AttributeError):
                         end_date = 'No date'
 
                     date_now = datetime.today()
