@@ -1,34 +1,60 @@
-import os
 import queue
 import threading
 import time
 from dataclasses import dataclass, field
-from types import FunctionType
-from typing import Dict, Any
+from typing import List, Dict, Optional
 
-import telegram
-import telegram.ext
-from dotenv import load_dotenv
+import requests
+import yaml
+from ujson import dumps
 
-from source import __copyright__, __version__
+from source import __version__, __copyright__
 from source import api
 from source import codes
-from source import library
-from source.api import SSuccess, SFail
 from source.logger import Logger
-from .constructor import build
+from source.tools import ScriptStorage
+
+currencies: tuple = ('', '£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)', '$(AUD)')
+sizes_column_size = 5
 
 
-# TODO: Check for None
+@dataclass
+class Group:
+    __slots__ = ['tag']
+    tag: str
+
+    def __post_init__(self):
+        if not isinstance(self.tag, str):
+            raise TypeError('tag must be str')
+
+
+@dataclass
+class Chat:
+    __slots__ = ['id', 'group']
+    id: int
+    group: Group
+
+    def __post_init__(self):
+        if not isinstance(self.id, int):
+            raise TypeError('id must be int')
+        if not isinstance(self.group, Group):
+            raise TypeError('group must be Group')
 
 
 @dataclass(order=True)
 class Message:
-    priority: int = field(repr=False)
-    func: FunctionType = field(compare=False)
-    args: tuple = field(compare=False)
-    kwargs: Dict[str, Any] = field(compare=False)
-    tries: int = field(default=5, repr=False)
+    priority: int
+    text: str = field(default='', compare=False)
+    channel: str = field(default='', compare=False)
+    item: Optional[api.ItemType] = field(default=None, compare=False)
+    tries: int = field(default=5, repr=False, compare=False)
+
+    def __post_init__(self):
+        if not self.channel:
+            if self.item:
+                self.channel = self.item.channel
+            else:
+                self.channel = 'tech'
 
     def retry(self) -> bool:
         if self.tries == 0:
@@ -37,41 +63,116 @@ class Message:
             self.tries -= 1
             return True
 
+    @property
+    def image(self) -> bool:
+        if self.item and self.item.image:
+            return True
+        else:
+            return False
+
+    def build(self, group: Group) -> str:
+        if self.item:
+            msg = [f'''<a href="{self.item.url}">{"[ANNOUNCE] " if isinstance(self.item, api.IAnnounce) else
+            "[RESTOCK] " if isinstance(self.item, api.IRestock) else ""}{self.item.name}</a>''']
+
+            if self.item.description:
+                msg.append(self.item.description)
+            if self.item.price.current:
+                msg.extend([
+                    '\n<b>Price</b>',
+                    f'<s>{self.item.price.old}</s> {self.item.price.current}{currencies[self.item.price.currency]}'
+                    if self.item.price.old else f'{self.item.price.current}{currencies[self.item.price.currency]}'
+                ])
+            if self.item.sizes:
+                msg.append('\n<b>Sizes</b>')
+                msg.extend([f'<a href="{i.url}">{i.size}</a>' for i in self.item.sizes])
+            if self.item.fields:
+                for k, v in self.item.fields.items():
+                    msg.extend([f'\n<b>{k}</b>', v])
+            if self.item.footer:
+                msg.append('\n<b>Links</b>')
+                msg.append(
+                    ' | '.join((f'<a href="{i.url}">{i.text}</a>' if i.url else i.text for i in self.item.footer)))
+            msg.append(f'<b><u>{group.tag}</u></b>')
+            return '\n'.join(msg)
+        elif self.text:
+            return self.text
+
 
 class EventsExecutor(api.EventsExecutor):
-    def __init__(self, name: str, log: Logger):
-        super().__init__(name, log)
+    _token: str
+    active: bool
 
-        load_dotenv()
-        request_kwargs = {}
-        proxy = os.getenv('TELEGRAM_PROXY')
-        if proxy:
-            if proxy.split('://')[0] == 'https':
-                request_kwargs['proxy_url'] = proxy
-            elif proxy.split('://')[0] == 'socks5':
-                request_kwargs['proxy_url'] = proxy
-                if os.getenv('PROXY_USER') and os.getenv('PROXY_PASS'):
-                    request_kwargs['urllib3_proxy_kwargs'] = {
-                        'username': os.getenv('PROXY_USER'),
-                        'password': os.getenv('PROXY_PASS')
-                    }
-            elif proxy.split('://')[0] == 'http':
-                raise api.EventsExecutorError('HTTP proxy is not supported')
-            else:
-                raise api.EventsExecutorError('Unknown proxy')
+    channels: Dict[str, List[Chat]]
+    groups: Dict[str, Group]
 
-        self.bot = telegram.ext.Updater(
-            token=os.getenv('TELEGRAM_BOT_TOKEN'),
-            request_kwargs=request_kwargs,
-            use_context=True
-        ).bot
+    def __init__(self, name: str, log: Logger, storage: ScriptStorage):
+        super().__init__(name, log, storage)
+        self._token = ''
+        self.active = False
+
+        self.channels = {}
+        self.groups = {}
+        self.config()
 
         self.state = 1
-        self.chat = os.getenv('TELEGRAM_CHAT_ID')
         self.messages = queue.PriorityQueue(1024)
         self.thread = threading.Thread(name='Telegram-Bot', target=self.loop, daemon=True)
         self.thread.start()
         self.log.info('Thread started')
+
+    def config(self):
+        if self.storage.check('secret.yaml'):
+            raw = yaml.safe_load(self.storage.file('secret.yaml'))
+            if isinstance(raw, dict):
+                if 'token' in raw and isinstance(raw['token'], str):
+                    self._token = raw['token']
+                if 'groups' in raw and isinstance(raw['groups'], dict):
+                    if 'list' in raw['groups'] and isinstance(raw['groups']['list'], dict):
+                        for k, v in raw['groups']['list'].items():
+                            if 'tag' in v and isinstance(v['tag'], str):
+                                self.groups[k] = Group(v['tag'])
+                            else:
+                                self.log.error(f'group "{k}" has no tag. skipping...')
+                    else:
+                        raise IndexError('groups must contain list (as object)')
+
+                    if 'default' in raw['groups'] and isinstance(raw['groups']['default'], str):
+                        if raw['groups']['default'] in self.groups:
+                            default_group = self.groups[raw['groups']['default']]
+                        else:
+                            raise ReferenceError('default group does not exist')
+                    else:
+                        raise IndexError('groups must contain default (as string)')
+                else:
+                    raise IndexError('secret.yaml must contain groups (as object)')
+
+                if 'channels' in raw and isinstance(raw['channels'], dict):
+                    if 'tech' in raw['channels']:
+                        for k, v in raw['channels'].items():
+                            if isinstance(v, list):
+                                chats = []
+                                for i in v:
+                                    if isinstance(i, list) and 3 > len(i) > 0:
+                                        chats.append(Chat(i[0], self.groups[i[1]] if len(i) > 1 else default_group))
+                                    else:
+                                        self.log.error(f'chat (channel "{k}") must contain (id[, group])')
+                                self.channels[k] = chats
+                            else:
+                                self.log.error(f'channel "{k}" must be array of chats')
+                        else:
+                            del chats
+                    else:
+                        raise IndexError('channels must contain channel named "tech"')
+                else:
+                    raise IndexError('secret.yaml must contain channels (as object)')
+
+                self.active = True
+                del raw
+            else:
+                raise TypeError('secret.yaml must contain object')
+        else:
+            raise FileNotFoundError('secret.yaml not found')
 
     def loop(self):
         errors = 0
@@ -82,10 +183,36 @@ class EventsExecutor(api.EventsExecutor):
                     msg: Message = self.messages.get_nowait()
                     try:
                         if msg.retry():
-                            msg.func(*msg.args, **msg.kwargs)
+                            if msg.channel not in self.channels:
+                                self.log.warn(f'Message\'s channel does not exist: {msg.channel}')
+                                continue
+
+                            for i in self.channels[msg.channel]:
+                                if msg.image:
+                                    response = requests.post(
+                                        f'https://api.telegram.org/bot{self._token}/sendPhoto',
+                                        data=dumps({
+                                            'chat_id': i.id,
+                                            'caption': msg.build(i.group),
+                                            'photo': msg.item.image,
+                                            'parse_mode': 'HTML'
+                                        }),
+                                        headers={'Content-Type': 'application/json'}
+                                    )
+                                else:
+                                    response = requests.post(
+                                        f'https://api.telegram.org/bot{self._token}/sendMessage',
+                                        data=dumps({
+                                            'chat_id': i.id, 'text': msg.build(i.group), 'parse_mode': 'HTML'}),
+                                        headers={'Content-Type': 'application/json'}
+                                    )
+
+                                if response.status_code in (400, 501):
+                                    self.log.error(f'Message lost: {response.text}\n'
+                                                   f'------------\n{dumps(msg.build(i.group))}\n------------')
                         else:
-                            self.log.warn(f'Max retries reached for message: {msg}')
-                    except (telegram.error.TimedOut, telegram.error.NetworkError) as e:
+                            self.log.error(f'Max retries reached for message: {msg}')
+                    except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
                         if self.state == 2:
                             self.log.error(f'{e.__class__.__name__} ({e.__str__()}) while sending message: {msg}')
                             errors += 1
@@ -106,48 +233,21 @@ class EventsExecutor(api.EventsExecutor):
                 self.log.info('Thread closed')
                 break
             delta: float = time.time() - start
-            time.sleep(.3 - delta if delta <= .3 else 0)
+            time.sleep(.1 - delta if delta <= .1 else 0)
 
     def e_monitor_starting(self) -> None:
-        self.messages.put(
-            Message(
-                5,
-                self.bot.send_message,
-                (self.chat, f'INFO\nMonitor staring\nMonitor {__version__} ({__copyright__})'),
-                {'parse_mode': 'HTML', 'timeout': 16}
-            )
-        )
+        self.messages.put(Message(
+            1, f'INFO\nMonitor starting\nMonitor {__version__} ({__copyright__})'))
 
     def e_monitor_started(self) -> None:
-        self.messages.put(
-            Message(
-                5,
-                self.bot.send_message,
-                (self.chat, 'INFO\nMonitor online'),
-                {'parse_mode': 'HTML', 'timeout': 16}
-            )
-        )
+        self.messages.put(Message(1, 'INFO\nMonitor online'))
 
     def e_monitor_stopping(self) -> None:
-        self.messages.put(
-            Message(
-                5,
-                self.bot.send_message,
-                (self.chat, 'INFO\nMonitor stopped'),
-                {'parse_mode': 'HTML', 'timeout': 16}
-            )
-        )
+        self.messages.put(Message(1, 'INFO\nMonitor stopping'))
 
     def e_monitor_stopped(self) -> None:
         if self.thread.is_alive():
-            self.messages.put(
-                Message(
-                    5,
-                    self.bot.send_message,
-                    (self.chat, 'INFO\nMonitor offline'),
-                    {'timeout': 16}
-                )
-            )
+            self.messages.put(Message(1, 'INFO\nMonitor offline'))
             self.log.info(f'Waiting for messages ({self.messages.unfinished_tasks}) to sent')
             self.state = 2
             self.messages.join()
@@ -155,51 +255,34 @@ class EventsExecutor(api.EventsExecutor):
             self.state = 0
             self.thread.join()
         else:
-            self.log.warn('Bot offline (due to raised exception)')
+            self.log.warn('Script offline (due to raised exception)')
 
     def e_alert(self, code: codes.Code, thread: str) -> None:
-        self.messages.put(
-            Message(
-                3 if str(code.code)[0] == '5' else 4,
-                self.bot.send_message,
-                (self.chat, f'<u><b>Alert</b></u>\n{code.format()}\nThread: {thread}'),
-                {'parse_mode': 'HTML', 'timeout': 16}
-            )
-        )
+        self.messages.put(Message(3 if str(code.code)[0] == '5' else 4,
+                                  f'<b><u>Alert</u></b>\n{code.format()}\nThread: {thread}'))
 
-    def e_success_status(self, status: SSuccess) -> None:
-        if status.result.image:
-            self.messages.put(
-                Message(
-                    10,
-                    self.bot.send_photo,
-                    (
-                        self.chat,
-                        status.result.image, build(status.result) +
-                        f'\n*Source: {status.script}\n*Date: {library.get_time()} UTC'
-                    ),
-                    {'parse_mode': 'HTML', 'timeout': 16}
-                )
-            )
+    def e_item(self, item: api.ItemType) -> None:
+        self.messages.put(Message(10, item=item))
+
+    def e_target_end(self, target_end: api.TargetEndType) -> None:
+        if isinstance(target_end, api.TEFail):
+            text = "Target Fail"
+        elif isinstance(target_end, api.TESoldOut):
+            text = "Target SoldOut"
         else:
-            self.messages.put(
-                Message(
-                    10,
-                    self.bot.send_message,
-                    (self.chat, build(status.result)),
-                    {'parse_mode': 'HTML', 'timeout': 16}
-                )
-            )
+            text = "Target Success"
 
-    def e_fail_status(self, status: SFail) -> None:
-        self.messages.put(
-            Message(
-                5,
-                self.bot.send_message,
-                (
-                    self.chat,
-                    f'<b>Alert [WARN]</b>\n<u>Target Lost</u>\nMessage: {status.message}\nScript: {status.script}'
-                ),
-                {'parse_mode': 'HTML', 'timeout': 16}
-            )
-        )
+        self.messages.put(Message(
+            5,
+            f'<u>[TargetEnd]</u>\n*{text}*\n'
+            f'\nDescription: {target_end.description}\nScript: {target_end.target.script}'
+        ))
+
+    def e_message(self, msg: api.MessageType) -> None:
+        if isinstance(msg, api.MAlert):
+            header = '<b><u>Alert Message</u></b>'
+        else:
+            header = '<b>Information Message</b>'
+
+        self.messages.put(Message(3 if isinstance(msg, api.MAlert) else 15,
+                                  f'{header}\n{msg.text}\n<b>Script: <u>{msg.script}</u></b>', msg.channel))
