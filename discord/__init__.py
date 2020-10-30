@@ -207,15 +207,17 @@ class EventsExecutor(api.EventsExecutor):
                 if 'channels' in raw and isinstance(raw['channels'], dict):
                     if 'tech' in raw['channels']:
                         for k, v in raw['channels'].items():
-                            hooks = []
                             if isinstance(v, list):
+                                hooks = []
                                 for i in v:
                                     if isinstance(i, list) and 4 > len(i) > 1:
                                         hooks.append(
                                             Hook(i[0], i[1], self.groups[i[2]] if len(i) > 2 else default_group))
                                     else:
                                         self.log.error(f'hook (channel "{k}") must contain (id, key[, group])')
-                            self.channels[k] = hooks
+                                self.channels[k] = hooks
+                            else:
+                                self.log.error(f'channel "{k}" must be array of hooks')
                         else:
                             del hooks
                     else:
@@ -279,17 +281,17 @@ class EventsExecutor(api.EventsExecutor):
             time.sleep(.1 - delta if delta <= .1 else 0)
 
     def e_monitor_starting(self) -> None:
-        self.messages.put(Message(1, f'[INFO]\nMonitor starting\nMonitor {__version__} ({__copyright__})'))
+        self.messages.put(Message(1, f'INFO\nMonitor starting\nMonitor {__version__} ({__copyright__})'))
 
     def e_monitor_started(self) -> None:
-        self.messages.put(Message(1, '[INFO]\nMonitor online'))
+        self.messages.put(Message(1, 'INFO\nMonitor online'))
 
     def e_monitor_stopping(self) -> None:
-        self.messages.put(Message(1, '[INFO]\nMonitor stopping'))
+        self.messages.put(Message(1, 'INFO\nMonitor stopping'))
 
     def e_monitor_stopped(self) -> None:
         if self.thread.is_alive():
-            self.messages.put(Message(1, '[INFO]\nMonitor offline'))
+            self.messages.put(Message(1, 'INFO\nMonitor offline'))
             self.log.info(f'Waiting for messages ({self.messages.unfinished_tasks}) to sent')
             self.state = 2
             self.messages.join()
@@ -324,7 +326,7 @@ class EventsExecutor(api.EventsExecutor):
         if isinstance(msg, api.MAlert):
             header = '__**Alert Message**__'
         else:
-            header = '**Information Message*'
+            header = '**Information Message**'
 
         self.messages.put(Message(3 if isinstance(msg, api.MAlert) else 15,
                                   f'{header}\n{msg.text}\n**Script: __{msg.script}__**', msg.channel))
