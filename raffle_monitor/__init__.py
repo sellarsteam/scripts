@@ -193,6 +193,11 @@ class Parser(api.Parser):
                     except (ValueError, AttributeError):
                         end_date = 'No date'
 
+                    if location.lower() == 'ru' or location.lower() == 'ww':
+                        channel = 'raffles-ru'
+                    else:
+                        channel = f'raffles-{type_raffle.lower()}'
+
                     date_now = datetime.today()
                     date_data = end_date.split('/')
 
@@ -205,7 +210,7 @@ class Parser(api.Parser):
                             result.append(
                                 IRelease(
                                     url,
-                                    f'raffles-{type_raffle.lower()}',
+                                    channel,
                                     f'{name}\n[PID: {pid}]',
                                     image_url,
                                     postage,
