@@ -11,42 +11,11 @@ from source.logger import Logger
 from source.tools import ScriptStorage
 
 regions = {
-    'EU': '🇪🇺',
-    'IT': '🇮🇹',
-    'WW': '🇺🇳',
-    'JP': '🇯🇵',
-    'US': '🇺🇸',
-    'DE': '🇩🇪',
-    'ES': '🇪🇸',
-    'CA': '🇨🇦',
-    'GB': '🇬🇧',
-    'NZ': '🇳🇿',
-    'AU': '🇦🇺',
-    'ZA': '🇿🇦',
-    'HK': '🇭🇰',
-    'AE': '🇦🇪',
-    'KR': '🇰🇷',
-    'FR': '🇫🇷',
-    'PH': '🇵🇭',
-    'TH': '🇹🇭',
-    'DK': '🇩🇰',
-    'BR': '🇧🇷',
-    'MY': '🇲🇾',
-    'TR': '🇹🇷',
-    'SK': '🇸🇰',
-    'NL': '🇳🇱',
-    'CZ': '🇨🇿',
-    'ID': '🇮🇩',
-    'RU': '🇷🇺',
-    'FI': '🇫🇮',
-    'PL': '🇵🇱',
-    'CH': '🇨🇭',
-    'AT': '🇦🇹',
-    'RO': '🇷🇴',
-    'HR': '🇭🇷',
-    'HU': '🇭🇺',
-    'BE': '🇧🇪',
-    'KW': '🇰🇼'
+    'EU': '🇪🇺', 'IT': '🇮🇹', 'WW': '🇺🇳', 'JP': '🇯🇵', 'US': '🇺🇸', 'DE': '🇩🇪', 'ES': '🇪🇸', 'CA': '🇨🇦',
+    'GB': '🇬🇧', 'NZ': '🇳🇿', 'AU': '🇦🇺', 'ZA': '🇿🇦', 'HK': '🇭🇰', 'AE': '🇦🇪', 'KR': '🇰🇷', 'FR': '🇫🇷',
+    'PH': '🇵🇭', 'TH': '🇹🇭', 'DK': '🇩🇰', 'BR': '🇧🇷', 'MY': '🇲🇾', 'TR': '🇹🇷', 'SK': '🇸🇰', 'NL': '🇳🇱',
+    'CZ': '🇨🇿', 'ID': '🇮🇩', 'RU': '🇷🇺', 'FI': '🇫🇮', 'PL': '🇵🇱', 'CH': '🇨🇭', 'AT': '🇦🇹', 'RO': '🇷🇴',
+    'HR': '🇭🇷', 'HU': '🇭🇺', 'BE': '🇧🇪', 'KW': '🇰🇼'
 }
 
 
@@ -58,13 +27,10 @@ class Parser(api.Parser):
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
             'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
             'Content-Type': 'application/json',
         }
 
-        self.shoes = []  # List with shoes data
-
-        self.post_catalog_body = {  # It's body for post request of catalog with shoes
+        self.catalog_query = {  # It's body for post request of catalog with shoes
             "operationName": "Search",
             "variables": {
                 "query": "",
@@ -83,10 +49,12 @@ class Parser(api.Parser):
                      "     __typename\n    }\n    __typename\n  }\n}\n "
         }
 
-        self.post_raffles_body = {  # It's body for post request of raffles for one pair shoes
+    @staticmethod
+    def target_query(id_: int) -> dict:
+        return {  # It's body for post request of raffles for one pair shoes
             "operationName": "RafflesFromProduct",
             "variables": {
-                "productId": 0, "limit": 12, "filters": {"locales": [], "types": []}  # product Id it's id of
+                "productId": id_, "limit": 12, "filters": {"locales": [], "types": []}  # product Id it's id of
                 # shoes, it's changeable
             },
             "query": "query RafflesFromProduct($productId: Int!, $from: Int, $limit: Int, $filters: RaffleFilters) "
@@ -111,9 +79,10 @@ class Parser(api.Parser):
         result = []
 
         if mode == 0:
+            result.append(content)
 
-            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.post_catalog_body),
-                                             headers=self.headers, method='post')
+            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.catalog_query),
+                                             headers=self.headers, method='post', proxy=True)
 
             if not ok:
                 if isinstance(resp, exceptions.Timeout):
@@ -124,22 +93,14 @@ class Parser(api.Parser):
             catalog_data = loads(resp.content)
 
             for item in catalog_data['data']['search']['products']:
-                self.shoes.append({'id': item['id'], 'name': item['name'], 'pid': item['pid'],
-                                   'price': item['price'], 'imageUrl': item['imageUrl'], 'slug': item['slug']})
-
-            result.append(content)
-
-            result.extend([
-                api.TInterval(shoe['id'], self.name, 0, 30)
-                for shoe in self.shoes
-            ])
+                result.append(api.TInterval(item['id'], self.name,
+                                            {'name': item['name'], 'pid': item['pid'], 'price': item['price'],
+                                             'imageUrl': item['imageUrl'], 'slug': item['slug']}, 30))
 
             return result
 
         elif mode == 1:
-            self.post_raffles_body['variables']['productId'] = int(content.name)
-
-            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.post_raffles_body),
+            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.target_query(int(content.name))),
                                              headers=self.headers, method='post')
 
             if not ok:
@@ -151,80 +112,36 @@ class Parser(api.Parser):
             raffles_data = loads(resp.content)
 
             for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
-
-                url = raffle['url']
-                target = api.Target(url, self.name, 0)
+                target = api.Target(raffle['url'], self.name, 0)
 
                 if HashStorage.check_target(target.hash()):
+                    if 'endDate' in raffle and raffle['endDate']:
+                        location = raffle['locale'] + (regions[raffle['locale']] if raffle['locale'] in regions else '')
 
-                    shoes_data = {}
-
-                    for shoe in self.shoes:
-                        if int(shoe['id']) == int(content.name):
-                            shoes_data = shoe
-                            break
-
-                    name = shoes_data['name']
-                    pid = shoes_data['pid']
-                    price = api.Price(
-                        api.CURRENCIES['USD'],
-                        float(shoes_data['price'])
-                    )
-                    image_url = shoes_data['imageUrl']
-                    slug = shoes_data['slug']
-
-                    type_raffle = raffle['type']
-
-                    if raffle['hasPostage']:
-                        postage = 'You will need to pay for the shipment'
-                    else:
-                        postage = 'Postage is free'
-
-                    try:
-                        location = f'{raffle["locale"]} {regions[raffle["locale"]]}'
-                    except KeyError:
-                        location = raffle["locale"]
-
-                    shop = f'[{raffle["retailer"]["name"]}]({raffle["retailer"]["url"]})'
-
-                    try:
-                        end_date = f"{raffle['endDate'].split('T')[0].replace('-', '/')} " \
-                                   f"{raffle['endDate'].split('T')[-1].split('.')[0]}"
-                    except (ValueError, AttributeError):
-                        end_date = 'No date'
-
-                    if location.lower() == 'ru' or location.lower() == 'ww':
-                        channel = 'raffles-ru'
-                    else:
-                        channel = f'raffles-{type_raffle.lower()}'
-
-                    date_now = datetime.today()
-                    date_data = end_date.split('/')
-
-                    if end_date != 'No date':
-
-                        if date_now <= datetime(year=int(date_data[0]), month=int(date_data[1]),
-                                                day=int(date_data[-1].split(' ')[0])):
+                        end_date = datetime.fromisoformat(raffle['endDate'][:-1])
+                        if datetime.now() <= datetime(year=end_date.year, month=end_date.month, day=end_date.day):
                             HashStorage.add_target(target.hash())
 
                             result.append(
                                 IRelease(
-                                    url,
-                                    channel,
-                                    f'{name}\n[PID: {pid}]',
-                                    image_url,
-                                    postage,
-                                    price,
+                                    raffle['url'],
+                                    'raffles-ru'
+                                    if location.split(' ')[0].lower() == 'ru' or location.split(' ')[0].lower() == 'ww'
+                                    else f'raffles-{raffle["type"].lower()}',
+                                    f'{content.data["name"]}\n[PID: {content.data["pid"]}]',
+                                    content.data['imageUrl'],
+                                    'You will need to pay for the shipment'
+                                    if raffle['hasPostage'] else 'Postage is free',
+                                    api.Price(api.CURRENCIES['USD'], float(content.data['price'])),
                                     api.Sizes(api.SIZE_TYPES[''], []),
-                                    [
-                                        FooterItem('StockX',
-                                                   f'https://stockx.com/search/sneakers?s={pid.replace(" ", "")}')
-                                    ],
+                                    [FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                                content.data["pid"].replace(" ", ""))],
                                     {
-                                        'Retailer': shop + f' [{location}]',
-                                        'Type Of Raffle': type_raffle,
-                                        'End of raffle': end_date,
-                                        'Slug': slug
+                                        'Retailer': f'[{raffle["retailer"]["name"]}]'
+                                                    f'({raffle["retailer"]["url"]}) {location}',
+                                        'Type Of Raffle': raffle['type'],
+                                        'End of raffle': str(end_date),
+                                        'Slug': content.data['slug']
                                     }
 
                                 )
