@@ -116,7 +116,7 @@ class Parser(api.Parser):
 
                 if HashStorage.check_target(target.hash()):
                     if 'endDate' in raffle and raffle['endDate']:
-                        location = raffle['locale'] + (regions[raffle['locale']] if raffle['locale'] in regions else '')
+                        location = raffle['locale'] + ' ' + (regions[raffle['locale']] if raffle['locale'] in regions else '')
 
                         end_date = datetime.fromisoformat(raffle['endDate'][:-1])
                         if datetime.now() <= datetime(year=end_date.year, month=end_date.month, day=end_date.day):
