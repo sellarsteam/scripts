@@ -58,35 +58,36 @@ class Parser(api.Parser):
                     url = item['Url']
 
                     if HashStorage.check_target(api.Target(url, self.name, 0).hash()):
-                        name = item['Name']
-                        image = item['PictureUrl'].replace(' ', '%20')
+                        additional_columns = {'Site': '[Basketshop](https://www.basketshop.ru/)'}
+                        HashStorage.add_target(api.Target(url, self.name, 0).hash())
+                    else:
+                        additional_columns = {'Site': '[Basketshop](https://www.basketshop.ru/)', 'Type': 'Restock'}
+                    name = item['Name']
+                    image = item['PictureUrl'].replace(' ', '%20')
 
-                        if item['OldPrice'] == 0:
-                            price = api.Price(api.CURRENCIES['RUB'], float(item['Price']))
-                        else:
-                            price = api.Price(api.CURRENCIES['RUB'], float(item['Price']), float(item['OldPrice']))
+                    price = api.Price(api.CURRENCIES['RUB'], float(item['Price'])) if item['OldPrice'] == 0 \
+                        else api.Price(api.CURRENCIES['RUB'], float(item['Price']), float(item['OldPrice']))
 
-                        sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'{size} US')
-                                                               for size in item['Size'].split(';')])
-                        stockx_link = f'https://stockx.com/search/sneakers?s={name.replace(" ", "%20")}'
+                    sizes_data = [api.Size(f'{size} US') for size in item['Size'].split(';')]
 
-                        result.append(
-                            IRelease(
-                                url,
-                                'basketshop',
-                                name,
-                                image,
-                                '',
-                                price,
-                                sizes,
-                                [
-                                    FooterItem('StockX', stockx_link),
-                                    FooterItem('Cart', 'https://www.basketshop.ru/catalog/basket/'),
-                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                                ],
-                                {'Site': '[Basketshop](https://www.basketshop.ru/)'}
-                            )
+                    sizes = api.Sizes(api.SIZE_TYPES[''], sizes_data)
+
+                    result.append(
+                        IRelease(
+                            url + f'?shash={str(sizes_data).__hash__()}',
+                            'basketshop',
+                            name,
+                            image,
+                            '',
+                            price,
+                            sizes,
+                            [
+                                FooterItem('Cart', 'https://www.basketshop.ru/catalog/basket/'),
+                                FooterItem('Login', 'https://www.basketshop.ru/user/')
+                            ],
+                            additional_columns
                         )
+                    )
             if isinstance(content, api.CSmart):
                 if result or content.expired:
                     content.gen.time = self.time_gen()
