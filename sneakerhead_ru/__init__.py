@@ -33,7 +33,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -51,7 +51,11 @@ class Parser(api.Parser):
                 else:
                     raise response
 
-            for element in etree.HTML(response.text).xpath('//div[@class="product-cards__item"]'):
+            catalog = [element for element in etree.HTML(response.text).xpath('//div[@class="product-cards__item"]')]
+            if not catalog:
+                return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
+
+            for element in catalog:
 
                 if Keywords.check(element[0].xpath('meta[@itemprop="description"]')[0].get('content').lower()):
 
@@ -61,47 +65,47 @@ class Parser(api.Parser):
                             .get('href')
 
                         if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
-                            name = element[0].xpath('meta[@itemprop="description"]')[0].get('content')
-                            image = 'https://sneakerhead.ru' + \
-                                    element[0].xpath(
-                                        'div[@class="product-card__image"]/div/picture/source')[0].get('data-src')
-                            price = api.Price(
-                                api.CURRENCIES['RUB'],
-                                float(element[0].xpath('div[@class="product-card__price"]/meta[@itemprop="price"]')[0]
-                                      .get('content'))
-                            )
-
-                            sizes = api.Sizes(
-                                api.SIZE_TYPES[''],
-                                [
-                                    api.Size(
-                                        str(size.text),
-                                        f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
-                                    )
-                                    for size in element[0].xpath('div[@class="product-card__hover"]/dl/dd')
-                                ]
-                            )
-
                             HashStorage.add_target(api.Target(link, self.name, 0).hash())
+                            additional_columns = {'Site': '[Sneakerhead](https://sneakerhead.ru)'}
+                        else:
+                            additional_columns = {'Site': '[Sneakerhead](https://sneakerhead.ru)', 'Type': 'Restock'}
 
-                            result.append(
-                                IRelease(
-                                    link,
-                                    'sneakerhead',
-                                    name,
-                                    image,
-                                    '',
-                                    price,
-                                    sizes,
-                                    [
-                                        FooterItem('Cart', 'https://sneakerhead.ru/cart'),
-                                        FooterItem('Login', 'https://sneakerhead.ru/login'),
-                                        FooterItem('Urban QT',
-                                                   f'https://autofill.cc/api/v1/qt?storeId=sneakerhead&monitor={link}')
-                                    ],
-                                    {'Site': '[Sneakerhead](https://sneakerhead.ru)'}
-                                )
+                        name = element[0].xpath('meta[@itemprop="description"]')[0].get('content')
+                        image = 'https://sneakerhead.ru' + \
+                                element[0].xpath(
+                                    'div[@class="product-card__image"]/div/picture/source')[0].get('data-src')
+                        price = api.Price(
+                            api.CURRENCIES['RUB'],
+                            float(element[0].xpath('div[@class="product-card__price"]/meta[@itemprop="price"]')[0]
+                                  .get('content'))
+                        )
+
+                        raw_sizes = [
+                            api.Size(
+                                str(size.text),
+                                f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
                             )
+                            for size in element[0].xpath('div[@class="product-card__hover"]/dl/dd')
+                        ]
+
+                        result.append(
+                            IRelease(
+                                link + f'?shash={str(raw_sizes).__hash__()}',
+                                'sneakerhead',
+                                name,
+                                image,
+                                '',
+                                price,
+                                api.Sizes(api.SIZE_TYPES[''], raw_sizes),
+                                [
+                                    FooterItem('Cart', 'https://sneakerhead.ru/cart'),
+                                    FooterItem('Login', 'https://sneakerhead.ru/login'),
+                                    FooterItem('Urban QT',
+                                               f'https://autofill.cc/api/v1/qt?storeId=sneakerhead&monitor={link}')
+                                ],
+                                additional_columns
+                            )
+                        )
 
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeError')

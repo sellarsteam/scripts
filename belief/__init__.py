@@ -65,87 +65,53 @@ class Parser(api.Parser):
 
                     target = api.Target(f'https://beliefmoscow.com{product["url"]}', self.name, 0)
 
+                    url = f'https://beliefmoscow.com{product["url"]}'
+                    name = product['title']
+                    price = api.Price(
+                        api.CURRENCIES['RUB'],
+                        float(product['variants'][0]['price'])
+
+                    )
+                    image = product['images'][0]['medium_url'] if len(product['images']) != 0 \
+                        else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
+
+                    raw_sizes = [api.Size(f"{size['title'].split(' /')[0]} [{size['quantity']}]",
+                                          f"http://static.sellars.cf/links?site=belief&id={size['id']}")
+                                 for size in product['variants'] if size['quantity'] > 0]
+
+                    sizes = api.Sizes(api.SIZE_TYPES[''], raw_sizes)
+
+                    if not raw_sizes:
+                        continue
+
                     if HashStorage.check_target(target.hash()):
-
-                        url = f'https://beliefmoscow.com{product["url"]}'
-                        name = product['title']
-                        price = api.Price(
-                            api.CURRENCIES['RUB'],
-                            float(product['variants'][0]['price'])
-
-                        )
-                        image = product['images'][0]['medium_url'] if len(product['images']) != 0 \
-                            else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
-
-                        raw_sizes = [api.Size(f"{size['title'].split(' /')[0]} [{size['quantity']}]",
-                                              f"http://static.sellars.cf/links?site=belief&id={size['id']}")
-                                     for size in product['variants'] if size['quantity'] > 0]
-
-                        sizes = api.Sizes(api.SIZE_TYPES[''], raw_sizes)
-
-                        if not raw_sizes:
-                            continue
-
                         HashStorage.add_target(target.hash())
-
-                        result.append(
-                            IRelease(
-                                url,
-                                'belief',
-                                name,
-                                image,
-                                '',
-                                price,
-                                sizes,
-                                [
-                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                               name.replace(' ', '%20')),
-                                    FooterItem('Cart', 'https://beliefmoscow.com/cart'),
-                                    FooterItem(
-                                        'Urban QT',
-                                        f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'
-                                    ),
-                                    FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                                ],
-                                {'Site': '[Belief Moscow](https://beliefmoscow.com)'}
-                            )
-                        )
-
+                        additional_columns = {'Site': '[Belief Moscow](https://beliefmoscow.com)'}
                     else:
+                        additional_columns = {'Site': '[Belief Moscow](https://beliefmoscow.com)', 'Type': 'Restock'}
 
-                        url = f'https://beliefmoscow.com{product["url"]}'
-                        name = product['title']
-                        price = api.Price(
-                            api.CURRENCIES['RUB'],
-                            float(product['variants'][0]['price'])
-
+                    result.append(
+                        IRelease(
+                            url + f'?shash={str(raw_sizes).__hash__()}',
+                            'belief',
+                            name,
+                            image,
+                            '',
+                            price,
+                            sizes,
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           name.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://beliefmoscow.com/cart'),
+                                FooterItem(
+                                    'Urban QT',
+                                    f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'
+                                ),
+                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            ],
+                            additional_columns
                         )
-                        image = product['images'][0]['medium_url'] if len(product['images']) != 0 \
-                            else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
-
-                        if len(product['variants']) == 0:
-                            HashStorage.remove_item(
-                                IRelease(
-                                    url,
-                                    'belief',
-                                    name,
-                                    image,
-                                    '',
-                                    price,
-                                    api.Sizes(api.SIZE_TYPES[''], []),
-                                    [
-                                        FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                                   name.replace(' ', '%20')),
-                                        FooterItem('Cart', 'https://beliefmoscow.com/cart'),
-                                        FooterItem(
-                                            'Urban QT',
-                                            f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'
-                                        ),
-                                        FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
-                                    ],
-                                    {'Site': '[Belief Moscow](https://beliefmoscow.com)'}
-                                ).hash()
-                            )
+                    )
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:

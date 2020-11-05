@@ -9,6 +9,7 @@ from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, \
     IAnnounce
 from source.cache import HashStorage
+from user_agent import generate_user_agent
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
 
@@ -19,7 +20,7 @@ class Parser(api.Parser):
         self.link: str = 'https://www.itkkit.ru/catalog/footwear/sneakers/?FILTER=247748'
         self.headers = {
             'Host': 'www.itkkit.ru',
-            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
+            'User-Agent': generate_user_agent(),
             'Accept': '*/*',
             'Accept-Language': 'en-US,en;q=0.5',
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -56,8 +57,13 @@ class Parser(api.Parser):
 
                     raise result
 
-            for element in etree.HTML(response.text).xpath(
-                    '//a[@class="catalog-item catalog-item--compact link link--primary"]'):
+            catalog = [element for element in etree.HTML(response.text).xpath(
+                    '//a[@class="catalog-item catalog-item--compact link link--primary"]')]
+
+            if not catalog:
+                return [api.CInterval(self.name, 500), api.MAlert('Script go to sleep', self.name)]
+
+            for element in catalog:
 
                 parts_of_name = element.xpath('div[@class="catalog-item__title"]/div')
                 name = f'{parts_of_name[0].text} {parts_of_name[1].text.split("] ")[-1]}'
@@ -67,73 +73,76 @@ class Parser(api.Parser):
                     try:
                         if HashStorage.check_target(
                                 api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
-
-                            sizes_data = element.xpath('div[@class="catalog-item__img-wrapper"]'
-                                                       '/div[@class="catalog-item__img-hover"]/div')[0].text
-
-                            image = 'https://www.itkkit.ru' + \
-                                    element.xpath('div[@class="catalog-item__img-wrapper"]'
-                                                  '/div[@class="catalog-item__img-list"]'
-                                                  '/div[@class="catalog-item__img catalog-item__img--active "]'
-                                                  '/picture/img')[0].get('data-src')
-
-                            price = api.Price(api.CURRENCIES['EUR'],
-                                              float(element.xpath('div[@class="catalog-item__price"]/div/div'
-                                                                  '/span/span')[0].text.replace(' ', '')
-                                                    .replace('\t', '').replace('\n', '').split('.')[0]))
-
-                            if 'Sold' in sizes_data:
-                                continue
-
-                            if 'Soon' in sizes_data:
-                                result.append(
-                                    IAnnounce(
-                                        'https://www.itkkit.ru' + element.get('href'),
-                                        'itkkit',
-                                        name,
-                                        image,
-                                        '',
-                                        price,
-                                        api.Sizes(api.SIZE_TYPES[''], []),
-                                        [
-                                            FooterItem('Cart', 'https://www.itkkit.ru/checkout/'),
-                                            FooterItem('QT Urban',
-                                                       'https://autofill.cc/api/v1/qt?storeId=itkkit&monitor='
-                                                       + 'https://www.itkkit.ru' + element.get('href'))
-                                        ],
-                                        {'Site': '[ITK Kit](https://www.itkkit.ru)'}
-                                    )
-                                )
-                                continue
-
-                            sizes = api.Sizes(
-                                api.SIZE_TYPES[''],
-                                [
-                                    api.Size(size.replace(' US', '') + ' US')
-                                    for size in sizes_data.split(' US ')
-                                ]
-                            )
-
                             HashStorage.add_target(
                                 api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash())
+                            additional_columns = {'Site': '[ITKKit](https://www.itkkit.ru)'}
+                        else:
+                            additional_columns = {'Site': '[ITKKit](https://www.itkkit.ru)',
+                                                  'Type': 'Restock'}
 
+                        sizes_data = element.xpath('div[@class="catalog-item__img-wrapper"]'
+                                                   '/div[@class="catalog-item__img-hover"]/div')[0].text
+
+                        image = 'https://www.itkkit.ru' + \
+                                element.xpath('div[@class="catalog-item__img-wrapper"]'
+                                              '/div[@class="catalog-item__img-list"]'
+                                              '/div[@class="catalog-item__img catalog-item__img--active "]'
+                                              '/picture/img')[0].get('data-src')
+
+                        price = api.Price(api.CURRENCIES['EUR'],
+                                          float(element.xpath('div[@class="catalog-item__price"]/div/div'
+                                                              '/span/span')[0].text.replace(' ', '')
+                                                .replace('\t', '').replace('\n', '').split('.')[0]))
+
+                        if 'Sold' in sizes_data:
+                            continue
+
+                        if 'Soon' in sizes_data:
                             result.append(
-                                IRelease(
+                                IAnnounce(
                                     'https://www.itkkit.ru' + element.get('href'),
                                     'itkkit',
                                     name,
                                     image,
                                     '',
                                     price,
-                                    sizes,
+                                    api.Sizes(api.SIZE_TYPES[''], []),
                                     [
                                         FooterItem('Cart', 'https://www.itkkit.ru/checkout/'),
-                                        FooterItem('QT Urban', 'https://autofill.cc/api/v1/qt?storeId=itkkit&monitor='
+                                        FooterItem('QT Urban',
+                                                   'https://autofill.cc/api/v1/qt?storeId=itkkit&monitor='
                                                    + 'https://www.itkkit.ru' + element.get('href'))
                                     ],
-                                    {'Site': '[ITK Kit](https://www.itkkit.ru)'}
+                                    {'Site': '[ITKKit](https://www.itkkit.ru)'}
                                 )
                             )
+                            continue
+
+                        sizes = api.Sizes(
+                            api.SIZE_TYPES[''],
+                            [
+                                api.Size(size.replace(' US', '') + ' US')
+                                for size in sizes_data.split(' US ')
+                            ]
+                        )
+
+                        result.append(
+                            IRelease(
+                                'https://www.itkkit.ru' + element.get('href') + f'?shash={str(sizes_data).__hash__()}',
+                                'itkkit',
+                                name,
+                                image,
+                                '',
+                                price,
+                                sizes,
+                                [
+                                    FooterItem('Cart', 'https://www.itkkit.ru/checkout/'),
+                                    FooterItem('QT Urban', 'https://autofill.cc/api/v1/qt?storeId=itkkit&monitor='
+                                               + 'https://www.itkkit.ru' + element.get('href'))
+                                ],
+                                additional_columns
+                            )
+                        )
 
                     except etree.XMLSyntaxError:
                         raise etree.XMLSyntaxError('XMLDecodeEroor')
