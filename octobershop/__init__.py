@@ -9,7 +9,7 @@ from user_agent import generate_user_agent
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, IAnnounce
 from source.cache import HashStorage
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
@@ -52,12 +52,21 @@ class Parser(api.Parser):
             except ValueError:
                 return [api.CInterval(self.name, 900), api.MAlert('Script go to sleep', self.name)]
 
-            for element in Path.parse_str('$.products.*').match(json):
-                title = element.current_value['title']
-                handle = element.current_value['handle']
-                variants = element.current_value['variants']
-                image = element.current_value['images'][0]['src'] if len(element.current_value['images']) != 0 \
+            for element in json['products']:
+                title = element['title']
+                handle = element['handle']
+                variants = element['variants']
+                image = element['images'][0]['src'] if len(element['images']) != 0 \
                     else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
+                published_date = datetime.fromisoformat(element['published_at'])
+
+                try:
+                    price = api.Price(
+                        api.CURRENCIES['RUB'],
+                        float(variants[0]['price'])
+                    )
+                except (KeyError, IndexError):
+                    price = api.Price(api.CURRENCIES['RUB'], 0.)
 
                 del element
 
@@ -67,58 +76,57 @@ class Parser(api.Parser):
 
                     target = api.Target('https://oktyabrskateshop.ru/products/' + handle, self.name, 0)
                     if HashStorage.check_target(target.hash()):
-
-                        ok, resp = self.provider.request(target.name + '.js',
-                                                         headers={'user-agent': generate_user_agent()},
-                                                         proxy=True)
-
-                        if not ok:
-                            if isinstance(resp, exceptions.Timeout):
-                                return [api.CInterval(self.name, 900.)]
-
-                        if resp.status_code == 430 or resp.status_code == 520:
-                            return [api.CInterval(self.name, 900.)]
-
-                        try:
-                            resp = resp.json()
-                        except JSONDecodeError:
-                            return [api.CInterval(self.name, 900.)]
-
-                        sizes_data = Path.parse_str('$.variants.*').match(resp)
-                        sizes = [
-                            api.Size(
-                                str(size.current_value['option1']),
-                                f'https://oktyabrskateshop.ru/cart/{size.current_value["id"]}:1')
-                            for size in sizes_data if size.current_value['available'] is True
-                        ]
-
-                        if not sizes:
-                            HashStorage.add_target(target.hash())
-                            continue
-
-                        try:
-                            price = api.Price(
-                                api.CURRENCIES['RUB'],
-                                float(variants[0]['price'])
-                            )
-                        except (KeyError, IndexError):
-                            price = api.Price(api.CURRENCIES['RUB'], 0.)
-
                         HashStorage.add_target(target.hash())
-                        result.append(IRelease(
-                            target.name,
+                        additional_columns = {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)'}
+                    else:
+                        additional_columns = {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)',
+                                              'Type': 'Restock'}
+
+                    sizes_data = Path.parse_str('$.variants.*').match(resp)
+                    sizes = [
+                        api.Size(
+                            str(size.current_value['option1']),
+                            f'https://oktyabrskateshop.ru/cart/{size.current_value["id"]}:1')
+                        for size in sizes_data if size.current_value['available'] is True
+                    ]
+
+                    if not sizes:
+                        result.append(IAnnounce(
+                                target.name + 'f?stype=Announce',
+                                'octobershop',
+                                title,
+                                image,
+                                'NO SIZES',
+                                price,
+                                api.Sizes(api.SIZE_TYPES[''], []),
+                                [
+                                    FooterItem('Cart', 'https://oktyabrskateshop.ru/cart'),
+                                    FooterItem('Login', 'https://oktyabrskateshop.ru/account/login?return_url=%2Faccount')
+                                ],
+                                {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)',
+                                 'Publish Date': str(published_date)}
+                            )
+                        )
+                        continue
+
+                    sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
+
+                    result.append(IRelease(
+                            target.name + f'?shash={sizes.hash().hex()}',
                             'octobershop',
                             title,
                             image,
                             '',
                             price,
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            sizes,
                             [
                                 FooterItem('Cart', 'https://oktyabrskateshop.ru/cart'),
                                 FooterItem('Login', 'https://oktyabrskateshop.ru/account/login?return_url=%2Faccount')
                             ],
-                            {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)'}
-                        ))
+                            additional_columns,
+                            publish_date=published_date.timestamp()
+                        )
+                    )
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:

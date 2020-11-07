@@ -128,7 +128,7 @@ class Parser(api.Parser):
 
                         result.append(
                             IRelease(
-                                'https://www.itkkit.ru' + element.get('href') + f'?shash={str(sizes_data).__hash__()}',
+                                'https://www.itkkit.ru' + element.get('href') + f'?shash={sizes.hash().hex()}',
                                 'itkkit',
                                 name,
                                 image,

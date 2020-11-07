@@ -7,7 +7,7 @@ from user_agent import generate_user_agent
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, IAnnounce
 from source.cache import HashStorage
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
@@ -56,6 +56,15 @@ class Parser(api.Parser):
                 image = element['images'][0]['src'] if len(element['images']) != 0 \
                     else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
                 sizes_data = [element for element in element['variants']]
+                published_date = datetime.fromisoformat(element['published_at'])
+
+                try:
+                    price = api.Price(
+                        api.CURRENCIES['USD'],
+                        float(variants[0]['price'])
+                    )
+                except (KeyError, IndexError):
+                    price = api.Price(api.CURRENCIES['USD'], 0.)
 
                 del element
 
@@ -66,49 +75,63 @@ class Parser(api.Parser):
                     target = api.Target('https://www.deadstock.ca/products/' + handle, self.name, 0)
 
                     if HashStorage.check_target(target.hash()):
-
-                        sizes = [
-                            api.Size(
-                                str(size['option1']) + f' US',
-                                f'https://www.deadstock.ca/cart/{size["id"]}:1')
-                            for size in sizes_data if size["available"] is True
-                        ]
-
-                        if not sizes:
-                            continue
-
-                        try:
-                            price = api.Price(
-                                api.CURRENCIES['USD'],
-                                float(variants[0]['price'])
-                            )
-                        except (KeyError, IndexError):
-                            price = api.Price(api.CURRENCIES['USD'], 0.)
-
                         HashStorage.add_target(target.hash())
+                        additional_columns = {'Site': '[Deadstock Canada](https://deadstock.ca)'}
+                    else:
+                        additional_columns = {'Site': '[Deadstock Canada](https://deadstock.ca)', 'Type': 'Restock'}
 
-                        result.append(IRelease(
-                            target.name,
+                    sizes = [
+                        api.Size(
+                            str(size['option1']) + f' US',
+                            f'https://www.deadstock.ca/cart/{size["id"]}:1')
+                        for size in sizes_data if size["available"] is True
+                    ]
+
+                    if not sizes:
+                        result.append(IAnnounce(
+                                target.name + 'f?stype=Announce',
+                                'shopify-filtered',
+                                title,
+                                image,
+                                'NO SIZES',
+                                price,
+                                api.Sizes(api.SIZE_TYPES[''], []),
+                                [
+                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                               title.replace(' ', '%20')),
+                                    FooterItem('Cart', 'https://deadstock.ca/cart'),
+                                    FooterItem('Login', 'https://www.deadstock.ca/account')
+                                ],
+                                {'Site': '[Deadstock Canada](https://deadstock.ca)', 'Publish Date': str(published_date)}
+                            )
+                        )
+                        continue
+
+                    sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
+
+                    result.append(IRelease(
+                            target.name + f'?shash={sizes.hash().hex()}',
                             'shopify-filtered',
                             title,
                             image,
                             '',
                             price,
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            sizes,
                             [
                                 FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                            title.replace(' ', '%20')),
                                 FooterItem('Cart', 'https://deadstock.ca/cart'),
                                 FooterItem('Login', 'https://www.deadstock.ca/account')
                             ],
-                            {'Site': '[Deadstock Canada](https://deadstock.ca)'}
-                        ))
+                            additional_columns,
+                            publish_date=published_date.timestamp()
+                        )
+                    )
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:
                     content.gen.time = self.time_gen()
                     content.expired = False
-                result.append(content)
             else:
                 result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
 

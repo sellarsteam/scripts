@@ -73,9 +73,9 @@ class Parser(api.Parser):
             try:
                 if HashStorage.check_target(target.hash()):
                     HashStorage.add_target(target.hash())
-                    additional_columns = {'Site': '[Belief Moscow](https://beliefmoscow.com)'}
+                    additional_columns = {'Site': '[Brandshop](https://brandshop.ru)'}
                 else:
-                    additional_columns = {'Site': '[Belief Moscow](https://beliefmoscow.com)', 'Type': 'Restock'}
+                    additional_columns = {'Site': '[Brandshop](https://brandshop.ru)', 'Type': 'Restock'}
 
                 ok, response = self.provider.request(content.name,
                                                      headers={'user-agent': self.user_agent}, proxy=True)
@@ -93,7 +93,7 @@ class Parser(api.Parser):
                     response.text
                 )
 
-                sizes = [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')]
+                sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text) for size in page_content.xpath('//div[@class="sizeselect"]')])
                 name = page_content.xpath('//span[@itemprop="name"]')[0].text
                 try:
                     is_only_offline = \
@@ -122,7 +122,7 @@ class Parser(api.Parser):
 
                     result.append(
                         IRelease(
-                            content.name + f'?shash={str(sizes).__hash__()}&tp=offline',
+                            content.name + f'?shash={sizes.hash().hex()}&tp=offline',
                             'brandshop-offline',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
@@ -131,7 +131,7 @@ class Parser(api.Parser):
                                 api.CURRENCIES['RUB'],
                                 float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
                             ),
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            sizes,
                             [
                                 FooterItem('Cart', 'https://brandshop.ru/cart'),
                                 FooterItem('Login', 'https://brandshop.ru/login')
@@ -145,9 +145,10 @@ class Parser(api.Parser):
                     )
 
                 else:
+
                     result.append(
                         IRelease(
-                            content.name + f'?shash={str(sizes).__hash__()}',
+                            content.name + f'?shash={sizes.hash().hex()}',
                             'brandshop',
                             name,
                             page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
@@ -156,7 +157,7 @@ class Parser(api.Parser):
                                 api.CURRENCIES['RUB'],
                                 float(page_content.xpath('//meta[@itemprop="price"]')[0].get('content'))
                             ),
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            sizes,
                             [
                                 FooterItem('Cart', 'https://brandshop.ru/cart'),
                                 FooterItem('Login', 'https://brandshop.ru/login')
