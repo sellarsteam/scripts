@@ -92,7 +92,7 @@ class Parser(api.Parser):
 
                     result.append(
                         IRelease(
-                            url + f'?shash={str(raw_sizes).__hash__()}',
+                            url + f'?shash={sizes.hash().hex()}',
                             'belief',
                             name,
                             image,

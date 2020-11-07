@@ -7,7 +7,7 @@ from user_agent import generate_user_agent
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, IAnnounce
 from source.cache import HashStorage
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
@@ -25,7 +25,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=1, microsecond=750000, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -56,6 +56,15 @@ class Parser(api.Parser):
                 image = element['images'][0]['src'] if len(element['images']) != 0 \
                     else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
                 sizes_data = [element for element in element['variants']]
+                published_date = datetime.fromisoformat(element['published_at'])
+
+                try:
+                    price = api.Price(
+                        api.CURRENCIES['USD'],
+                        float(variants[0]['price'])
+                    )
+                except (KeyError, IndexError):
+                    price = api.Price(api.CURRENCIES['USD'], 0.)
 
                 del element
 
@@ -66,28 +75,44 @@ class Parser(api.Parser):
                     target = api.Target('https://www.urbanindustry.co.uk/products/' + handle, self.name, 0)
 
                     if HashStorage.check_target(target.hash()):
-
-                        sizes = [
-                            api.Size(
-                                str(size['option1']),
-                                f'https://www.urbanindustry.co.uk/cart/{size["id"]}:1')
-                            for size in sizes_data if size["available"] is True
-                        ]
-
-                        if not sizes:
-                            continue
-
-                        try:
-                            price = api.Price(
-                                api.CURRENCIES['GBP'],
-                                float(variants[0]['price'])
-                            )
-                        except (KeyError, IndexError):
-                            price = api.Price(api.CURRENCIES['USD'], 0.)
-
                         HashStorage.add_target(target.hash())
-                        result.append(IRelease(
-                            target.name,
+                        additional_columns = {'Site': '[Urban Industry](https://www.urbanindustry.co.uk)'}
+                    else:
+                        additional_columns = {'Site': '[Urban Industry](https://www.urbanindustry.co.uk)',
+                                              'Type': 'Restock'}
+
+                    sizes = [
+                        api.Size(
+                            str(size['option1']),
+                            f'https://www.urbanindustry.co.uk/cart/{size["id"]}:1')
+                        for size in sizes_data if size["available"] is True
+                    ]
+
+                    if not sizes:
+                        result.append(IAnnounce(
+                                target.name + 'f?stype=Announce',
+                                'shopify-filtered',
+                                title,
+                                image,
+                                'NO SIZES',
+                                price,
+                                api.Sizes(api.SIZE_TYPES[''], []),
+                                [
+                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                               title.replace(' ', '%20')),
+                                    FooterItem('Cart', 'https://www.urbanindustry.co.uk/cart'),
+                                    FooterItem('Login', 'https://www.urbanindustry.co.uk/account/')
+                                ],
+                                {'Site': '[Urban Industry](https://www.urbanindustry.co.uk)',
+                                 'Publish Date': str(published_date)}
+                            )
+                        )
+                        continue
+
+                    sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
+
+                    result.append(IRelease(
+                            target.name + f'?shash={sizes.hash().hex()}',
                             'shopify-filtered',
                             title,
                             image,
@@ -100,8 +125,10 @@ class Parser(api.Parser):
                                 FooterItem('Cart', 'https://www.urbanindustry.co.uk/cart'),
                                 FooterItem('Login', 'https://www.urbanindustry.co.uk/account/')
                             ],
-                            {'Site': '[Urban Industry](https://www.urbanindustry.co.uk)'}
-                        ))
+                            additional_columns,
+                            publish_date=published_date.timestamp()
+                        )
+                    )
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:

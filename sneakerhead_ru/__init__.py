@@ -80,23 +80,23 @@ class Parser(api.Parser):
                                   .get('content'))
                         )
 
-                        raw_sizes = [
+                        sizes = api.Sizes(api.SIZE_TYPES[''], [
                             api.Size(
                                 str(size.text),
                                 f'http://static.sellars.cf/links?site=sneakerhead&id={size.get("data-id")}'
                             )
                             for size in element[0].xpath('div[@class="product-card__hover"]/dl/dd')
-                        ]
+                        ])
 
                         result.append(
                             IRelease(
-                                link + f'?shash={str(raw_sizes).__hash__()}',
+                                link + f'?shash={sizes.hash().hex()}',
                                 'sneakerhead',
                                 name,
                                 image,
                                 '',
                                 price,
-                                api.Sizes(api.SIZE_TYPES[''], raw_sizes),
+                                sizes,
                                 [
                                     FooterItem('Cart', 'https://sneakerhead.ru/cart'),
                                     FooterItem('Login', 'https://sneakerhead.ru/login'),

@@ -7,7 +7,8 @@ from user_agent import generate_user_agent
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, \
+    IAnnounce
 from source.cache import HashStorage
 from source.library import SubProvider
 from source.tools import LinearSmart, ScriptStorage
@@ -25,7 +26,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=0, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -56,48 +57,73 @@ class Parser(api.Parser):
                 image = element['images'][0]['src'] if len(element['images']) != 0 \
                     else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
                 sizes_data = [element for element in element['variants']]
+                published_date = datetime.fromisoformat(element['published_at'])
+
+                try:
+                    price = api.Price(
+                        api.CURRENCIES['USD'],
+                        float(variants[0]['price'])
+                    )
+                except (KeyError, IndexError):
+                    price = api.Price(api.CURRENCIES['USD'], 0.)
 
                 del element
                 target = api.Target('https://eflash-us.doverstreetmarket.com/products/' + handle, self.name, 0)
 
                 if HashStorage.check_target(target.hash()):
-
-                    sizes = [
-                        api.Size(
-                            str(size['title']), f'https://eflash-us.doverstreetmarket.com/cart/{size["id"]}:1')
-                        for size in sizes_data if size["available"] is True
-                    ]
-
-                    if not sizes:
-                        continue
-
-                    try:
-                        price = api.Price(
-                            api.CURRENCIES['USD'],
-                            float(variants[0]['price'])
-                        )
-                    except (KeyError, IndexError):
-                        price = api.Price(api.CURRENCIES['USD'], 0.)
-
                     HashStorage.add_target(target.hash())
+                    additional_columns = {'Site': '[DSM New-York](https://eflash-us.doverstreetmarket.com)',
+                                          'Location': 'United States (New-York 🇺🇸)'}
+                else:
+                    additional_columns = {'Site': '[DSM New-York](https://eflash-us.doverstreetmarket.com)',
+                                          'Location': 'United States (New-York 🇺🇸)', 'Type': 'Restock'}
 
-                    result.append(IRelease(
-                        target.name,
-                        'doverstreetmarket',
-                        title,
-                        image,
-                        '',
-                        price,
-                        api.Sizes(api.SIZE_TYPES[''], sizes),
-                        [
-                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' + title.replace(' ', '%20')),
-                            FooterItem('Cart', 'https://eflash-us.doverstreetmarket.com/cart')
-                        ],
-                        {
-                            'Site': '[DSM New-York](https://eflash-us.doverstreetmarket.com)',
-                            'Location': 'United States (New-York)'
-                        }
-                    ))
+                sizes = [
+                    api.Size(
+                        str(size['title']), f'https://eflash-us.doverstreetmarket.com/cart/{size["id"]}:1')
+                    for size in sizes_data if size["available"] is True
+                ]
+
+                if not sizes:
+                    result.append(IAnnounce(
+                            target.name + 'f?stype=Announce',
+                            'doverstreetmarket',
+                            title,
+                            image,
+                            'NO SIZES',
+                            price,
+                            api.Sizes(api.SIZE_TYPES[''], []),
+                            [
+                                FooterItem('StockX',
+                                           'https://stockx.com/search/sneakers?s=' + title.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://eflash-us.doverstreetmarket.com/cart')
+                            ],
+                            {
+                                'Site': '[DSM London](https://eflash-us.doverstreetmarket.com)',
+                                'Publish Date': str(published_date),
+                                'Location': 'United States (New-York 🇺🇸)',
+                            }
+                        )
+                    )
+                    continue
+
+                sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
+
+                result.append(IRelease(
+                    target.name + f'?shash={sizes.hash().hex()}',
+                    'doverstreetmarket',
+                    title,
+                    image,
+                    '',
+                    price,
+                    sizes,
+                    [
+                        FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' + title.replace(' ', '%20')),
+                        FooterItem('Cart', 'https://eflash-us.doverstreetmarket.com/cart')
+                    ],
+                    additional_columns,
+                    publish_date=published_date.timestamp()
+                ))
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:
