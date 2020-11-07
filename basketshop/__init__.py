@@ -74,7 +74,7 @@ class Parser(api.Parser):
 
                     result.append(
                         IRelease(
-                            url + f'?shash={str(sizes_data).__hash__()}',
+                            url + f'?shash={sizes.hash().hex()}',
                             'basketshop',
                             name,
                             image,

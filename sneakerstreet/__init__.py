@@ -93,7 +93,7 @@ class Parser(api.Parser):
 
                     result.append(
                         IRelease(
-                            link + f'?shash={str(sizes).__hash__()}',
+                            link + f'?shash={sizes.hash().hex()}',
                             'sneakerstreet',
                             name,
                             image,
