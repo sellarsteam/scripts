@@ -1,48 +1,31 @@
 from datetime import datetime, timedelta, timezone
-from json import JSONDecodeError
 from typing import List, Union
 
-import yaml
-from jsonpath2 import Path
-from scripts.keywords_finding import check_name
+from requests import exceptions
+from ujson import loads
 from user_agent import generate_user_agent
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, IAnnounce
 from source.cache import HashStorage
-from source.library import SubProvider
-from source.tools import LinearSmart
+from source.library import SubProvider, Keywords
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider):
-        super().__init__(name, log, provider_)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
+        super().__init__(name, log, provider_, storage)
         self.link: str = 'https://www.jimmyjazz.com/products.json?limit=100'
-        self.interval: int = 1
-
-        raw = yaml.safe_load(open('./scripts/keywords.yaml'))
-
-        if isinstance(raw, dict):
-            if 'absolute' in raw and isinstance(raw['absolute'], list) \
-                    and 'positive' in raw and isinstance(raw['positive'], list) \
-                    and 'negative' in raw and isinstance(raw['negative'], list):
-                self.absolute_keywords = raw['absolute']
-                self.positive_keywords = raw['positive']
-                self.negative_keywords = raw['negative']
-            else:
-                raise TypeError('Keywords must be list')
-        else:
-            raise TypeError('Types of keywords must be in dict')
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 2, 30))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
 
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=0, tzinfo=timezone.utc).timestamp()
+            .replace(second=1, microsecond=750000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -51,77 +34,105 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+            ok, response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
+                    return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
             if response.status_code == 430 or response.status_code == 520:
-                result.append(api.CInterval(self.name, 600.))
-                return result
+                return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
             try:
-                response = response.json()
-            except JSONDecodeError:
-                raise TypeError('Non JSON response')
+                json = loads(response.content)
 
-            for element in Path.parse_str('$.products.*').match(response):
-                title = element.current_value['title']
-                handle = element.current_value['handle']
-                variants = element.current_value['variants']
-                image = element.current_value['images'][0]['src'] if len(element.current_value['images']) != 0 \
+            except ValueError:
+                return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
+
+            for element in json['products']:
+                title = element['title']
+                handle = element['handle']
+                variants = element['variants']
+                image = element['images'][0]['src'] if len(element['images']) != 0 \
                     else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
+                sizes_data = [element for element in element['variants']]
+                published_date = datetime.fromisoformat(element['published_at'])
+
+                try:
+                    price = api.Price(
+                        api.CURRENCIES['USD'],
+                        float(variants[0]['price'])
+                    )
+                except (KeyError, IndexError):
+                    price = api.Price(api.CURRENCIES['USD'], 0.)
 
                 del element
 
                 title_ = title.lower()
 
-                if check_name(handle, self.absolute_keywords, self.positive_keywords, self.negative_keywords) \
-                        or check_name(title_, self.absolute_keywords, self.positive_keywords, self.negative_keywords):
+                if Keywords.check(handle) or Keywords.check(title_):
+
                     target = api.Target('https://www.jimmyjazz.com/products/' + handle, self.name, 0)
+
                     if HashStorage.check_target(target.hash()):
-                        sizes_data = Path.parse_str('$.variants.*').match((
-                            self.provider.request(target.name + '.js',
-                                                  headers={'user-agent': generate_user_agent()},
-                                                  proxy=True).json()))
-                        sizes = [
-                            api.Size(
-                                str(size.current_value['option1']) + ' US [?]',
-                                f'https://www.jimmyjazz.com/cart/{size.current_value["id"]}:1')
-                            for size in sizes_data if size.current_value['available'] is True
-                        ]
-
-                        if not sizes:
-                            HashStorage.add_target(target.hash())
-                            continue
-
-                        try:
-                            price = api.Price(
-                                api.CURRENCIES['USD'],
-                                float(variants[0]['price'])
-                            )
-                        except (KeyError, IndexError):
-                            price = api.Price(api.CURRENCIES['USD'], 0.)
-
                         HashStorage.add_target(target.hash())
-                        result.append(IRelease(
-                            target.name,
+                        additional_columns = {'Site': '[Jimmy Jazz](https://www.jimmyjazz.com)'}
+                    else:
+                        additional_columns = {'Site': '[Jimmy Jazz](https://www.jimmyjazz.com)', 'Type': 'Restock'}
+
+                    sizes = [
+                        api.Size(
+                            str(size['option1']) + f' US',
+                            f'https://www.jimmyjazz.com/cart/{size["id"]}:1')
+                        for size in sizes_data if size["available"] is True
+                    ]
+
+                    if not sizes:
+                        result.append(IAnnounce(
+                                target.name + 'f?stype=Announce',
+                                'shopify-filtered',
+                                title,
+                                image,
+                                'NO SIZES',
+                                price,
+                                api.Sizes(api.SIZE_TYPES[''], []),
+                                [
+                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                               title.replace(' ', '%20')),
+                                    FooterItem('Cart', 'https://www.jimmyjazz.com/cart'),
+                                    FooterItem('Login', 'https://www.jimmyjazz.com/account')
+                                ],
+                                {'Site': '[Jimmy Jazz](https://www.jimmyjazz.com)', 'Publish Date': str(published_date)}
+                            )
+                        )
+                        continue
+
+                    sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
+
+                    result.append(IRelease(
+                            target.name + f'?shash={sizes.hash().hex()}',
                             'shopify-filtered',
                             title,
                             image,
                             '',
                             price,
-                            api.Sizes(api.SIZE_TYPES[''], sizes),
+                            sizes,
                             [
                                 FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                            title.replace(' ', '%20')),
                                 FooterItem('Cart', 'https://www.jimmyjazz.com/cart'),
-                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                FooterItem('Login', 'https://www.jimmyjazz.com/account')
                             ],
-                            {'Site': 'Jimmy Jazz'}
-                        ))
+                            additional_columns,
+                            publish_date=published_date.timestamp()
+                        )
+                    )
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:
                     content.gen.time = self.time_gen()
                     content.expired = False
+            else:
+                result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
 
-            result.append(content)
         return result
