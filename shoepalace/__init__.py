@@ -7,7 +7,8 @@ from user_agent import generate_user_agent
 
 from source import api
 from source import logger
-from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, IAnnounce
+from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, \
+    IAnnounce
 from source.cache import HashStorage
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
@@ -16,7 +17,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://shopnicekicks.com/products.json?limit=100'
+        self.link: str = 'https://www.shoepalace.com/products.json?limit=100'
 
     @property
     def catalog(self) -> CatalogType:
@@ -25,7 +26,7 @@ class Parser(api.Parser):
     @staticmethod
     def time_gen() -> float:
         return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=750000, tzinfo=timezone.utc).timestamp()
+            .replace(second=2, microsecond=500000, tzinfo=timezone.utc).timestamp()
 
     def execute(
             self,
@@ -72,61 +73,61 @@ class Parser(api.Parser):
 
                 if Keywords.check(handle) or Keywords.check(title_):
 
-                    target = api.Target('https://shopnicekicks.com/products/' + handle, self.name, 0)
+                    target = api.Target('https://www.shoepalace.com/products/' + handle, self.name, 0)
 
                     if HashStorage.check_target(target.hash()):
                         HashStorage.add_target(target.hash())
-                        additional_columns = {'Site': '[Shop NiceKicks.](https://shopnicekicks.com)'}
+                        additional_columns = {'Site': '[Shoepalace](https://www.shoepalace.com)'}
                     else:
-                        additional_columns = {'Site': '[Shop NiceKicks.](https://shopnicekicks.com)', 'Type': 'Restock'}
+                        additional_columns = {'Site': '[Shoepalace](https://www.shoepalace.com)', 'Type': 'Restock'}
 
                     sizes = [
                         api.Size(
-                            str(size['title']) + f' US',
-                            f'https://shopnicekicks.com/cart/{size["id"]}:1')
+                            str(size['option2']) + f' US',
+                            f'https://www.shoepalace.com/cart/{size["id"]}:1')
                         for size in sizes_data if size["available"] is True
                     ]
 
                     if not sizes:
                         result.append(IAnnounce(
-                                target.name + 'f?stype=Announce',
-                                'shopify-filtered',
-                                title,
-                                image,
-                                'NO SIZES',
-                                price,
-                                api.Sizes(api.SIZE_TYPES[''], []),
-                                [
-                                    FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                               title.replace(' ', '%20')),
-                                    FooterItem('Cart', 'https://shopnicekicks.com/cart'),
-                                    FooterItem('Login', 'https://shopnicekicks.com/account')
-                                ],
-                                {'Site': '[Shop NiceKicks.](https://shopnicekicks.com)',
-                                 'Publish Date': str(published_date)}
-                            )
+                            target.name + 'f?stype=Announce',
+                            'shopify-filtered',
+                            title,
+                            image,
+                            'NO SIZES',
+                            price,
+                            api.Sizes(api.SIZE_TYPES[''], []),
+                            [
+                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                           title.replace(' ', '%20')),
+                                FooterItem('Cart', 'https://www.shoepalace.com/cart'),
+                                FooterItem('Login', 'https://www.shoepalace.com/account')
+                            ],
+                            {'Site': '[Shoepalace](https://www.shoepalace.com)',
+                             'Publish Date': str(published_date)}
+                        )
                         )
                         continue
 
                     sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
 
                     result.append(IRelease(
-                            target.name + f'?shash={sizes.hash().hex()}',
-                            'shopify-filtered',
-                            title,
-                            image,
-                            '',
-                            price,
-                            sizes,
-                            [
-                                FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                           title.replace(' ', '%20')),
-                                FooterItem('Cart', 'https://shopnicekicks.com/cart'),
-                                FooterItem('Login', 'https://shopnicekicks.com/account')
-                            ],
-                            additional_columns,
-                            publish_date=published_date.timestamp()
-                        )
+                        target.name + f'?shash={sizes.hash().hex()}',
+                        'shopify-filtered',
+                        title,
+                        image,
+                        '',
+                        price,
+                        sizes,
+                        [
+                            FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                       title.replace(' ', '%20')),
+                            FooterItem('Cart', 'https://www.shoepalace.com/cart'),
+                            FooterItem('Login', 'https://www.shoepalace.com/account')
+                        ],
+                        additional_columns,
+                        publish_date=published_date.timestamp()
+                    )
                     )
 
             if isinstance(content, api.CSmart):
