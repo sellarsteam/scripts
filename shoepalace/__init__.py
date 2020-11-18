@@ -35,6 +35,7 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
+            result.append(content)
             ok, response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
 
             if not ok:
