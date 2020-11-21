@@ -34,7 +34,6 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            result.append(content)
             ok, response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()}, proxy=True)
 
             if not ok:
@@ -133,6 +132,7 @@ class Parser(api.Parser):
                 if result or content.expired:
                     content.gen.time = self.time_gen()
                     content.expired = False
+                result.append(content)
             else:
                 result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
 
