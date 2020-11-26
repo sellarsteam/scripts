@@ -16,7 +16,7 @@ from source.tools import ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://brandshop.ru/New/'
+        self.link: str = 'https://brandshop.ru/sneakers/?utm_source=telegram&utm_medium=post&utm_campaign=sneakers_23nov'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
