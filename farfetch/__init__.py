@@ -55,47 +55,55 @@ class Parser(api.Parser):
 
             for item in json['listingItems']['items']:
 
-                if item['priceInfo']['isOnSale'] is True or item['priceInfo']['finalPrice'] < 350:
-                    link = f'https://www.farfetch.com{item["url"]}'
+                link = f'https://www.farfetch.com{item["url"]}'
 
-                    if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
-                        product_id = item['id']
-                        name = f"{item['brand']['name']} {item['shortDescription']}"
+                target = api.Target(link, self.name, 0)
 
-                        if float(item['priceInfo']['finalPrice']) == float(item['priceInfo']['initialPrice']):
-                            price = api.Price(api.CURRENCIES['EUR'], float(item['priceInfo']['finalPrice']))
-                        else:
-                            price = api.Price(api.CURRENCIES['EUR'], float(item['priceInfo']['finalPrice']),
-                                              float(item['priceInfo']['initialPrice']))
+                if HashStorage.check_target(target.hash()):
+                    HashStorage.add_target(target.hash())
+                    additional_columns = {'Regions': f'[[RU]({link.replace("uk", "ru")}) 🇷🇺] | '
+                                                     f'[[ES]({link.replace("uk", "es")}) 🇪🇸] | '
+                                                     f'[[IT]({link.replace("uk", "it")}) 🇮🇹] | '
+                                                     f'[[DE]({link.replace("uk", "de")}) 🇩🇪] | '
+                                                     f'[[UK]({link}) 🇬🇧]'
+                                          }
+                else:
+                    additional_columns = {'Regions': f'[[RU]({link.replace("uk", "ru")}) 🇷🇺] | '
+                                                     f'[[ES]({link.replace("uk", "es")}) 🇪🇸] | '
+                                                     f'[[IT]({link.replace("uk", "it")}) 🇮🇹] | '
+                                                     f'[[DE]({link.replace("uk", "de")}) 🇩🇪] | '
+                                                     f'[[UK]({link}) 🇬🇧]', 'Type': 'Price Changed'
+                                          }
+                product_id = item['id']
+                name = f"{item['brand']['name']} {item['shortDescription']}"
 
-                        image = item['images']['cutOut']
-                        sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'TOTAL STOCK: [{item["stockTotal"]}]')])
-                        stockx_link = f'https://stockx.com/search/sneakers?s={item["shortDescription"]}'
+                if float(item['priceInfo']['finalPrice']) == float(item['priceInfo']['initialPrice']):
+                    price = api.Price(api.CURRENCIES['EUR'], float(item['priceInfo']['finalPrice']))
+                else:
+                    price = api.Price(api.CURRENCIES['EUR'], float(item['priceInfo']['finalPrice']),
+                                      float(item['priceInfo']['initialPrice']))
 
-                        result.append(
-                            IRelease(
-                                link,
-                                'farfetch',
-                                name,
-                                image,
-                                '',
-                                price,
-                                sizes,
-                                [
-                                    FooterItem('StockX', stockx_link.replace(' ', '%20')),
-                                    FooterItem('Cart', 'https://www.farfetch.com/uk/checkout/basket.aspx'),
-                                    FooterItem('MBot QT', f'https://mbot.app/ff/variant/{product_id}')
-                                ],
-                                {'Regions': f'[[RU]({link.replace("uk", "ru")}) 🇷🇺] | '
-                                            f'[[ES]({link.replace("uk", "es")}) 🇪🇸] | '
-                                            f'[[UK]({link.replace("uk", "it")}) 🇮🇹] | '
-                                            f'[[DE]({link.replace("uk", "de")}) 🇩🇪] | '
-                                            f'[[IT]({link}) 🇬🇧]'
-                                 }
-                            )
-                        )
+                image = item['images']['cutOut']
+                sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'TOTAL STOCK: [{item["stockTotal"]}]')])
+                stockx_link = f'https://stockx.com/search/sneakers?s={item["shortDescription"]}'
 
-                        HashStorage.add_target(api.Target(link, self.name, 0).hash())
+                result.append(
+                    IRelease(
+                        link + f'&price{price.hash().hex()}',
+                        'farfetch',
+                        name,
+                        image,
+                        '',
+                        price,
+                        sizes,
+                        [
+                            FooterItem('StockX', stockx_link.replace(' ', '%20')),
+                            FooterItem('Cart', 'https://www.farfetch.com/uk/checkout/basket.aspx'),
+                            FooterItem('MBot QT', f'https://mbot.app/ff/variant/{product_id}')
+                        ],
+                        additional_columns
+                    )
+                )
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:
