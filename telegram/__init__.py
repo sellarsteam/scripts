@@ -1,18 +1,17 @@
 import queue
 import threading
-import time
 from dataclasses import dataclass, field
+from time import time, sleep
 from typing import List, Dict, Optional
 
 import requests
 import yaml
-from ujson import dumps
-
 from source import __version__, __copyright__
 from source import api
 from source import codes
 from source.logger import Logger
 from source.tools import ScriptStorage
+from ujson import dumps
 
 currencies: tuple = ('', '£', '$', '€', '₽', '¥', 'kr', '₴', 'Br', 'zł', '$(HKD)', '$(CAD)', '$(AUD)')
 sizes_column_size = 5
@@ -20,25 +19,31 @@ sizes_column_size = 5
 
 @dataclass
 class Group:
-    __slots__ = ['tag']
+    __slots__ = ['tag', 'short']
     tag: str
+    short: bool
 
     def __post_init__(self):
         if not isinstance(self.tag, str):
             raise TypeError('tag must be str')
+        if not isinstance(self.short, bool):
+            raise TypeError('short must bool')
 
 
 @dataclass
 class Chat:
-    __slots__ = ['id', 'group']
+    __slots__ = ['id', 'group', 'short']
     id: int
     group: Group
+    short: bool
 
     def __post_init__(self):
         if not isinstance(self.id, int):
             raise TypeError('id must be int')
         if not isinstance(self.group, Group):
             raise TypeError('group must be Group')
+        if not isinstance(self.short, bool):
+            raise TypeError('short must bool')
 
 
 @dataclass(order=True)
@@ -70,7 +75,7 @@ class Message:
         else:
             return False
 
-    def build(self, group: Group) -> str:
+    def build(self, chat: Chat) -> str:
         if self.item:
             msg = [f'''<a href="{self.item.url}">{"[ANNOUNCE] " if isinstance(self.item, api.IAnnounce) else
             "[RESTOCK] " if isinstance(self.item, api.IRestock) else ""}{self.item.name}</a>''']
@@ -86,14 +91,14 @@ class Message:
             if self.item.sizes:
                 msg.append('\n<b>Sizes</b>')
                 msg.extend([f'<a href="{i.url}">{i.size}</a>' for i in self.item.sizes])
-            if self.item.fields:
+            if self.item.fields and not chat.short:
                 for k, v in self.item.fields.items():
                     msg.extend([f'\n<b>{k}</b>', v])
             if self.item.footer:
                 msg.append('\n<b>Links</b>')
                 msg.append(
                     ' | '.join((f'<a href="{i.url}">{i.text}</a>' if i.url else i.text for i in self.item.footer)))
-            msg.append(f'<b><u>{group.tag}</u></b>')
+            msg.append(f'<b><u>{chat.group.tag}</u></b>')
             return '\n'.join(msg)
         elif self.text:
             return self.text
@@ -131,7 +136,7 @@ class EventsExecutor(api.EventsExecutor):
                     if 'list' in raw['groups'] and isinstance(raw['groups']['list'], dict):
                         for k, v in raw['groups']['list'].items():
                             if 'tag' in v and isinstance(v['tag'], str):
-                                self.groups[k] = Group(v['tag'])
+                                self.groups[k] = Group(v['tag'], v['short'] if 'short' in v else False)
                             else:
                                 self.log.error(f'group "{k}" has no tag. skipping...')
                     else:
@@ -154,7 +159,11 @@ class EventsExecutor(api.EventsExecutor):
                                 chats = []
                                 for i in v:
                                     if isinstance(i, list) and 3 > len(i) > 0:
-                                        chats.append(Chat(i[0], self.groups[i[1]] if len(i) > 1 else default_group))
+                                        chats.append(Chat(
+                                            i[0],
+                                            (group := self.groups[i[1]] if len(i) > 1 else default_group),
+                                            i[2] if len(i) > 2 else group.short
+                                        ))
                                     else:
                                         self.log.error(f'chat (channel "{k}") must contain (id[, group])')
                                 self.channels[k] = chats
@@ -174,10 +183,18 @@ class EventsExecutor(api.EventsExecutor):
         else:
             raise FileNotFoundError('secret.yaml not found')
 
+    def wait(self, delta: float) -> None:
+        if self.messages.qsize() > 5:
+            est = ((self.messages.qsize() - 5) * 1)
+        else:
+            est = .1
+
+        sleep(est - delta if delta <= est else 0)
+
     def loop(self):
         errors = 0
         while True:
-            start: float = time.time()
+            start: float = time()
             if self.state >= 1:
                 try:
                     msg: Message = self.messages.get_nowait()
@@ -188,28 +205,16 @@ class EventsExecutor(api.EventsExecutor):
                                 continue
 
                             for i in self.channels[msg.channel]:
-                                if msg.image:
-                                    response = requests.post(
-                                        f'https://api.telegram.org/bot{self._token}/sendPhoto',
-                                        data=dumps({
-                                            'chat_id': i.id,
-                                            'caption': msg.build(i.group),
-                                            'photo': msg.item.image,
-                                            'parse_mode': 'HTML'
-                                        }),
-                                        headers={'Content-Type': 'application/json'}
-                                    )
-                                else:
-                                    response = requests.post(
-                                        f'https://api.telegram.org/bot{self._token}/sendMessage',
-                                        data=dumps({
-                                            'chat_id': i.id, 'text': msg.build(i.group), 'parse_mode': 'HTML'}),
-                                        headers={'Content-Type': 'application/json'}
-                                    )
+                                resp = requests.post(
+                                    f'https://api.telegram.org/bot{self._token}/sendMessage',
+                                    data=dumps({'chat_id': i.id, 'text': msg.build(i), 'parse_mode': 'HTML'}),
+                                    headers={'Content-Type': 'application/json'}
+                                )
 
-                                if response.status_code in (400, 501):
-                                    self.log.error(f'Message lost: {response.text}\n'
-                                                   f'------------\n{dumps(msg.build(i.group))}\n------------')
+                                if resp.status_code in (400, 429, 500):
+                                    self.log.error(f'Message lost: {resp.text}\n'
+                                                   f'------------\n{dumps(msg.build(i))}\n------------')
+                                    continue
                         else:
                             self.log.error(f'Max retries reached for message: {msg}')
                     except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as e:
@@ -232,8 +237,7 @@ class EventsExecutor(api.EventsExecutor):
             else:
                 self.log.info('Thread closed')
                 break
-            delta: float = time.time() - start
-            time.sleep(.1 - delta if delta <= .1 else 0)
+            self.wait(time() - start)
 
     def e_monitor_starting(self) -> None:
         self.messages.put(Message(
