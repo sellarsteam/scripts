@@ -31,10 +31,13 @@ class Parser(api.Parser):
 
         self.headers = {
             'Host': 'api1.imshop.io',
-            'Accept': '*/*',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'platform': 'ios',
+            'client-version': '5.9.14',
+            'install-id': '4a85bbe9-5520-4715-b424-40f5b4b839a8',
             'Accept-Language': 'ru',
-            'Connection': 'keep-alive',
-            'User-Agent': 'imshopmobile/2353 CFNetwork/1197 Darwin/20.0.0'
+            'User-Agent': 'imshopmobile/2517 CFNetwork/1197 Darwin/20.0.0'
         }
 
     @property
@@ -53,6 +56,8 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
+
+            result.append(content)
 
             j_ok, j_response = self.provider.request(self.catalog_link.replace('TERMPATTERN', 'Jordan'),
                                                      headers=self.headers)
@@ -91,39 +96,51 @@ class Parser(api.Parser):
                         link = element['externalUrl']
 
                         try:
-                            if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
-                                mobile_link = f'https://content.imshop.io/landings' \
-                                              f'/streetbeat/item/{element["privateId"]}'
-                                price = api.Price(api.CURRENCIES['RUB'], float(element['price']))
-                                metadata = element['configurations']['metadata']
-                                sizes = api.Sizes(api.SIZE_TYPES[''],
-                                                  [api.Size(f"{size['paramNames'][-1]['value']} US")
-                                                   for size in metadata.values()])
+                            target = api.Target(link, self.name, 0)
 
-                                image = element['image'].replace('street-beat', 'static.street-beat')
+                            if HashStorage.check_target(target.hash()):
+                                HashStorage.add_target(target.hash())
+                                additional_columns = {'Site': 'Street-Beat Mobile App',
+                                                      'Download App': '[Android](https://play.google.com/store/apps/details?id='
+                                                                      'ru.streetbeat.android&hl=en_US) | '
+                                                                      '[iOS](https://apps.apple.com/ru/app/street-beat-'
+                                                                      '%D0%BA%D1%80%D0%BE%D1%81%D1%81%D0%BE%D0%B2%D0%BA%'
+                                                                      'D0%B8-%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0/id1484704923)'
+                                                      }
+                            else:
+                                additional_columns = {'Site': 'Street-Beat Mobile App', 'Type': 'Restock',
+                                                      'Download App': '[Android](https://play.google.com/store/apps/details?id='
+                                                                      'ru.streetbeat.android&hl=en_US) | '
+                                                                      '[iOS](https://apps.apple.com/ru/app/street-beat-'
+                                                                      '%D0%BA%D1%80%D0%BE%D1%81%D1%81%D0%BE%D0%B2%D0%BA%'
+                                                                      'D0%B8-%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0/id1484704923)'
+                                                      }
+                            mobile_link = f'https://content.imshop.io/landings' \
+                                          f'/streetbeat/item/{element["privateId"]}'
+                            price = api.Price(api.CURRENCIES['RUB'], float(element['price']))
+                            metadata = element['configurations']['metadata']
+                            sizes = api.Sizes(api.SIZE_TYPES[''],
+                                              [api.Size(f"{size['paramNames'][-1]['value']} US")
+                                               for size in metadata.values()])
 
-                                result.append(
-                                    IRelease(
-                                        mobile_link,
-                                        'streetbeat-mobile',
-                                        name,
-                                        image,
-                                        '',
-                                        price,
-                                        sizes,
-                                        [
-                                            FooterItem('Cart', 'https://street-beat.ru/cart'),
-                                            FooterItem('Mobile', mobile_link),
-                                        ],
-                                        {'Site': 'Street-Beat Mobile App',
-                                         'Download App': '[Android](https://play.google.com/store/apps/details?id='
-                                                         'ru.streetbeat.android&hl=en_US) | '
-                                                         '[iOS](https://apps.apple.com/ru/app/street-beat-'
-                                                         '%D0%BA%D1%80%D0%BE%D1%81%D1%81%D0%BE%D0%B2%D0%BA%'
-                                                         'D0%B8-%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0/id1484704923)'
-                                         }
-                                    )
+                            image = element['image'].replace('street-beat', 'static.street-beat')
+
+                            result.append(
+                                IRelease(
+                                    mobile_link + f'?shas={sizes.hash().hex()}',
+                                    'streetbeat-mobile',
+                                    name,
+                                    image,
+                                    '',
+                                    price,
+                                    sizes,
+                                    [
+                                        FooterItem('Cart', 'https://street-beat.ru/cart'),
+                                        FooterItem('Mobile', mobile_link),
+                                    ],
+                                    additional_columns
                                 )
+                            )
 
                         except JSONDecodeError:
                             raise Exception('JSONDecodeError')
