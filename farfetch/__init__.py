@@ -3,8 +3,9 @@ from time import time
 from typing import List, Union
 
 from requests import exceptions
-from ujson import loads, dump, dumps
+from ujson import loads
 
+import source
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -113,11 +114,30 @@ class Parser(api.Parser):
             except ValueError:
                 return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
             try:
+                raw_sizes = []
+                min_price = 90000000
+                for size, size_data in json_sizes.items():
+                    if size_data['available']:
 
-                sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'{size} UK [{size_data["formattedFinalPrice"]}]')
-                                                       for size, size_data in json_sizes.items()
-                                                       if size_data['available']])
+                        if float(size_data["formattedFinalPrice"].replace('₽', '').replace('\xa0', '')) < min_price:
+                            min_price = float(size_data["formattedFinalPrice"].replace('₽', '').replace('\xa0', ''))
 
+                for size, size_data in json_sizes.items():
+                    if size_data['available']:
+
+                        if min_price > 25000:
+                            if float(size_data["formattedFinalPrice"].replace('₽', '').replace('\xa0', '')) == min_price:
+                                raw_sizes.append(api.Size(f'**{size} US [{size_data["formattedFinalPrice"]}]**'))
+                            else:
+                                raw_sizes.append(api.Size(f'{size} US [{size_data["formattedFinalPrice"]}]'))
+                        else:
+
+                            if float(size_data["formattedFinalPrice"].replace('₽', '').replace('\xa0', '')) < 25000:
+                                raw_sizes.append(api.Size(f'**{size} US [{size_data["formattedFinalPrice"]}]**'))
+                            else:
+                                raw_sizes.append(api.Size(f'{size} US [{size_data["formattedFinalPrice"]}]'))
+
+                sizes = api.Sizes(api.SIZE_TYPES[''], raw_sizes)
                 result.append(
                     IRelease(
                         content.name,
@@ -142,7 +162,7 @@ class Parser(api.Parser):
 
                 except source.cache.UniquenessError:
                     pass
-
+                
             except AttributeError:
                 pass
 
