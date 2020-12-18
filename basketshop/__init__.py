@@ -56,6 +56,7 @@ class Parser(api.Parser):
                 if Keywords.check(item['Name'].lower()):
 
                     url = item['Url']
+                    pid = item['ItemId']
 
                     if HashStorage.check_target(api.Target(url, self.name, 0).hash()):
                         additional_columns = {'Site': '[Basketshop](https://www.basketshop.ru/)'}
@@ -68,7 +69,7 @@ class Parser(api.Parser):
                     price = api.Price(api.CURRENCIES['RUB'], float(item['Price'])) if item['OldPrice'] == 0 \
                         else api.Price(api.CURRENCIES['RUB'], float(item['Price']), float(item['OldPrice']))
 
-                    sizes_data = [api.Size(f'{size} US') for size in item['Size'].split(';')]
+                    sizes_data = [api.Size(f'{size} US', f'https://static.sellars.cf/links?site=basketshop&id={pid}&size={size}') for size in item['Size'].split(';')]
 
                     sizes = api.Sizes(api.SIZE_TYPES[''], sizes_data)
 
