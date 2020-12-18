@@ -73,7 +73,6 @@ class Parser(api.Parser):
                 target = api.Target(link, self.name, 0)
 
                 if HashStorage.check_target(target.hash()):
-                    HashStorage.add_target(target.hash())
                     additional_columns = {'Regions': f'[[ES]({link.replace("ru", "es")}) 🇪🇸] | '
                                                      f'[[IT]({link.replace("ru", "it")}) 🇮🇹] | '
                                                      f'[[DE]({link.replace("ru", "de")}) 🇩🇪] | '
@@ -113,28 +112,39 @@ class Parser(api.Parser):
 
             except ValueError:
                 return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
+            try:
 
-            sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'{size} UK [{size_data["formattedFinalPrice"]}]')
-                                                   for size, size_data in json_sizes.items()
-                                                   if size_data['available']])
+                sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(f'{size} UK [{size_data["formattedFinalPrice"]}]')
+                                                       for size, size_data in json_sizes.items()
+                                                       if size_data['available']])
 
-            result.append(
-                IRelease(
-                    content.name,
-                    content.data[3],
-                    content.data[0],
-                    content.data[1],
-                    '',
-                    content.data[5],
-                    sizes,
-                    [
-                        FooterItem('StockX', content.data[4].replace(' ', '%20')),
-                        FooterItem('Cart', 'https://www.farfetch.com/uk/checkout/basket.aspx'),
-                        FooterItem('MBot QT', f'https://mbot.app/ff/variant/{content.data[2]}')
-                    ],
-                    content.data[6]
+                result.append(
+                    IRelease(
+                        content.name,
+                        content.data[3],
+                        content.data[0],
+                        content.data[1],
+                        '',
+                        content.data[5],
+                        sizes,
+                        [
+                            FooterItem('StockX', content.data[4].replace(' ', '%20')),
+                            FooterItem('Cart', 'https://www.farfetch.com/uk/checkout/basket.aspx'),
+                            FooterItem('MBot QT', f'https://mbot.app/ff/variant/{content.data[2]}')
+                        ],
+                        content.data[6]
+                    )
                 )
-            )
+                target = api.Target(content.name, self.name, 0)
+
+                try:
+                    HashStorage.add_target(target.hash())
+
+                except source.cache.UniquenessError:
+                    pass
+
+            except AttributeError:
+                pass
 
         if isinstance(content, api.CSmart):
             if result or content.expired:
