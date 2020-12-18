@@ -71,6 +71,7 @@ class Parser(api.Parser):
                             additional_columns = {'Site': '[Sneakerhead](https://sneakerhead.ru)', 'Type': 'Restock'}
 
                         name = element[0].xpath('meta[@itemprop="description"]')[0].get('content')
+                        sku = element[0].xpath('meta[@itemprop="sku"]')[0].get('content')
                         image = 'https://sneakerhead.ru' + \
                                 element[0].xpath(
                                     'div[@class="product-card__image"]/div/picture/source')[0].get('data-src')
@@ -92,7 +93,7 @@ class Parser(api.Parser):
                             IRelease(
                                 link + f'?shash={sizes.hash().hex()}',
                                 'sneakerhead',
-                                name,
+                                f'[{sku}] {name}',
                                 image,
                                 '',
                                 price,
