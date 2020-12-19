@@ -85,7 +85,7 @@ class Parser(api.Parser):
 
             data_json = dumps(self.post_data)
 
-            ok, response = self.provider.request(self.link, headers=self.headers, data=data_json, method='post')
+            ok, response = self.provider.request(self.link, headers=self.headers, data=data_json, method='post', proxy=True)
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):

@@ -72,7 +72,7 @@ class Parser(api.Parser):
             for item in json_response['results']:
                 title = item['title']
                 if Keywords.check(title.lower()):
-                    price = api.Price(api.CURRENCIES['RUB'], float(item['price'].replace(',', '').replace('₽', '')))
+                    price = api.Price(api.CURRENCIES['EUR'], float(item['price'].replace(',', '.')[:-1]))
                     image = item['custom_data']['imageURLs'][0]
                     id = item['_id']
                     is_preorder = item['custom_data']['isPreorder']
