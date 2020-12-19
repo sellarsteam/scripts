@@ -1,5 +1,5 @@
 name: streetbeat-mobile
 core: ^0.9
-version: 1.0.2rc1
+version: 1.1.2rc1
 keep: yes
 max-errors: 1

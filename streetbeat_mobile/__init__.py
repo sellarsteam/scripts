@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from json import loads, JSONDecodeError
+from time import time
 from typing import List, Union
 
 from requests import exceptions
@@ -35,7 +36,7 @@ class Parser(api.Parser):
             'Accept': 'application/json',
             'platform': 'ios',
             'client-version': '5.9.14',
-            'install-id': '4a85bbe9-5520-4715-b424-40f5b4b839a8',
+            'install-id': '7fe2b20f-7e94-4152-b2e3-a2001c363f6c',
             'Accept-Language': 'ru',
             'User-Agent': 'imshopmobile/2517 CFNetwork/1197 Darwin/20.0.0'
         }
@@ -56,65 +57,53 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'Jordan'), self.name, 0, time()))
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'Jordan').replace('page=1', 'page=2')
+                                         , self.name, 0, time()))
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'Jordan').replace('page=1', 'page=3')
+                                         , self.name, 0, time()))
 
-            result.append(content)
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'yeezy'), self.name, 0, time()))
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'yeezy').replace('page=1', 'page=2')
+                                         , self.name, 0, time()))
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'yeezy').replace('page=1', 'page=3')
+                                         , self.name, 0, time()))
 
-            j_ok, j_response = self.provider.request(self.catalog_link.replace('TERMPATTERN', 'Jordan'),
-                                                     headers=self.headers)
-            y_ok, y_response = self.provider.request(self.catalog_link.replace('TERMPATTERN', 'yeezy'),
-                                                     headers=self.headers)
-            s_ok, s_response = self.provider.request(self.catalog_link.replace('TERMPATTERN', 'nike%20sb'),
-                                                     headers=self.headers)
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'nike%20sb'), self.name, 0, time()))
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'nike%20sb')
+                                         .replace('page=1', 'page=2'), self.name, 0, time()))
+            result.append(api.TScheduled(self.catalog_link.replace('TERMPATTERN', 'nike%20sb')
+                                         .replace('page=1', 'page=3'), self.name, 0, time()))
 
-            if not j_ok:
-                if isinstance(j_response, exceptions.Timeout):
+            if isinstance(content, api.CSmart):
+                if result or content.expired:
+                    content.gen.time = self.time_gen()
+                    content.expired = False
+                result.append(content)
+            else:
+                result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
+
+        if mode == 1:
+
+            ok, response = self.provider.request(content.name, headers=self.headers)
+
+            if not ok:
+                if isinstance(response, exceptions.Timeout):
                     return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
-                    raise j_response
+                    raise response
 
-            elif not y_ok:
-                if isinstance(y_response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
-                else:
-                    raise y_response
+            json_response = loads(response.text)
 
-            elif not s_ok:
-                if isinstance(s_response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
-                else:
-                    raise s_response
+            for element in json_response['items']:
+                name = element['name']
 
-            json_data_list = [loads(y_response.text), loads(j_response.text), loads(s_response.text)]
+                if Keywords.check(name.lower()):
 
-            for json_response in json_data_list:
+                    link = element['externalUrl']
 
-                for element in json_response['items']:
-                    name = element['name']
-
-                    if Keywords.check(name.lower()):
-
-                        link = element['externalUrl']
-
-                        try:
-                            target = api.Target(link, self.name, 0)
-
-                            if HashStorage.check_target(target.hash()):
-                                HashStorage.add_target(target.hash())
-                                additional_columns = {'Site': 'Street-Beat Mobile App',
-                                                      'Download App': '[Android](https://play.google.com/store/apps/details?id='
-                                                                      'ru.streetbeat.android&hl=en_US) | '
-                                                                      '[iOS](https://apps.apple.com/ru/app/street-beat-'
-                                                                      '%D0%BA%D1%80%D0%BE%D1%81%D1%81%D0%BE%D0%B2%D0%BA%'
-                                                                      'D0%B8-%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0/id1484704923)'
-                                                      }
-                            else:
-                                additional_columns = {'Site': 'Street-Beat Mobile App', 'Type': 'Restock',
-                                                      'Download App': '[Android](https://play.google.com/store/apps/details?id='
-                                                                      'ru.streetbeat.android&hl=en_US) | '
-                                                                      '[iOS](https://apps.apple.com/ru/app/street-beat-'
-                                                                      '%D0%BA%D1%80%D0%BE%D1%81%D1%81%D0%BE%D0%B2%D0%BA%'
-                                                                      'D0%B8-%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0/id1484704923)'
-                                                      }
+                    try:
+                        if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
                             mobile_link = f'https://content.imshop.io/landings' \
                                           f'/streetbeat/item/{element["privateId"]}'
                             price = api.Price(api.CURRENCIES['RUB'], float(element['price']))
@@ -123,11 +112,11 @@ class Parser(api.Parser):
                                               [api.Size(f"{size['paramNames'][-1]['value']} US")
                                                for size in metadata.values()])
 
-                            image = element['image'].replace('street-beat', 'static.street-beat')
+                            image = element['image']
 
                             result.append(
                                 IRelease(
-                                    mobile_link + f'?shas={sizes.hash().hex()}',
+                                    mobile_link,
                                     'streetbeat-mobile',
                                     name,
                                     image,
@@ -138,19 +127,17 @@ class Parser(api.Parser):
                                         FooterItem('Cart', 'https://street-beat.ru/cart'),
                                         FooterItem('Mobile', mobile_link),
                                     ],
-                                    additional_columns
+                                    {'Site': 'Street-Beat Mobile App',
+                                     'Download App': '[Android](https://play.google.com/store/apps/details?id='
+                                                     'ru.streetbeat.android&hl=en_US) | '
+                                                     '[iOS](https://apps.apple.com/ru/app/street-beat-'
+                                                     '%D0%BA%D1%80%D0%BE%D1%81%D1%81%D0%BE%D0%B2%D0%BA%'
+                                                     'D0%B8-%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0/id1484704923)'
+                                     }
                                 )
                             )
 
-                        except JSONDecodeError:
-                            raise Exception('JSONDecodeError')
-
-            if isinstance(content, api.CSmart):
-                if result or content.expired:
-                    content.gen.time = self.time_gen()
-                    content.expired = False
-                result.append(content)
-            else:
-                result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
+                    except JSONDecodeError:
+                        raise Exception('JSONDecodeError')
 
         return result
