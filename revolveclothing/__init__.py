@@ -16,8 +16,10 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://www.revolveclothing.ru/shoes-sneakers/br/2aec17/?navsrc=subshoes&filters=designer' \
-                         '&sortBy=newest&designer=adidas%20Originals&designer=Jordan&designer=Nike'
+        self.link: str = 'https://www.revolveclothing.ru/r/BrandsContent.jsp?&aliasURL=shoes-sneakers%2Fbr%2F2aec17' \
+                         '&sc=Sneakers&s=c&c=Shoes&navsrc=subshoes&designer=adidas%20Originals&designer=Jordan' \
+                         '&designer=Nike&filters=designer '
+
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
@@ -47,24 +49,24 @@ class Parser(api.Parser):
                     raise response
 
             catalog = etree.HTML(response.text).xpath(
-                '//a[@class="u-text-decoration--none js-plp-pdp-link2 product-link"]')
+                '//div[@class="plp_image_wrap u-center"]/a')
 
             if len(catalog) == 0:
                 raise Exception('Catalog is empty')
 
             for element in catalog:
 
-                link = element.get('href')
-                name = link.split('/')[1].replace('-', ' ')
+                href = element.get('href')
+                link_to_request = f'https://www.revolveclothing.ru/r/dialog/QuickView.jsp?fmt=plp&code={href.split("/")[3]}'
 
-                if Keywords.check(name.lower()):
+                if Keywords.check(href.lower(), divider='-'):
 
                     try:
                         if HashStorage.check_target(api.Target('https://www.revolveclothing.ru' +
-                                                               link, self.name, 0).hash()):
+                                                               href, self.name, 0).hash()):
 
                             ok, page_response = self.provider.request(
-                                'https://www.revolveclothing.ru' + element.get('href'),
+                                link_to_request,
                                 headers={'user-agent': self.user_agent})
 
                             if not ok:
@@ -76,25 +78,26 @@ class Parser(api.Parser):
                             page_content = etree.HTML(page_response.text)
 
                             sizes = [api.Size(f"{size.get('value')} [{size.get('data-qty')}]")
-                                     for size in page_content.xpath('//ul[@class="size-options"]/li/input')
+                                     for size in page_content.xpath('//input[@class="size-options__radio '
+                                                                    'size-clickable"]')
                                      if int(size.get('data-qty')) > 0]
-                            name = page_content.xpath('//meta[@name="twitter:title"]')[0].get('content')
 
                             HashStorage.add_target(api.Target('https://www.revolveclothing.ru'
-                                                              + link, self.name, 0).hash())
+                                                              + href, self.name, 0).hash())
 
                             if sizes:
                                 result.append(
                                     IRelease(
-                                        'https://www.revolveclothing.ru' + link,
+                                        'https://www.revolveclothing.ru' + href,
                                         'revolveclothing',
-                                        name,
-                                        page_content.xpath('//meta[@property="og:image"]')[0].get('content'),
+                                        page_content.xpath('//h2[@property="name"]')[0].text,
+                                        page_content.xpath('//div[@class="js-carousel__track"]/div/img')[0].get('src'),
                                         'DELIVERY FROM $100 IS FREE',
                                         api.Price(
-                                            api.CURRENCIES['USD'],
-                                            float(page_content.xpath('//meta[@property="wanelo:product:price"]')[0].get(
-                                                'content'))
+                                            api.CURRENCIES['RUB'],
+                                            float(page_content.xpath('/html/body/div/div[2]/div[2]/div[1]/div['
+                                                                     '2]/div/span')[0]
+                                                  .text.replace(',', '').replace('₽', ''))
                                         ),
                                         api.Sizes(api.SIZE_TYPES[''], sizes),
                                         [
