@@ -97,7 +97,7 @@ class Parser(api.Parser):
                                             api.CURRENCIES['RUB'],
                                             float(page_content.xpath('/html/body/div/div[2]/div[2]/div[1]/div['
                                                                      '2]/div/span')[0]
-                                                  .text.replace(',', '').replace('₽', ''))
+                                                  .text.replace(',', '.')[:-1])
                                         ),
                                         api.Sizes(api.SIZE_TYPES[''], sizes),
                                         [
