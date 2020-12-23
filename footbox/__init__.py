@@ -83,7 +83,7 @@ class Parser(api.Parser):
                                           [api.Size(size.text)
                                            for size in element_html.xpath('//select[@class="form-control '
                                                                           'custom-select custom-select-lg '
-                                                                          'mb-3"]/option') if size]
+                                                                          'mb-3"]/option') if size is not None]
                                           )
                         result.append(
                             IRelease(
