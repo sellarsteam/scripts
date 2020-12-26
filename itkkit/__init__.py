@@ -14,7 +14,7 @@ from user_agent import generate_user_agent
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
 
-SIZES = ["4 US", "4.5 US", "5 US",, "5.5 US", "6 US", "6.5 US", "7 US", "7.5 US", "8 US", "8.5 US", "9 US", "9.5 US",
+SIZES = ["4 US", "4.5 US", "5 US", "5.5 US", "6 US", "6.5 US", "7 US", "7.5 US", "8 US", "8.5 US", "9 US", "9.5 US",
          "10 US", "10.5 US", "11 US", "11.5 US", "12 US", "12.5 US", "13 US", "13.5 US", "14 US", "14.5 US",
          "15 US", "15.5 US", "16 US", "16.5 US", "17 US", "17.5 US", "18.5 US", "19 US"]
 
