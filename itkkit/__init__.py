@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from json import dumps
 from typing import List, Union
 
 from lxml import etree
@@ -13,11 +14,16 @@ from user_agent import generate_user_agent
 from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
 
+SIZES = ["4 US", "4.5 US", "5 US",, "5.5 US", "6 US", "6.5 US", "7 US", "7.5 US", "8 US", "8.5 US", "9 US", "9.5 US",
+         "10 US", "10.5 US", "11 US", "11.5 US", "12 US", "12.5 US", "13 US", "13.5 US", "14 US", "14.5 US",
+         "15 US", "15.5 US", "16 US", "16.5 US", "17 US", "17.5 US", "18.5 US", "19 US"]
+
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://www.itkkit.ru/catalog/footwear/sneakers/?FILTER=247748'
+        self.link: str = 'https://www.itkkit.ru/catalog/footwear/sneakers/?FILTER=255348'
+
         self.headers = {
             'Host': 'www.itkkit.ru',
             'User-Agent': generate_user_agent(),
@@ -28,6 +34,10 @@ class Parser(api.Parser):
             'Origin': 'https://www.itkkit.ru',
             'Connection': 'keep-alive',
         }
+
+        self.data = {"Form data": {"FILTER[PROP][CML2_MANUFACTURER][]": ["152261", "144643", "53371"],
+                                   "FILTER[SECTION][]": "347", "FILTER[PRICE][MIN]": "1200",
+                                   "FILTER[PRICE][MAX]": "65000", "money_man": ""}}
 
     @property
     def catalog(self) -> CatalogType:
@@ -45,7 +55,8 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            ok, response = self.provider.request(url=self.link, headers=self.headers, proxy=True)
+            ok, response = self.provider.request(url=self.link, headers=self.headers, proxy=True,
+                                                 data=dumps(self.data), method='post')
 
             if not ok:
 
@@ -58,10 +69,10 @@ class Parser(api.Parser):
                     raise result
 
             catalog = [element for element in etree.HTML(response.text).xpath(
-                    '//a[@class="catalog-item catalog-item--compact link link--primary"]')]
+                '//a[@class="catalog-item catalog-item--compact link link--primary"]')]
 
             if not catalog:
-                return [api.CInterval(self.name, 500), api.MAlert('Script go to sleep', self.name)]
+                return [api.CInterval(self.name, 500), api.MAlert('Script go to sleep (Empty Catalog)', self.name)]
 
             for element in catalog:
 
@@ -69,7 +80,7 @@ class Parser(api.Parser):
                 name = f'{parts_of_name[0].text} {parts_of_name[1].text.split("] ")[-1]}'
 
                 if Keywords.check(name.lower()):
-
+                    id = int(element.get('href').split('/')[3].split('_')[0])
                     try:
                         if HashStorage.check_target(
                                 api.Target('https://www.itkkit.ru' + element.get('href'), self.name, 0).hash()):
@@ -117,14 +128,16 @@ class Parser(api.Parser):
                                 )
                             )
                             continue
+                        sizes = []
+                        for size in sizes_data.split(' US '):
+                            size_text = size.replace(' US', '').replace(',', '.') + ' US'
+                            try:
+                                num = SIZES.index(size_text) + 1
+                                sizes.append(api.Size(size_text, f'http://static.sellars.cf/links?site=itkkit&id={int(id) + num}'))
+                            except IndexError:
+                                sizes.append(api.Size(size_text))
 
-                        sizes = api.Sizes(
-                            api.SIZE_TYPES[''],
-                            [
-                                api.Size(size.replace(' US', '') + ' US')
-                                for size in sizes_data.split(' US ')
-                            ]
-                        )
+                        sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
 
                         result.append(
                             IRelease(
