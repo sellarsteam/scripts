@@ -1,0 +1,5 @@
+name: zalando
+core: ^0.9
+version: 1.0.0rc2
+keep: yes
+max-errors: 1
