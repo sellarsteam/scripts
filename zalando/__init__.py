@@ -1,6 +1,3 @@
-import os
-
-from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from ujson import loads
@@ -10,58 +7,23 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
 from source.library import SubProvider, Keywords
-from source.tools import LinearSmart, ScriptStorage
+from source.tools import ScriptStorage
+
+CURL_REQUESTS = {
+    'de_mens_j': "curl -s 'https://en.zalando.de/api/catalog/articles?brands=JOC&categories=mens-shoes&limit=84&offset=0' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://en.zalando.de/mens-shoes/' -H 'x-zalando-octopus-tests: %5B%7B%22testName%22%3A%22cyberweek-gradient%22%2C%22testVariant%22%3A%22Without%20gradient%20background%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22blackfriday-gradient%22%2C%22testVariant%22%3A%22WITHOUT_GRADIENT_BACKGROUND%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22native-image-lazy-loading%22%2C%22testVariant%22%3A%22LAZY_LOADING%22%2C%22testFeedbackId%22%3A%220e15aaf1-8c5c-4be2-98bf-6eda22d1c358%3A%22%7D%5D' -H 'x-zalando-catalog-nakadi-context: %7B%22previous_categories%22%3A%5B%22mens-shoes%22%5D%2C%22previous_selected_filters%22%3A%5B%5D%2C%22preselected_filters%22%3A%5B%5D%7D' -H 'x-zalando-catalog-label: true' -H 'x-xsrf-token: AAAAAGhKyaSyR5AQrMj5aOped6fJK965uwinhmmKQz7gT_0G7DwTcFC0EFb4eRQQySNmQ23i2SgeMOAa7qcBSfYDU0GfgXKDRB6UpmAgV5IJJ1eEyHG6K5cRPCG-XBaXLfIOcgkihiXRL1ONJ2pzb_Y=' -H 'Connection: keep-alive' -H 'Cookie: _abck=8EDC4D85739098B4B56F8B29D951C55B~-1~YAAQTtjdWH9aWgx3AQAAlvfNEwW/LjxT5ZimtMXnv8tKV3KKaX0dB6nMuUyWzZ++uAZXxRWAK1tbauGRHmmbPaZP4TEdvzNmbE80rlpKk0RRfGOVrNnIidrJzvjpCwJIr8yFweHXdYCPGi4mAJrkEZkB9X4sthYRhs32gnfiGDnsxlk2RFP48ypbiTEEr/rx6bIodfNQ+Sw2A6BkEo4DV4jea8r7VY5HYQ9d6oVqCjyyZSyonlyifJl+UPOBXOvhi5h1d64GrL3grHG7Sg6SmP4LPHRrKagdrKWT+UK008/Qoi2TCYSmM6FF9cAx7Tcu9a9P3Gb4YW2bBQk73bAaYqj8BfVnjFWPBjmRjTXD9iLNDAJO86u+Jt0qqjG2WdQa7MIS+4kbIVbHqAkl5LcKUoWuzy/woeNP/3hB7eMtmW3WLEPP/17qGuhzfn4EGfAqCTy/G/JBUCTIapps4tQ7K3o1cDpYig==~-1~-1~-1; Zalando-Client-Id=bc8569bb-299b-49a0-8251-e027ab41b4b9; language-preference=en; ncx=m; _gcl_au=1.1.1962197817.1608985864; _ga=GA1.2.1549890469.1608985865; _fbp=fb.1.1608985865643.72093230; bm_sz=64A0EB2897ACE761D0B682250DDBEC6C~YAAQTtjdWMKpWQx3AQAAL3a6EwqMJ5VNua31LZhTVjG0igfDff2uu8mRvnAzaRJTwOPddjSJ5BgQnRnkDtQ0XXxD/o4MiUkeY4zRn63keZi6Av9/m9Fr3HLJzm5LOHEkEisfap8GszeRo3kEk0BFtirpoCCIUBHecuRkqIHa+ZgbIx/V6d8fBxKvCq0hGy7prbFZ/zVGEP7e/BqRnEwkqpbF3mAG131d7sYRJ3QTM/uueU0IxSRXYcPWXQk5JsL39VS90HxHbJuSsHcu9KWmrRjq9AdQ37i5vRsERbjH; ak_bmsc=85E313B41E587F49082E75657532869458DDD84EB2010000EB0C0560A8B62960~plIELqBzm4Xea18wo7cWcvS3g93+a0ZqvQfU7695epc9IQCrt0iSCR2YodVlXAREgrmzOdxib7myjZolhuiiYR0lQnS/QmQql/pn1j7fskI6jGq0xaW+cHQHxCr8Gh2wf7MQgRB8u+6EwnMCXle391trL/qC+j6kWk49EnmDxK5k338iKkBJXIxoV4m9E6g3pk7wfgCKOUpnBk9FFSo3HEGJvzhZCiP6jkM9TrtKbZvuzf3arklH67p1mCrTFXW7Ev; frsx=AAAAAGhKyaSyR5AQrMj5aOped6fJK965uwinhmmKQz7gT_0G7DwTcFC0EFb4eRQQySNmQ23i2SgeMOAa7qcBSfYDU0GfgXKDRB6UpmAgV5IJJ1eEyHG6K5cRPCG-XBaXLfIOcgkihiXRL1ONJ2pzb_Y=; mpulseinject=false; bm_mi=F3D85905290B4132D706FB6091AC3DDE~Kzqg5WyPKzCAuyJ6sXOoy/0JaL675GZDupLgneii3Golzs3y8tSHqc3D3PA5vOIOYpQ6M1WWryNH7SBbf1Vrf5g+WIIkzMEfYa6I+WNBkmOLez1h2y8DulfYop50xLLxMNXHSXrBxsSBUd8wvH1AfQ6KAH+tbyfn9WlV34VVmt4yDwwbVIpIS2gJSl65g2+vMgVA3eZ1NVHJJLcBRBV6HH2ixW1dx9AV5hQohEvp3UsMddOPLAJ/UHHjFi+//rDMp/+cLj06g6o2KD3LFjGyO9NvuVX4y6udQJWX2jrtDnU=; bm_sv=D941AB05227E688EDF36D8736259F8FD~Mc8KvzVe1LBidJInHjcqoRGmkbZLcdJRCPcAnY16h67bW7Gab0uZHGGINvuUWQXk1wlGfvJY+IJBTNO7JIbO8y6qiXYV76x1ZxyaIX4W7C+IjoIY5fsMjQFradstqxX6BsHRq1272GL8ztVkcReaOCy1/PmZHB/cX2ICjMdG2UA=; sqt_cap=1610943723901; _gid=GA1.2.1996901446.1610943742; PESSIONID=z1mb823bvx92aa-z1pu6tdei3tgyr-zvym8iv; CUSTOMER=GzMrtc9tEOfqnu8InIjihDpkZ3f0IJZKSKvmnroXpYoYU7SDo2TSBBGNC+E6+gQ+eeS6YeUH94BOPEGjFylEz302Yz6XI9znfPQLf8o8juITW9xOT4GoOobJgIAbc4C7R8bEOvhOCwPYZmhoKLojxvgVMmhzBe/Y9vD5UTRbhS5xwRPflsrZ5uur9KlrYQzzWe2T0RP/37wYU7SDo2TSBPgVMmhzBe/YMOf/HxQWG2E=; ngktz=ng_jimmy; _gat_UA-5362052-1=1; _gat_zalga=1; 07aa3292-fabd-40ba-950e-ba9e7647d7c5=IF_CATALOG_DISABLED' -H 'If-None-Match: W/\"317a5-zwdAQ4qhxaZntaNXwmAyks4UQWM\"' -H 'TE: Trailers'",
+    'de_mens_n': "curl -s 'https://en.zalando.de/api/catalog/articles?brand_families=NIKE&brands=NS4&brands=NI1&categories=mens-shoes&limit=84&offset=0' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://en.zalando.de/mens-shoes/jordan/' -H 'x-zalando-octopus-tests: %5B%7B%22testName%22%3A%22cyberweek-gradient%22%2C%22testVariant%22%3A%22Without%20gradient%20background%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22blackfriday-gradient%22%2C%22testVariant%22%3A%22WITHOUT_GRADIENT_BACKGROUND%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22native-image-lazy-loading%22%2C%22testVariant%22%3A%22LAZY_LOADING%22%2C%22testFeedbackId%22%3A%220e15aaf1-8c5c-4be2-98bf-6eda22d1c358%3A%22%7D%5D' -H 'x-zalando-catalog-nakadi-context: %7B%22previous_categories%22%3A%5B%22mens-shoes%22%5D%2C%22previous_selected_filters%22%3A%5B%7B%22key%22%3A%22brands%22%2C%22values%22%3A%5B%22JOC%22%5D%2C%22kind%22%3A%22values%22%7D%5D%2C%22preselected_filters%22%3A%5B%5D%7D' -H 'x-zalando-catalog-label: true' -H 'x-xsrf-token: AAAAAGhKyaSyR5AQrMj5aOped6fJK965uwinhmmKQz7gT_0G7DwTcFC0EFb4eRQQySNmQ23i2SgeMOAa7qcBSfYDU0GfgXKDRB6UpmAgV5IJJ1eEyHG6K5cRPCG-XBaXLfIOcgkihiXRL1ONJ2pzb_Y=' -H 'Connection: keep-alive' -H 'Cookie: _abck=8EDC4D85739098B4B56F8B29D951C55B~-1~YAAQddjdWOeWk/12AQAABODQEwU3jAWr/zGJq9mNcCubcFWx2NEZCKOIR35guCqWYJfkzXTHeJRTbIQsTffs4IoXhE+X0wM5t68rzbXFuR3/xQmoEDq7NUtG/kQ0sTjA/+AaEnPvBFzVTXMhMW9H5veez2HTPJpZmEXF0r+5sh0pa8Gn4x+tRuC/IHgSkjwnKovGG4GnntSds5+G+w3Mx502FTW9Rw2cVK9NLAg2KLkY6BdXmTPfkD9RQlw9YuM5H7DabMO2eQcqyy7tqeijIiBY2uQgWu76azUG1Aq9NocscwlWS028v2yNA7ZyX3RZUnxoDdtV0K3qbkFbZMYilpiNfLSaAVDTNxkC6PEzOmPrm0nEC+xqr4NLELDR76Om4XiLlPYqOGKsKSaTgljOnVbmNC67glHiw02OG124nqQtMIeE2uJApXK/Q7BeQNATKLnKm14wrwDpd3yl/qoG5tXtXnACxQ==~-1~-1~-1; Zalando-Client-Id=bc8569bb-299b-49a0-8251-e027ab41b4b9; language-preference=en; ncx=m; _gcl_au=1.1.1962197817.1608985864; _ga=GA1.2.1549890469.1608985865; _fbp=fb.1.1608985865643.72093230; bm_sz=64A0EB2897ACE761D0B682250DDBEC6C~YAAQTtjdWMKpWQx3AQAAL3a6EwqMJ5VNua31LZhTVjG0igfDff2uu8mRvnAzaRJTwOPddjSJ5BgQnRnkDtQ0XXxD/o4MiUkeY4zRn63keZi6Av9/m9Fr3HLJzm5LOHEkEisfap8GszeRo3kEk0BFtirpoCCIUBHecuRkqIHa+ZgbIx/V6d8fBxKvCq0hGy7prbFZ/zVGEP7e/BqRnEwkqpbF3mAG131d7sYRJ3QTM/uueU0IxSRXYcPWXQk5JsL39VS90HxHbJuSsHcu9KWmrRjq9AdQ37i5vRsERbjH; ak_bmsc=85E313B41E587F49082E75657532869458DDD84EB2010000EB0C0560A8B62960~plIELqBzm4Xea18wo7cWcvS3g93+a0ZqvQfU7695epc9IQCrt0iSCR2YodVlXAREgrmzOdxib7myjZolhuiiYR0lQnS/QmQql/pn1j7fskI6jGq0xaW+cHQHxCr8Gh2wf7MQgRB8u+6EwnMCXle391trL/qC+j6kWk49EnmDxK5k338iKkBJXIxoV4m9E6g3pk7wfgCKOUpnBk9FFSo3HEGJvzhZCiP6jkM9TrtKbZvuzf3arklH67p1mCrTFXW7Ev; frsx=AAAAAGhKyaSyR5AQrMj5aOped6fJK965uwinhmmKQz7gT_0G7DwTcFC0EFb4eRQQySNmQ23i2SgeMOAa7qcBSfYDU0GfgXKDRB6UpmAgV5IJJ1eEyHG6K5cRPCG-XBaXLfIOcgkihiXRL1ONJ2pzb_Y=; mpulseinject=false; bm_mi=F3D85905290B4132D706FB6091AC3DDE~Kzqg5WyPKzCAuyJ6sXOoy/0JaL675GZDupLgneii3Golzs3y8tSHqc3D3PA5vOIOYpQ6M1WWryNH7SBbf1Vrf5g+WIIkzMEfYa6I+WNBkmOLez1h2y8DulfYop50xLLxMNXHSXrBxsSBUd8wvH1AfQ6KAH+tbyfn9WlV34VVmt4yDwwbVIpIS2gJSl65g2+vMgVA3eZ1NVHJJLcBRBV6HH2ixW1dx9AV5hQohEvp3UsMddOPLAJ/UHHjFi+//rDMp/+cLj06g6o2KD3LFjGyO9NvuVX4y6udQJWX2jrtDnU=; bm_sv=D941AB05227E688EDF36D8736259F8FD~Mc8KvzVe1LBidJInHjcqoRGmkbZLcdJRCPcAnY16h67bW7Gab0uZHGGINvuUWQXk1wlGfvJY+IJBTNO7JIbO8y6qiXYV76x1ZxyaIX4W7C/8DfyXWUjcSyWmH1rKlno1cQ5d/QK4D3SCW8byS46WnG+wQzmPZR/GHq/wK6s8rYQ=; sqt_cap=1610943723901; _gid=GA1.2.1996901446.1610943742; PESSIONID=z1mb823bvx92aa-z1pu6tdei3tgyr-zvym8iv; CUSTOMER=GzMrtc9tEOfqnu8InIjihDpkZ3f0IJZKSKvmnroXpYoYU7SDo2TSBBGNC+E6+gQ+eeS6YeUH94BOPEGjFylEz302Yz6XI9znfPQLf8o8juITW9xOT4GoOobJgIAbc4C7R8bEOvhOCwPYZmhoKLojxvgVMmhzBe/Y9vD5UTRbhS5xwRPflsrZ5uur9KlrYQzzWe2T0RP/37wYU7SDo2TSBPgVMmhzBe/YMOf/HxQWG2E=; ngktz=ng_jimmy; _gat_zalga=1' -H 'TE: Trailers'",
+    'de_womens_j': "curl -s 'https://en.zalando.de/api/catalog/articles?brands=JOC&categories=womens-shoes&limit=84&offset=0' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://en.zalando.de/womens-shoes/' -H 'x-zalando-octopus-tests: %5B%7B%22testName%22%3A%22cyberweek-gradient%22%2C%22testVariant%22%3A%22Without%20gradient%20background%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22blackfriday-gradient%22%2C%22testVariant%22%3A%22WITHOUT_GRADIENT_BACKGROUND%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22native-image-lazy-loading%22%2C%22testVariant%22%3A%22LAZY_LOADING%22%2C%22testFeedbackId%22%3A%220e15aaf1-8c5c-4be2-98bf-6eda22d1c358%3A%22%7D%5D' -H 'x-zalando-catalog-nakadi-context: %7B%22previous_categories%22%3A%5B%22womens-shoes%22%5D%2C%22previous_selected_filters%22%3A%5B%5D%2C%22preselected_filters%22%3A%5B%5D%7D' -H 'x-zalando-catalog-label: true' -H 'x-xsrf-token: AAAAACK5b4qIFIDr6BYf5s5WHcwa17kZiC94Iq9aLR7jRL3H-5FpmcSbgblc7ChxPkdS0-JSLQ5CcRQpAQFgUnEztdhrNAAAGXDkI2eYWYMSrD_Krc5n7FiFip671QK1_VmfmNcdXOfal3zyf3piE3Q=' -H 'Connection: keep-alive' -H 'Cookie: _abck=8EDC4D85739098B4B56F8B29D951C55B~-1~YAAQjdjdWC9lDQF3AQAAUprSEwWyTljnY7eVw4VCHV5JDzne+ZAKdt3YHbtzxfUvG9cUh7EIsp/Uq1VDVRgrCWCh3EPWP1hK8TA9/AHCBrDElkUdl+HyFBAwdco0vkDTPlXPtY5eoCWs850HRcTd1Rx9QFaz36InZDYQJzCen1PwKPKdpBCYZfexXTN58Z7f4ruYZcS3qkwrgdutJDds2JeuEAds45L9o483jto9+Yy9+lv8ZHJMsm0mPccEEdjrtG2YQHWz7tR/cGC3FISI6lzQBPdpvj+YrIQUkxxt2I7cVkfE5uG3QisOnzrjg1Z9W54XXAoMaRRwTWQD7o26WByuj8FWDrFbS/Sh3VizFb8R9RcbY94Ri+MgIYNol6kG4cmvO/SYMfGMGhHkPy69viB+rvCHTgOT9l4UBrEpea9/aOD+c/RB/FNTOpFPTUYR1YGiKnS0/ESOZpXTWwxWI80Jfu/jGw==~-1~-1~-1; Zalando-Client-Id=bc8569bb-299b-49a0-8251-e027ab41b4b9; language-preference=en; ncx=f; _gcl_au=1.1.1962197817.1608985864; _ga=GA1.2.1549890469.1608985865; _fbp=fb.1.1608985865643.72093230; bm_sz=64A0EB2897ACE761D0B682250DDBEC6C~YAAQTtjdWMKpWQx3AQAAL3a6EwqMJ5VNua31LZhTVjG0igfDff2uu8mRvnAzaRJTwOPddjSJ5BgQnRnkDtQ0XXxD/o4MiUkeY4zRn63keZi6Av9/m9Fr3HLJzm5LOHEkEisfap8GszeRo3kEk0BFtirpoCCIUBHecuRkqIHa+ZgbIx/V6d8fBxKvCq0hGy7prbFZ/zVGEP7e/BqRnEwkqpbF3mAG131d7sYRJ3QTM/uueU0IxSRXYcPWXQk5JsL39VS90HxHbJuSsHcu9KWmrRjq9AdQ37i5vRsERbjH; ak_bmsc=85E313B41E587F49082E75657532869458DDD84EB2010000EB0C0560A8B62960~plIELqBzm4Xea18wo7cWcvS3g93+a0ZqvQfU7695epc9IQCrt0iSCR2YodVlXAREgrmzOdxib7myjZolhuiiYR0lQnS/QmQql/pn1j7fskI6jGq0xaW+cHQHxCr8Gh2wf7MQgRB8u+6EwnMCXle391trL/qC+j6kWk49EnmDxK5k338iKkBJXIxoV4m9E6g3pk7wfgCKOUpnBk9FFSo3HEGJvzhZCiP6jkM9TrtKbZvuzf3arklH67p1mCrTFXW7Ev; frsx=AAAAACK5b4qIFIDr6BYf5s5WHcwa17kZiC94Iq9aLR7jRL3H-5FpmcSbgblc7ChxPkdS0-JSLQ5CcRQpAQFgUnEztdhrNAAAGXDkI2eYWYMSrD_Krc5n7FiFip671QK1_VmfmNcdXOfal3zyf3piE3Q=; mpulseinject=false; bm_mi=F3D85905290B4132D706FB6091AC3DDE~Kzqg5WyPKzCAuyJ6sXOoy/0JaL675GZDupLgneii3Golzs3y8tSHqc3D3PA5vOIOYpQ6M1WWryNH7SBbf1Vrf5g+WIIkzMEfYa6I+WNBkmOLez1h2y8DulfYop50xLLxMNXHSXrBxsSBUd8wvH1AfQ6KAH+tbyfn9WlV34VVmt4yDwwbVIpIS2gJSl65g2+vMgVA3eZ1NVHJJLcBRBV6HH2ixW1dx9AV5hQohEvp3UsMddOPLAJ/UHHjFi+//rDMp/+cLj06g6o2KD3LFjGyO9NvuVX4y6udQJWX2jrtDnU=; bm_sv=D941AB05227E688EDF36D8736259F8FD~Mc8KvzVe1LBidJInHjcqoRGmkbZLcdJRCPcAnY16h67bW7Gab0uZHGGINvuUWQXk1wlGfvJY+IJBTNO7JIbO8y6qiXYV76x1ZxyaIX4W7C+l+V/JVRL5osHtq3VB9W/ZzBGRcvhXAO9mfXAk2YYLKQNENpky6eBRXEaNxToA3Rc=; sqt_cap=1610943723901; _gid=GA1.2.1996901446.1610943742; PESSIONID=z1mb823bvx92aa-z1pu6tdei3tgyr-zvym8iv; CUSTOMER=GzMrtc9tEOfqnu8InIjihDpkZ3f0IJZKSKvmnroXpYoYU7SDo2TSBBGNC+E6+gQ+eeS6YeUH94BOPEGjFylEz302Yz6XI9znfPQLf8o8juITW9xOT4GoOobJgIAbc4C7R8bEOvhOCwPYZmhoKLojxvgVMmhzBe/Y9vD5UTRbhS5xwRPflsrZ5uur9KlrYQzzWe2T0RP/37wYU7SDo2TSBPgVMmhzBe/YMOf/HxQWG2E=; ngktz=ng_jimmy; _gat_zalga=1; 07aa3292-fabd-40ba-950e-ba9e7647d7c5=IF_CATALOG_DISABLED' -H 'TE: Trailers'",
+    'de_womens_n': "curl -s 'https://en.zalando.de/api/catalog/articles?brand_families=NIKE&brands=N12&brands=NS4&brands=NI1&categories=womens-shoes&limit=84&offset=0' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H 'Referer: https://en.zalando.de/womens-shoes/jordan/' -H 'x-zalando-octopus-tests: %5B%7B%22testName%22%3A%22cyberweek-gradient%22%2C%22testVariant%22%3A%22Without%20gradient%20background%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22blackfriday-gradient%22%2C%22testVariant%22%3A%22WITHOUT_GRADIENT_BACKGROUND%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22native-image-lazy-loading%22%2C%22testVariant%22%3A%22LAZY_LOADING%22%2C%22testFeedbackId%22%3A%220e15aaf1-8c5c-4be2-98bf-6eda22d1c358%3A%22%7D%5D' -H 'x-zalando-catalog-nakadi-context: %7B%22previous_categories%22%3A%5B%22womens-shoes%22%5D%2C%22previous_selected_filters%22%3A%5B%7B%22key%22%3A%22brands%22%2C%22values%22%3A%5B%22JOC%22%5D%2C%22kind%22%3A%22values%22%7D%5D%2C%22preselected_filters%22%3A%5B%5D%7D' -H 'x-zalando-catalog-label: true' -H 'x-xsrf-token: AAAAACK5b4qIFIDr6BYf5s5WHcwa17kZiC94Iq9aLR7jRL3H-5FpmcSbgblc7ChxPkdS0-JSLQ5CcRQpAQFgUnEztdhrNAAAGXDkI2eYWYMSrD_Krc5n7FiFip671QK1_VmfmNcdXOfal3zyf3piE3Q=' -H 'Connection: keep-alive' -H 'Cookie: _abck=8EDC4D85739098B4B56F8B29D951C55B~-1~YAAQZ9jdWOKfkNt2AQAAMk3TEwUjsliC50171U2YCJer9HiP/y6/bYzRc9jHseY4mZH0zJXOusS3RMpiT4zLZDmN8KvEEnaO1W2KCWS1JdNhoIZ8jE5GS61GU8veVtNN3ZTWB+V5ftKFCQWJbL5vF3DD7N1W0oZc25xCKW9TU4iBp1LIfy8bOVXXcb7T4qUQllMJBzVvowpsTmIL8Eph/ksjCm4Fv48e/MpXxS7gRfjkbMF9QJUvBcSEpLRbEz2tCHj5UaU481gHf251O9s8y1peN8pQt0h9XC6uqDqnLKS8Ks2cT55Emb85FlbVaPDKCGYzx41NJY7yRdwSMZIMOLntZD0zOPQMcgtP5TS1YKaxVLdjv47k935GCzUTM1VYwdDDA5F2BsudCY0N4X6RMT9x1K/wiYdBpDPptQXP8GujD6pgFqimHhG/roMTX0nEOSBjcWDw6HCJKnjrGHd7QZIHJUqeXA==~-1~-1~-1; Zalando-Client-Id=bc8569bb-299b-49a0-8251-e027ab41b4b9; language-preference=en; ncx=f; _gcl_au=1.1.1962197817.1608985864; _ga=GA1.2.1549890469.1608985865; _fbp=fb.1.1608985865643.72093230; bm_sz=64A0EB2897ACE761D0B682250DDBEC6C~YAAQTtjdWMKpWQx3AQAAL3a6EwqMJ5VNua31LZhTVjG0igfDff2uu8mRvnAzaRJTwOPddjSJ5BgQnRnkDtQ0XXxD/o4MiUkeY4zRn63keZi6Av9/m9Fr3HLJzm5LOHEkEisfap8GszeRo3kEk0BFtirpoCCIUBHecuRkqIHa+ZgbIx/V6d8fBxKvCq0hGy7prbFZ/zVGEP7e/BqRnEwkqpbF3mAG131d7sYRJ3QTM/uueU0IxSRXYcPWXQk5JsL39VS90HxHbJuSsHcu9KWmrRjq9AdQ37i5vRsERbjH; ak_bmsc=85E313B41E587F49082E75657532869458DDD84EB2010000EB0C0560A8B62960~plIELqBzm4Xea18wo7cWcvS3g93+a0ZqvQfU7695epc9IQCrt0iSCR2YodVlXAREgrmzOdxib7myjZolhuiiYR0lQnS/QmQql/pn1j7fskI6jGq0xaW+cHQHxCr8Gh2wf7MQgRB8u+6EwnMCXle391trL/qC+j6kWk49EnmDxK5k338iKkBJXIxoV4m9E6g3pk7wfgCKOUpnBk9FFSo3HEGJvzhZCiP6jkM9TrtKbZvuzf3arklH67p1mCrTFXW7Ev; frsx=AAAAACK5b4qIFIDr6BYf5s5WHcwa17kZiC94Iq9aLR7jRL3H-5FpmcSbgblc7ChxPkdS0-JSLQ5CcRQpAQFgUnEztdhrNAAAGXDkI2eYWYMSrD_Krc5n7FiFip671QK1_VmfmNcdXOfal3zyf3piE3Q=; mpulseinject=false; bm_mi=F3D85905290B4132D706FB6091AC3DDE~Kzqg5WyPKzCAuyJ6sXOoy/0JaL675GZDupLgneii3Golzs3y8tSHqc3D3PA5vOIOYpQ6M1WWryNH7SBbf1Vrf5g+WIIkzMEfYa6I+WNBkmOLez1h2y8DulfYop50xLLxMNXHSXrBxsSBUd8wvH1AfQ6KAH+tbyfn9WlV34VVmt4yDwwbVIpIS2gJSl65g2+vMgVA3eZ1NVHJJLcBRBV6HH2ixW1dx9AV5hQohEvp3UsMddOPLAJ/UHHjFi+//rDMp/+cLj06g6o2KD3LFjGyO9NvuVX4y6udQJWX2jrtDnU=; bm_sv=D941AB05227E688EDF36D8736259F8FD~Mc8KvzVe1LBidJInHjcqoRGmkbZLcdJRCPcAnY16h67bW7Gab0uZHGGINvuUWQXk1wlGfvJY+IJBTNO7JIbO8y6qiXYV76x1ZxyaIX4W7C8if0gkKXhVH/ZW++xiu05HNvA2aJkr0btE+ImELtyWySKf8FBub5kdP4p+jTBjRpQ=; sqt_cap=1610943723901; _gid=GA1.2.1996901446.1610943742; PESSIONID=z1mb823bvx92aa-z1pu6tdei3tgyr-zvym8iv; CUSTOMER=GzMrtc9tEOfqnu8InIjihDpkZ3f0IJZKSKvmnroXpYoYU7SDo2TSBBGNC+E6+gQ+eeS6YeUH94BOPEGjFylEz302Yz6XI9znfPQLf8o8juITW9xOT4GoOobJgIAbc4C7R8bEOvhOCwPYZmhoKLojxvgVMmhzBe/Y9vD5UTRbhS5xwRPflsrZ5uur9KlrYQzzWe2T0RP/37wYU7SDo2TSBPgVMmhzBe/YMOf/HxQWG2E=; ngktz=ng_jimmy; 07aa3292-fabd-40ba-950e-ba9e7647d7c5=IF_CATALOG_DISABLED; _gat_zalga=1' -H 'TE: Trailers'"
+}
 
 
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = "curl -s 'https://en.zalando.de/api/catalog/articles?brands=JOC&categories=mens-shoes&limit=84" \
-                         "&offset=0' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 " \
-                         "Firefox/71.0' -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.5' --compressed -H " \
-                         "'Referer: https://en.zalando.de/mens-shoes/jordan.nike-sb/' -H 'x-zalando-octopus-tests: " \
-                         "%5B%7B%22testName%22%3A%22cyberweek-gradient%22%2C%22testVariant%22%3A%22Without%20gradient" \
-                         "%20background%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000-000000000000" \
-                         "%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22blackfriday-gradient%22%2C%22testVariant%22%3A" \
-                         "%22WITHOUT_GRADIENT_BACKGROUND%22%2C%22testFeedbackId%22%3A%2200000000-0000-0000-0000" \
-                         "-000000000000%3A__EMPTY__%22%7D%2C%7B%22testName%22%3A%22native-image-lazy-loading%22%2C" \
-                         "%22testVariant%22%3A%22LAZY_LOADING%22%2C%22testFeedbackId%22%3A%220e15aaf1-8c5c-4be2-98bf" \
-                         "-6eda22d1c358%3A%22%7D%5D' -H 'x-zalando-catalog-nakadi-context: " \
-                         "%7B%22previous_categories%22%3A%5B%22mens-shoes%22%5D%2C%22previous_selected_filters%22%3A" \
-                         "%5B%7B%22key%22%3A%22brands%22%2C%22values%22%3A%5B%22JOC%22%2C%22NS4%22%5D%2C%22kind%22%3A" \
-                         "%22values%22%7D%5D%2C%22preselected_filters%22%3A%5B%5D%7D' -H 'x-zalando-catalog-label: " \
-                         "true' -H 'x-xsrf-token: " \
-                         "AAAAAKVFPSKQbLoY9slxgLjTdvO4wf6nVTXgrLB7qronkrUXo8fCRJhVtOBtae3Tf2jsciYlVLC_" \
-                         "-5I7X33IWuv3QvfbgU671tCNLipYnkEllUWpgsPVfrwCXmq0F_cGgjhtOkeNAnKow-HIf8cJIA==' -H " \
-                         "'Connection: keep-alive' -H 'Cookie: " \
-                         "_abck=8EDC4D85739098B4B56F8B29D951C55B~-1~YAAQRVzaF913FRV2AQAAgHxZnwUIh5GqYypFE0cOft" \
-                         "+4kIRcgixi1OtyYsLSQBumjvMytgW0Ktu1b2K1AjR" \
-                         "+ESknVgayoOXcWHkT8GHgKkjt7T0jewxKUqbLlgjpMrMWXNBxwHsNxefMKgU7GFr" \
-                         "+tFQvYZjZJDmgfJJiJGdUW0Q368wPv/+jlBOJ10cDz34kSjivg2sr5LCFZSohoSzfnXE/6/GnvOehyycCcDFqc" \
-                         "/hjBIDPG6PjZgz6wX73jGHMmGUL5JHXrw1C0S/EjCFiG" \
-                         "/XKOGOteGhOq2ImDaklwDs9GiDB898w2pvr8MkfQ98yT2CYD1uOoSkqNzz" \
-                         "++Q9ZAWPBlCDNAyuMP15jGrPSseJWaX7zWOf1yi3wf8rZYdijg/2AB+Fuadlcspm6BwYPtdxaa91gNEl8QFxpynfLp" \
-                         "/w+YT4JEt0tVDQAm61IT73V4EVPXmJl2osvp4qiRA/TpLTOmXcQDw==~-1~-1~-1; fvgs_ml=mosaic; " \
-                         "Zalando-Client-Id=bc8569bb-299b-49a0-8251-e027ab41b4b9; language-preference=en; ncx=m; " \
-                         "_gcl_au=1.1.1962197817.1608985864; sqt_cap=1608985020007; _ga=GA1.2.1549890469.1608985865; " \
-                         "_gid=GA1.2.189735221.1608985865; _fbp=fb.1.1608985865643.72093230; " \
-                         "bm_sz=2373E9DF86CE7CCBBA2F878B5F0345F0" \
-                         "~YAAQRVzaFyFnFRV2AQAAv5dNnwqDTEvt7NcHf4Iu408IItUFveDFKLtab6ohnyX9KxIOa3Ydj1b9Jo7TmTE9Y" \
-                         "GB5gL9jYSgHVDCIm+3im7V1WZGOuY4+L0RnJEmwhWHBtZyWCO/kLWouRMAjOyOCM+Wimqqo2vzFH3sz87sNwz9+g" \
-                         "mvUVvbcqAWNI7eiJnQ/q504m28UB4LZ2/20SDQN9qBvMbSz9VPcv9efyq7RP6RTFMVqfbw82FUOHGg3izark9oSC" \
-                         "V8lTZ1nk8USN9D6sx1nIwFB9j3ZRpLI0IQ=; frsx=AAAAAKVFPSKQbLoY9slxgLjTdvO4wf6nVTXgrLB7qronkrU" \
-                         "Xo8fCRJhVtOBtae3Tf2jsciYlVLC_-5I7X33IWuv3QvfbgU671tCNLipYnkEllUWpgsPVfrwCXmq0F_cGgjhtOkeN" \
-                         "AnKow-HIf8cJIA==; mpulseinject=false; _gat_zalga=1' -H 'If-None-Match: W/\"11ff0-l+72Tcif" \
-                         "t2oJYz5HQOCT8dzbNIo\"' -H 'TE: Trailers' "
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
-
-    @staticmethod
-    def time_gen() -> float:
-        return (datetime.utcnow() + timedelta(minutes=1)) \
-            .replace(second=0, microsecond=250000, tzinfo=timezone.utc).timestamp()
+        return api.CInterval(self.name, 120000)
 
     def execute(
             self,
@@ -70,7 +32,12 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            output = subprocess.Popen(self.link, shell=True, stdout=subprocess.PIPE, bufsize=-1,
+            result.append(api.TInterval('de_mens_n', self.name, 0, 5))
+            result.append(api.TInterval('de_womens_n', self.name, 0, 5))
+            result.append(api.TInterval('de_womens_j', self.name, 0, 5))
+            result.append(api.TInterval('de_mens_j', self.name, 0, 5))
+        if mode == 1:
+            output = subprocess.Popen(CURL_REQUESTS[content.name], shell=True, stdout=subprocess.PIPE, bufsize=-1,
                                       stdin=None, stderr=None)
             response = output.communicate()[0]
 
@@ -84,9 +51,17 @@ class Parser(api.Parser):
                 link = f'https://en.zalando.de/{element["url_key"]}.html'
                 name = element["name"]
                 if Keywords.check(element["url_key"], divider='-') or Keywords.check(element["name"]):
-                    price = api.Price(api.CURRENCIES['EUR'],
-                                      float(element['price']['original'].replace(' ', '')
-                                            .replace(',', '.').replace('€', '')))
+                    if float(element['price']['original'].replace(' ', '').replace(',', '.').replace('€', '')) != \
+                            float(element['price']['promotional'].replace(' ', '').replace(',', '.').replace('€', '')):
+                        price = api.Price(api.CURRENCIES['EUR'],
+                                          float(element['price']['promotional'].replace(' ', '')
+                                                .replace(',', '.').replace('€', '')),
+                                          float(element['price']['original'].replace(' ', '').replace(',', '.')
+                                                .replace('€', '')))
+                    else:
+                        price = api.Price(api.CURRENCIES['EUR'],
+                                          float(element['price']['original'].replace(' ', '')
+                                                .replace(',', '.').replace('€', '')))
                     image = 'https://img01.ztat.net/article/' + element['media'][0]['path']
                     sizes = api.Sizes(api.SIZE_TYPES[''],
                                       [
@@ -96,7 +71,7 @@ class Parser(api.Parser):
                                       )
                     result.append(
                         IRelease(
-                            link + f'?shash={sizes.hash().hex()}',
+                            link + f'?shash={sizes.hash().hex()}&sprice={price.hash().hex()}',
                             'zalando',
                             name,
                             image,
@@ -111,9 +86,8 @@ class Parser(api.Parser):
                         )
                     )
 
-            if isinstance(content, api.CSmart):
+            if isinstance(content, api.TInterval):
                 if result or content.expired:
-                    content.gen.time = self.time_gen()
                     content.expired = False
                 result.append(content)
             else:
