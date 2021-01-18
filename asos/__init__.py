@@ -74,8 +74,8 @@ class Parser(api.Parser):
 
             catalog_0 = loads(response_0)
             catalog_1 = loads(response_1)
-
-            result.append(api.TScheduled(str(21398019), self.name, 0, 3))
+            for pid in self.pids:
+                result.append(api.TScheduled(str(pid), self.name, 0, time()))
 
             for c in catalog_0['products']:
                 if Keywords.check(c['name'].lower()):
