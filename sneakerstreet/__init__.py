@@ -15,7 +15,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://sneaker-street.ru/sneakers?bfilter=brand[adidas,jordan,nike]/gender[men]'
+        self.link: str = 'https://sneaker-street.ru/obuv?bfilter=brand[adidas,jordan,nike]/gender[women,men]'
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
 
     @property
@@ -84,7 +84,16 @@ class Parser(api.Parser):
                                                            '/span[@class="pli__main__price__old"]')
                                                 [0].text.replace(' ', '').replace('\n', '').replace('₽', '')))
 
-                    raw_sizes = [api.Size(size.text.replace('\n', ''))
+                    raw_sizes = [api.Size(size.text.replace('\n', ''),
+                                          "http://static.sellars.cf/links?site=sneakerstreet&product_id=" +
+                                          size.get('onclick').split('add(')[-1].replace(')', '').split(', ')[0] +
+                                          '&option1='
+                                          + size.get('onclick')
+                                          .split('add(')[-1]
+                                          .replace(')', '')
+                                          .split(', ')[-1].split(':')[0].replace('{', '').replace('\"', '')
+                                          + '&option2=' + size.get('onclick').split('add(')[-1].replace(')', '')
+                                          .split(', ')[-1].split(':')[-1].replace('}', '').replace('\"', ''))
                                  for size in item.xpath('div[@class="pli__options"]/button')]
 
                     sizes = api.Sizes(api.SIZE_TYPES[''], raw_sizes)
@@ -93,7 +102,7 @@ class Parser(api.Parser):
 
                     result.append(
                         IRelease(
-                            link + f'?shash={sizes.hash().hex()}',
+                            link + f'?shash={sizes.hash().hex()}&sprice={price.hash().hex()}',
                             'sneakerstreet',
                             name,
                             image,
