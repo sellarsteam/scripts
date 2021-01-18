@@ -1,10 +1,9 @@
+import subprocess
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from requests import exceptions
-from ujson import loads, dumps
+from ujson import loads
 
-from user_agent import generate_user_agent
 from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem
@@ -16,54 +15,45 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
         super().__init__(name, log, provider_, storage)
-        self.link: str = 'https://ko4w2gbink-dsn.algolia.net/1/indexes/*/queries?x-algolia-agent=Algolia%20for' \
-                         '%20JavaScript%20(3.35.1)%3B%20Browser&x-algolia-application-id=KO4W2GBINK&x-algolia-api-key' \
-                         '=dfa5df098f8d677dd2105ece472a44f8 '
-        self.post_data = {"requests": [{"indexName": "catalog_products_en",
-                                        "params": "analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D"
-                                                  "&page=0&facetFilters=%5B%5B%22categories%3AFootwear%22%5D%2C%5B"
-                                                  "%22websites_available_at%3A2%22%5D%2C%5B%22brand%3AAdidas%22%2C"
-                                                  "%22brand%3ANike%20SB%22%2C%22brand%3ANike%20Jordan%22%2C%22brand"
-                                                  "%3ANike%22%5D%5D&filters=&facets=%5B%22*%22%5D&hitsPerPage=120"
-                                                  "&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D"
-                                                  "&clickAnalytics=true"},
-                                       {"indexName": "catalog_products_en",
-                                        "params": "analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D"
-                                                  "&page=0&facetFilters=%5B%5B%22websites_available_at%3A2%22%5D%2C"
-                                                  "%5B%22categories%3AFootwear%22%5D%5D&facets=%5B%22*%22%5D"
-                                                  "&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2"
-                                                  "%22%2C%22us%22%5D&clickAnalytics=true"},
-                                       {"indexName": "catalog_products_en",
-                                        "params": "analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D"
-                                                  "&page=0&facetFilters=%5B%5B%22websites_available_at%3A2%22%5D%2C"
-                                                  "%5B%22brand%3AAdidas%22%2C%22brand%3ANike%20SB%22%2C%22brand"
-                                                  "%3ANike%20Jordan%22%2C%22brand%3ANike%22%5D%5D&filters=&facets"
-                                                  "=categories&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web"
-                                                  "%22%2C%22v2%22%2C%22us%22%5D&analytics=false"},
-                                       {"indexName": "catalog_products_en",
-                                        "params": "analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D"
-                                                  "&page=0&facetFilters=%5B%5B%22categories%3AFootwear%22%5D%2C%5B"
-                                                  "%22brand%3AAdidas%22%2C%22brand%3ANike%20SB%22%2C%22brand%3ANike"
-                                                  "%20Jordan%22%2C%22brand%3ANike%22%5D%5D&filters=&facets"
-                                                  "=websites_available_at&hitsPerPage=120&ruleContexts=%5B%22browse"
-                                                  "%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D&analytics=false"},
-                                       {"indexName": "catalog_products_en",
-                                        "params": "analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22us%22%5D"
-                                                  "&page=0&facetFilters=%5B%5B%22categories%3AFootwear%22%5D%2C%5B"
-                                                  "%22websites_available_at%3A2%22%5D%5D&filters=&facets=brand"
-                                                  "&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2"
-                                                  "%22%2C%22us%22%5D&analytics=false"}]}
-
-        self.headers = {
-            'Connection': 'keep - alive',
-            'Pragma': 'no - cache',
-            'Cache-Control': 'no - cache',
-            'Content-type': 'application/x-www-form-urlencoded',
-            'Host': 'ko4w2gbink - dsn.algolia.net',
-            'User-Agent': generate_user_agent(),
-            'Accept': 'application / json, text / plain, * / *'
-
-        }
+        self.curl_request: str = "curl -s 'https://ko4w2gbink-2.algolianet.com/1/indexes/*/queries?x-algolia-agent" \
+                                 "=Algolia%20for%20JavaScript%20(" \
+                                 "3.35.1)%3B%20Browser&x-algolia-application-id=KO4W2GBINK&x-algolia-api-key" \
+                                 "=dfa5df098f8d677dd2105ece472a44f8' -H 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux " \
+                                 "x86_64; rv:71.0) Gecko/20100101 Firefox/71.0' -H 'Accept: application/json' -H " \
+                                 "'Accept-Language: en-US,en;q=0.5' --compressed -H 'content-type: " \
+                                 "application/x-www-form-urlencoded' -H 'Origin: https://www.endclothing.com' -H " \
+                                 "'Connection: keep-alive' -H 'Referer: " \
+                                 "https://www.endclothing.com/ru/footwear?brand=Nike&brand=Nike%20Jordan&brand=Nike" \
+                                 "%20SB&brand=YEEZY' --data '{\"requests\":[{\"indexName\":\"catalog_products_en\"," \
+                                 "\"params\":\"userToken=anonymous-b0733993-dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags" \
+                                 "=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&page=0&facetFilters=%5B%5B" \
+                                 "%22categories%3AFootwear%22%5D%2C%5B%22websites_available_at%3A13%22%5D%2C%5B" \
+                                 "%22brand%3ANike%22%2C%22brand%3ANike%20Jordan%22%2C%22brand%3ANike%20SB%22%2C" \
+                                 "%22brand%3AYEEZY%22%5D%5D&filters=&facets=%5B%22*%22%5D&hitsPerPage=120" \
+                                 "&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&clickAnalytics" \
+                                 "=true\"},{\"indexName\":\"catalog_products_en\"," \
+                                 "\"params\":\"userToken=anonymous-b0733993-dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags" \
+                                 "=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&page=0&facetFilters=%5B%5B" \
+                                 "%22websites_available_at%3A13%22%5D%2C%5B%22categories%3AFootwear%22%5D%5D&facets" \
+                                 "=%5B%22*%22%5D&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22" \
+                                 "%2C%22ru%22%5D&clickAnalytics=true\"},{\"indexName\":\"catalog_products_en\"," \
+                                 "\"params\":\"userToken=anonymous-b0733993-dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags" \
+                                 "=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&page=0&facetFilters=%5B%5B" \
+                                 "%22websites_available_at%3A13%22%5D%2C%5B%22brand%3ANike%22%2C%22brand%3ANike" \
+                                 "%20Jordan%22%2C%22brand%3ANike%20SB%22%2C%22brand%3AYEEZY%22%5D%5D&filters=&facets" \
+                                 "=categories&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C" \
+                                 "%22ru%22%5D&analytics=false\"},{\"indexName\":\"catalog_products_en\"," \
+                                 "\"params\":\"userToken=anonymous-b0733993-dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags" \
+                                 "=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&page=0&facetFilters=%5B%5B" \
+                                 "%22categories%3AFootwear%22%5D%2C%5B%22brand%3ANike%22%2C%22brand%3ANike%20Jordan" \
+                                 "%22%2C%22brand%3ANike%20SB%22%2C%22brand%3AYEEZY%22%5D%5D&filters=&facets" \
+                                 "=websites_available_at&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C" \
+                                 "%22v2%22%2C%22ru%22%5D&analytics=false\"},{\"indexName\":\"catalog_products_en\"," \
+                                 "\"params\":\"userToken=anonymous-b0733993-dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags" \
+                                 "=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&page=0&facetFilters=%5B%5B" \
+                                 "%22categories%3AFootwear%22%5D%2C%5B%22websites_available_at%3A13%22%5D%5D&filters" \
+                                 "=&facets=brand&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22" \
+                                 "%2C%22ru%22%5D&analytics=false\"}]}' "
 
     @property
     def catalog(self) -> CatalogType:
@@ -83,18 +73,11 @@ class Parser(api.Parser):
         if mode == 0:
             result.append(content)
 
-            data_json = dumps(self.post_data)
-
-            ok, response = self.provider.request(self.link, headers=self.headers, data=data_json, method='post', proxy=True)
-
-            if not ok:
-                if isinstance(response, exceptions.Timeout):
-                    raise Exception('Timeout')
-                else:
-                    raise result
+            output = subprocess.Popen(self.curl_request, shell=True, stdout=subprocess.PIPE,
+                                      bufsize=-1, stdin=None, stderr=None)
 
             try:
-                json = loads(response.text)
+                json = loads(output.communicate()[0])
             except ValueError:
                 return [api.CInterval(self.name, 900.), api.MAlert('Script go to sleep', self.name)]
 
@@ -164,8 +147,8 @@ class Parser(api.Parser):
                         [
                             FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
                                        name.replace(' ', '%20')),
-                            FooterItem('Cart', 'https://deadstock.ca/cart'),
-                            FooterItem('Login', 'https://www.deadstock.ca/account')
+                            FooterItem('Cart', 'https://www.endclothing.com/ru/checkout'),
+                            FooterItem('Login', 'https://www.endclothing.com/ru/customer')
                         ],
                         additional_columns
                     )
