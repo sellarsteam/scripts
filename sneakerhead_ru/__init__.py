@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 
 from source import api
 from source import logger
@@ -13,8 +13,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://sneakerhead.ru/shoes/adidas-originals-or-jordan-or-nike-or-nike-sb/?sort' \
                          '=date_avail_desc '
         self.interval: int = 1
@@ -57,7 +57,7 @@ class Parser(api.Parser):
 
             for element in catalog:
 
-                if Keywords.check(element[0].xpath('meta[@itemprop="description"]')[0].get('content').lower()):
+                if self.kw.check(element[0].xpath('meta[@itemprop="description"]')[0].get('content').lower()):
 
                     try:
 

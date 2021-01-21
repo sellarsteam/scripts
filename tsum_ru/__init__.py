@@ -3,7 +3,7 @@ from json import JSONDecodeError
 from typing import List, Union
 
 from jsonpath2 import Path
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads
 from user_agent import generate_user_agent
 
@@ -16,8 +16,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://api.tsum.ru/v2/catalog/search?section=18440&brand=2165673,2030075,2375139'
         self.user_agent = generate_user_agent()
 
@@ -56,7 +56,7 @@ class Parser(api.Parser):
                 try:
                     name = element.current_value['title']
 
-                    if Keywords.check(name):
+                    if self.kw.check(name):
                         target = api.Target('https://www.tsum.ru/' + element.current_value['slug'], self.name, 0)
 
                         if HashStorage.check_target(target.hash()):

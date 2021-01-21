@@ -1,7 +1,7 @@
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -14,8 +14,8 @@ from source.tools import ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://brandshop.ru/sneakers/?utm_source=telegram&utm_medium=post&utm_campaign=sneakers_23nov'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
@@ -63,7 +63,7 @@ class Parser(api.Parser):
                         ],
                         {'Site': '[Brandshop](https://brandshop.ru)'}
                     ))
-                elif Keywords.check(element.xpath('img')[0].get('alt').lower()):
+                elif self.kw.check(element.xpath('img')[0].get('alt').lower()):
                     result.append(api.TInterval(element.get('href'), self.name, 0, 1))
 
         if mode == 1:

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads
 from user_agent import generate_user_agent
 
@@ -14,8 +14,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://shopnicekicks.com/products.json?limit=100'
 
     @property
@@ -70,7 +70,7 @@ class Parser(api.Parser):
 
                 title_ = title.lower()
 
-                if Keywords.check(handle) or Keywords.check(title_):
+                if self.kw.check(handle) or self.kw.check(title_):
 
                     target = api.Target('https://shopnicekicks.com/products/' + handle, self.name, 0)
 

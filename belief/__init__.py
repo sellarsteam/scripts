@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads
 
 from source import api
@@ -13,8 +13,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://beliefmoscow.com/collection/all.json'
         self.interval: int = 1
         self.headers = {
@@ -61,7 +61,7 @@ class Parser(api.Parser):
 
             for product in json['products']:
 
-                if Keywords.check(product['permalink'].lower()) or Keywords.check(product['title'].lower()):
+                if self.kw.check(product['permalink'].lower()) or self.kw.check(product['title'].lower()):
 
                     target = api.Target(f'https://beliefmoscow.com{product["url"]}', self.name, 0)
 

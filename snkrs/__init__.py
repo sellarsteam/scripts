@@ -3,7 +3,7 @@ from json import JSONDecodeError
 from time import mktime, strptime, time
 from typing import List, Union
 
-from requests import exceptions as excs
+from pycurl_requests import exceptions as excs
 from user_agent import generate_user_agent
 
 from source import api
@@ -93,11 +93,11 @@ class Parser(api.Parser):
                             ) for j, s in enumerate(i['skus'])
                         )),
                         [
-                            api.FooterItem('StockX', f'https://stockx.com/search/sneakers?s=' +
+                            api.FooterLink('StockX', f'https://stockx.com/search/sneakers?s=' +
                                            i['productContent']['title'].replace('"', '').replace("'", '')
                                            .replace('“', '').replace('”', '').replace(' ', '%20')),
-                            api.FooterItem('Cart', 'https://www.nike.com/cart'),
-                            api.FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            api.FooterLink('Cart', 'https://www.nike.com/cart'),
+                            api.FooterLink('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                         ]
                     ]
 
