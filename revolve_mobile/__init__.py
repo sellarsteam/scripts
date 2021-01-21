@@ -5,7 +5,7 @@ from typing import List, Union
 
 import lxml
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -18,8 +18,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.catalog_link: str = 'https://www.revolve.com/content/nav/mobile/donde/search/?api_key' \
                                  '=AIzaSyDxhzArAC6pxOgb0A7HMa5tPWhzJ3hTX2w&app_id=63fda592e3ad03ef6e56377948a1e996' \
                                  '&d_id=UI-25855903-B4A4-4380-BB02-3C899A6F6EE8&filter_factors%5B%5D=referralUrl' \
@@ -71,7 +71,7 @@ class Parser(api.Parser):
 
             for item in json_response['results']:
                 title = item['title']
-                if Keywords.check(title.lower()):
+                if self.kw.check(title.lower()):
                     price = api.Price(api.CURRENCIES['EUR'], float(item['price'].replace(',', '.')[:-1]))
                     image = item['custom_data']['imageURLs'][0]
                     id = item['_id']

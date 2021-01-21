@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads
 
 from source import api
@@ -13,8 +13,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://api.retailrocket.net/api/2.0/recommendation/popular/' \
                          '552ccef36636b41010072dc3/?&categoryIds=26,10&categoryPaths=' \
                          'new&session=5ea424867c84cf0001e5d423&pvid=638364803722894&isDebug=false&format=json'
@@ -53,7 +53,7 @@ class Parser(api.Parser):
 
             for item in json:
 
-                if Keywords.check(item['Name'].lower()):
+                if self.kw.check(item['Name'].lower()):
 
                     url = item['Url']
                     pid = item['ItemId']

@@ -18,8 +18,8 @@ CURL_REQUESTS = {
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
 
     @property
     def catalog(self) -> CatalogType:
@@ -50,7 +50,7 @@ class Parser(api.Parser):
 
                 link = f'https://en.zalando.de/{element["url_key"]}.html'
                 name = element["name"]
-                if Keywords.check(element["url_key"], divider='-') or Keywords.check(element["name"]):
+                if self.kw.check(element["url_key"], div='-') or self.kw.check(element["name"]):
                     if float(element['price']['original'].replace(' ', '').replace(',', '.').replace('€', '')) != \
                             float(element['price']['promotional'].replace(' ', '').replace(',', '.').replace('€', '')):
                         price = api.Price(api.CURRENCIES['EUR'],

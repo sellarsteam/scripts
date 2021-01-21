@@ -3,7 +3,7 @@ from json import JSONDecodeError, dumps
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 
 from source import api
 from source import logger
@@ -14,8 +14,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.catalog_link: str = 'https://street-beat.ru/cat/ajax.php'
         self.data = 'SECTION_CODE%5B%5D=krossovki&GENDER%5B%5D=man&BRAND%5B%5D=nike&BRAND%5B%5D=jordan&BRAND%5B%5D=' \
                     'adidas-originals&PRODUCT_STATUS%5B%5D=new&action=get_full_catalog&folder=cat '
@@ -87,7 +87,7 @@ class Parser(api.Parser):
                 link = 'https://street-beat.ru' + \
                        item.xpath('a[@class="link link--no-color catalog-item__title ddl_product_link"]')[0].get('href')
 
-                if Keywords.check(name.lower()):
+                if self.kw.check(name.lower()):
 
                     try:
                         if HashStorage.check_target(api.Target(link, self.name, 0).hash()):

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Union
 
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads, dumps
 
 from source import api
@@ -20,8 +20,8 @@ regions = {
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider, storage)
+    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage: ScriptStorage, kw: api.Keywords):
+        super().__init__(name, log, provider, storage, kw)
         self.graphql_url = 'https://api.soleretriever.com/graphql/'
 
         self.headers = {

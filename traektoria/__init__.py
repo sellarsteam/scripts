@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 
 from source import api
 from source import logger
@@ -13,8 +13,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://www.traektoria.ru/wear/?brand=adidas%7Enike&SORT=ACTIVE_FROM&ORDER=DESC&bxajaxid' \
                          '=26cf383ee40d9f97469772becb6e86ca '
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
@@ -50,7 +50,7 @@ class Parser(api.Parser):
 
                 link = 'https://www.traektoria.ru' + item.get('href')
 
-                if Keywords.check(link.split('/')[4].split('_')[-1], divider='-'):
+                if self.kw.check(link.split('/')[4].split('_')[-1], div='-'):
 
                     if HashStorage.check_target(api.Target(link, self.name, 0).hash()):
 
