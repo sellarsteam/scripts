@@ -1,7 +1,7 @@
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -13,8 +13,8 @@ from source.tools import ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
@@ -62,7 +62,7 @@ class Parser(api.Parser):
                 link = links[counter]
                 name = names[counter]
 
-                if Keywords.check(name.lower()):
+                if self.kw.check(name.lower()):
                     target = api.Target(link, self.name, 0)
 
                     if HashStorage.check_target(target.hash()):

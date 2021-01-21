@@ -3,7 +3,7 @@ from json import dumps
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 
 from source import api
 from source import logger
@@ -20,8 +20,8 @@ SIZES = ["4 US", "4.5 US", "5 US", "5.5 US", "6 US", "6.5 US", "7 US", "7.5 US",
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://www.itkkit.ru/catalog/footwear/sneakers/?FILTER=255348'
 
         self.headers = {
@@ -79,7 +79,7 @@ class Parser(api.Parser):
                 parts_of_name = element.xpath('div[@class="catalog-item__title"]/div')
                 name = f'{parts_of_name[0].text} {parts_of_name[1].text.split("] ")[-1]}'
 
-                if Keywords.check(name.lower()):
+                if self.kw.check(name.lower()):
                     id = int(element.get('href').split('/')[3].split('_')[0])
                     try:
                         if HashStorage.check_target(

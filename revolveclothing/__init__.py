@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -14,8 +14,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://www.revolveclothing.ru/r/BrandsContent.jsp?&aliasURL=shoes-sneakers%2Fbr%2F2aec17' \
                          '&sc=Sneakers&s=c&c=Shoes&navsrc=subshoes&designer=adidas%20Originals&designer=Jordan' \
                          '&designer=Nike&filters=designer '
@@ -59,7 +59,7 @@ class Parser(api.Parser):
                 href = element.get('href')
                 link_to_request = f'https://www.revolveclothing.ru/r/dialog/QuickView.jsp?fmt=plp&code={href.split("/")[3]}'
 
-                if Keywords.check(href.lower(), divider='-'):
+                if self.kw.check(href.lower(), div='-'):
 
                     try:
                         if HashStorage.check_target(api.Target('https://www.revolveclothing.ru' +

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -14,8 +14,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://www.skvot.com/catalog/shoes/gumshoes;brand:nike,adidias'
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
@@ -49,7 +49,7 @@ class Parser(api.Parser):
 
             for element in etree.HTML(response.text).xpath(
                     '//a[@class="top-item top-item--catalog"]'):
-                if Keywords.check(element.get('href').lower()):
+                if self.kw.check(element.get('href').lower()):
 
                     try:
                         if HashStorage.check_target(

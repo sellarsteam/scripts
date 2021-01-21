@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads
 from user_agent import generate_user_agent
 
@@ -9,13 +9,13 @@ from source import api
 from source import logger
 from source.api import CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType, IRelease, FooterItem, IAnnounce
 from source.cache import HashStorage
-from source.library import SubProvider
+from source.library import SubProvider, Keywords
 from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://eflash.doverstreetmarket.com/products.json?limit=15'
 
     @property

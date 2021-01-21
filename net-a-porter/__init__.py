@@ -3,7 +3,7 @@ from datetime import timezone, timedelta, datetime
 from time import time
 from typing import List, Union
 
-from requests import exceptions
+from pycurl_requests import exceptions
 from ujson import loads
 
 from source import api
@@ -15,8 +15,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.link: str = 'https://api.net-a-porter.com/NAP/RU/en/60/0/summaries/expand?brandIds=1051,' \
                          '1840&categoryIds=4135&onSale=false&sort=category-default'
         self.interval: int = 1
@@ -56,7 +56,7 @@ class Parser(api.Parser):
                     raise resp
 
             for c in loads(resp.text)['summaries']:
-                if Keywords.check(c['name'].lower()):
+                if self.kw.check(c['name'].lower()):
                     result.append(
                         api.TScheduled(
                             str(c['id']),

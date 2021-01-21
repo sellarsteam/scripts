@@ -13,8 +13,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.curl_request: str = "curl -s 'https://ko4w2gbink-2.algolianet.com/1/indexes/*/queries?x-algolia-agent" \
                                  "=Algolia%20for%20JavaScript%20(" \
                                  "3.35.1)%3B%20Browser&x-algolia-application-id=KO4W2GBINK&x-algolia-api-key" \
@@ -114,7 +114,7 @@ class Parser(api.Parser):
 
                 del element
 
-                if Keywords.check(name.lower()):
+                if self.kw.check(name.lower()):
 
                     target = api.Target('https://www.endclothing.com/' + handle, self.name, 0)
 

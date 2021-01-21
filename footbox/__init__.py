@@ -3,7 +3,7 @@ from json import loads, JSONDecodeError
 from typing import List, Union
 
 from lxml import etree
-from requests import exceptions
+from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -15,8 +15,8 @@ from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage):
-        super().__init__(name, log, provider_, storage)
+    def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.catalog_link: str = 'https://www.footboxshop.ru/muzhskoe/krossovki/?filter[marka][0]=Nike&filter[marka][' \
                                  '3]=adidas+Originals '
 
@@ -58,7 +58,7 @@ class Parser(api.Parser):
             for element in catalog:
                 href = element.get('href')
 
-                if Keywords.check(href.split('/')[3], '-'):
+                if self.kw.check(href.split('/')[3], '-'):
                     link = f'https://www.footboxshop.ru{href}'
                     target = api.Target(link, self.name, 0)
 
