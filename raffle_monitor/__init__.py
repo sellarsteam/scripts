@@ -77,74 +77,78 @@ class Parser(api.Parser):
             content: Union[CatalogType, TargetType]
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
+        try:
 
-        if mode == 0:
-            result.append(content)
+            if mode == 0:
+                result.append(content)
 
-            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.catalog_query),
-                                             headers=self.headers, method='post', proxy=True)
+                ok, resp = self.provider.request(self.graphql_url, data=dumps(self.catalog_query),
+                                                 headers=self.headers, method='post', proxy=True)
 
-            if not ok:
-                if isinstance(resp, exceptions.Timeout):
-                    return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
-                else:
-                    raise result
+                if not ok:
+                    if isinstance(resp, exceptions.Timeout):
+                        return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
+                    else:
+                        raise result
 
-            catalog_data = loads(resp.content)
+                catalog_data = loads(resp.content)
+                counter = 1
+                for item in catalog_data['data']['search']['products']:
+                    result.append(api.TInterval(item['id'], self.name,
+                                                {'name': item['name'], 'pid': item['pid'], 'price': item['price'],
+                                                 'imageUrl': item['imageUrl'], 'slug': item['slug']}, counter))
+                    counter += 0.5
+                result.append(content)
+                return result
 
-            for item in catalog_data['data']['search']['products']:
-                result.append(api.TInterval(item['id'], self.name,
-                                            {'name': item['name'], 'pid': item['pid'], 'price': item['price'],
-                                             'imageUrl': item['imageUrl'], 'slug': item['slug']}, 30))
+            elif mode == 1:
+                ok, resp = self.provider.request(self.graphql_url, data=dumps(self.target_query(int(content.name))),
+                                                 headers=self.headers, method='post')
 
-            return result
+                if not ok:
+                    if isinstance(resp, exceptions.Timeout):
+                        return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
+                    else:
+                        raise result
 
-        elif mode == 1:
-            ok, resp = self.provider.request(self.graphql_url, data=dumps(self.target_query(int(content.name))),
-                                             headers=self.headers, method='post')
+                raffles_data = loads(resp.content)
 
-            if not ok:
-                if isinstance(resp, exceptions.Timeout):
-                    return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
-                else:
-                    raise result
+                for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
+                    target = api.Target(raffle['url'], self.name, 0)
 
-            raffles_data = loads(resp.content)
+                    if HashStorage.check_target(target.hash()):
+                        if 'endDate' in raffle and raffle['endDate']:
+                            location = raffle['locale'] + ' ' + (regions[raffle['locale']] if raffle['locale'] in regions else '')
 
-            for raffle in raffles_data['data']['rafflesFromProduct']['raffles']:
-                target = api.Target(raffle['url'], self.name, 0)
+                            end_date = datetime.fromisoformat(raffle['endDate'][:-1])
+                            if datetime.now() <= datetime(year=end_date.year, month=end_date.month, day=end_date.day):
+                                HashStorage.add_target(target.hash())
 
-                if HashStorage.check_target(target.hash()):
-                    if 'endDate' in raffle and raffle['endDate']:
-                        location = raffle['locale'] + ' ' + (regions[raffle['locale']] if raffle['locale'] in regions else '')
+                                result.append(
+                                    IRelease(
+                                        raffle['url'],
+                                        'raffles-ru'
+                                        if location.split(' ')[0].lower() == 'ru' or location.split(' ')[0].lower() == 'ww'
+                                        else f'raffles-{raffle["type"].lower()}',
+                                        f'{content.data["name"]}\n[PID: {content.data["pid"]}]',
+                                        content.data['imageUrl'],
+                                        'You will need to pay for the shipment'
+                                        if raffle['hasPostage'] else 'Postage is free',
+                                        api.Price(api.CURRENCIES['USD'], float(content.data['price'])),
+                                        api.Sizes(api.SIZE_TYPES[''], []),
+                                        [FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
+                                                    content.data["pid"].replace(" ", ""))],
+                                        {
+                                            'Retailer': f'[{raffle["retailer"]["name"]}]'
+                                                        f'({raffle["retailer"]["url"]}) {location}',
+                                            'Type Of Raffle': raffle['type'],
+                                            'End of raffle': str(end_date),
+                                            'Slug': content.data['slug']
+                                        }
 
-                        end_date = datetime.fromisoformat(raffle['endDate'][:-1])
-                        if datetime.now() <= datetime(year=end_date.year, month=end_date.month, day=end_date.day):
-                            HashStorage.add_target(target.hash())
-
-                            result.append(
-                                IRelease(
-                                    raffle['url'],
-                                    'raffles-ru'
-                                    if location.split(' ')[0].lower() == 'ru' or location.split(' ')[0].lower() == 'ww'
-                                    else f'raffles-{raffle["type"].lower()}',
-                                    f'{content.data["name"]}\n[PID: {content.data["pid"]}]',
-                                    content.data['imageUrl'],
-                                    'You will need to pay for the shipment'
-                                    if raffle['hasPostage'] else 'Postage is free',
-                                    api.Price(api.CURRENCIES['USD'], float(content.data['price'])),
-                                    api.Sizes(api.SIZE_TYPES[''], []),
-                                    [FooterItem('StockX', 'https://stockx.com/search/sneakers?s=' +
-                                                content.data["pid"].replace(" ", ""))],
-                                    {
-                                        'Retailer': f'[{raffle["retailer"]["name"]}]'
-                                                    f'({raffle["retailer"]["url"]}) {location}',
-                                        'Type Of Raffle': raffle['type'],
-                                        'End of raffle': str(end_date),
-                                        'Slug': content.data['slug']
-                                    }
-
+                                    )
                                 )
-                            )
-            result.append(content)
-            return result
+        except Exception:
+            result.extend([self.catalog, api.MAlert('Script is crashed', self.name)])
+
+        return result
