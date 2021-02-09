@@ -69,7 +69,7 @@ class Parser(api.Parser):
 
 
             for item in json_response['results']:
-                    title = item['title']
+                title = item['title']
                 if self.kw.check(title.lower()):
                     price = api.Price(api.CURRENCIES['EUR'], float(item['price'].replace(',', '').replace('$','')[:-1]))
                     image = item['custom_data']['imageURLs'][0]
