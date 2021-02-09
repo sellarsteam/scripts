@@ -20,24 +20,23 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
         super().__init__(name, log, provider_, storage, kw)
-        self.catalog_link: str = 'https://www.revolve.com/content/nav/mobile/donde/search/?api_key' \
-                                 '=AIzaSyDxhzArAC6pxOgb0A7HMa5tPWhzJ3hTX2w&app_id=63fda592e3ad03ef6e56377948a1e996' \
-                                 '&d_id=UI-25855903-B4A4-4380-BB02-3C899A6F6EE8&filter_factors%5B%5D=referralUrl' \
-                                 '%3AaHR0cHM6Ly93d3cucmV2b2x2ZS5jb20vci9pcGFkQXBwL0JyYW5kcy5qc3A' \
-                                 '/ZD1Xb21lbnMmbj0mcz1jJmM9U2hvZXMmc2M9U25lYWtlcnMmc3NjPSZzc3NjPSZmdz1mYWxzZSZkZXNpZ2' \
-                                 '5lcj1hZGlkYXMlMjBPcmlnaW5hbHMmZGVzaWduZXI9Sm9yZGFuJmRlc2lnbmVyPU5pa2UmZmlsdGVycz1kZ' \
-                                 'XNpZ25lciZzb3J0Qnk9ZmVhdHVyZWQmYXBwVmVyc2lvbj0zLjEyLjYmaXBob25lSWQ9RkU0QzQzNUUtMTNC' \
-                                 'My00MzhDLUFGM0UtQkVFRUIwQjgzNEY2JmRldmljZU9TVmVyc2lvbj0xNC4wLjEmZGV2aWNlVHlwZT1pcGh' \
-                                 'vbmUmcGFnZVNpemU9MTAwJmNvdW50cnlDb2RlPVJVJnRva2VuPSZjdXJyZW5jeT1SVUImcGFnZU51bT0x%2' \
-                                 'CdeviceType%3Aiphone&limit=100&localtime=2020-12-19%2013%3A13%3A23%20%2B0000&main_c' \
-                                 'ategory=Women&offset=0&types%5B%5D=Shoe&ul=ru' \
-                                 '&user_id=FE4C435E-13B3-438C-AF3E-BEEEB0B834F6 '
+        self.catalog_link: str = 'https://www.revolve.com/content/nav/mobile/donde/search/?api_key=AIzaSyDxhzArAC6px' \
+                                 'Ogb0A7HMa5tPWhzJ3hTX2w&app_id=63fda592e3ad03ef6e56377948a1e996&d_id=UI-9B050F7D-03' \
+                                 '73-4DDB-BEBE-F2FF26E7E716&filter_factors%5B%5D=referralUrl%3AaHR0cHM6Ly93d3cucmV2b' \
+                                 '2x2ZS5jb20vci9pcGFkQXBwL0JyYW5kcy5qc3A/ZD1Xb21lbnMmbj0mcz1jJmM9U2hvZXMmc2M9U25lYWt' \
+                                 'lcnMmc3NjPSZzc3NjPSZmdz1mYWxzZSZkZXNpZ25lcj1Kb3JkYW4mZGVzaWduZXI9TmlrZSZmaWx0ZXJzP' \
+                                 'WRlc2lnbmVyJnNvcnRCeT1uZXdlc3QmYXBwVmVyc2lvbj0zLjEyLjgmaXBob25lSWQ9RkU0QzQzNUUtMTN' \
+                                 'CMy00MzhDLUFGM0UtQkVFRUIwQjgzNEY2JmRldmljZU9TVmVyc2lvbj0xNC4wLjEmZGV2aWNlVHlwZT1pc' \
+                                 'GhvbmUmcGFnZVNpemU9MTAwJmNvdW50cnlDb2RlPVJVJnRva2VuPSZjdXJyZW5jeT1SVUImcGFnZU51bT0' \
+                                 'x%2CdeviceType%3Aiphone&limit=100&localtime=2021-02-09%2014%3A01%3A29%20%2B0000&m' \
+                                 'ain_category=Women&offset=0&types%5B%5D=Shoe' \
+                                 '&ul=ru&user_id=FE4C435E-13B3-438C-AF3E-BEEEB0B834F6'
 
         self.headers = {
             'Host': 'www.revolve.com',
             'Accept': '*/*',
             'x-ios-bundle-identifier': 'com.revolveclothings.iphone',
-            'User-Agent': 'RevolveClothing/3.12.6 (com.revolveclothings.iphone; build:31; iOS 14.0.1) Alamofire/1.0.0',
+            'User-Agent': 'RevolveClothing/3.12.8 (com.revolveclothings.iphone; build:1; iOS 14.0.1) Alamofire/1.0.0',
             'Accept-Language': 'ru-RU;q=1.0, en-RU;q=0.9, en-GB;q=0.8, uk-UA;q=0.7, de-RU;q=0.6',
         }
         self.user_agent = generate_user_agent()
@@ -66,13 +65,13 @@ class Parser(api.Parser):
                     return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                 else:
                     raise response
-
             json_response = loads(response.text)
 
+
             for item in json_response['results']:
-                title = item['title']
+                    title = item['title']
                 if self.kw.check(title.lower()):
-                    price = api.Price(api.CURRENCIES['EUR'], float(item['price'].replace(',', '.')[:-1]))
+                    price = api.Price(api.CURRENCIES['EUR'], float(item['price'].replace(',', '').replace('$','')[:-1]))
                     image = item['custom_data']['imageURLs'][0]
                     id = item['_id']
                     is_preorder = item['custom_data']['isPreorder']
@@ -103,19 +102,11 @@ class Parser(api.Parser):
                             )
                         )
                     else:
-                        if HashStorage.check_target(api.Target(url, self.name, 0).hash()):
+                        result.append(
                             result.append(
-                                api.TScheduled(
-                                    f'https://www.revolveclothing.ru/r/mobile/dialog/QuickView.jsp?fmt=plp&code={id}',
-                                    self.name,
-                                    [
-                                        url, title, image, price, id
-                                    ],
-                                    time()
-                                )
-                            )
-
-                            HashStorage.add_target(api.Target(url, self.name, 0).hash())
+                                api.TInterval(f'https://www.revolveclothing.ru/r/mobile/dialo'
+                                              f'g/QuickView.jsp?fmt=plp&code={id}', self.name,
+                                              [url, title, image, price, id], 1)))
 
             if isinstance(content, api.CSmart):
                 if result or content.expired:
@@ -126,7 +117,6 @@ class Parser(api.Parser):
                 result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
 
         if mode == 1:
-
             ok, response = self.provider.request(content.name, headers={'user-agent': self.user_agent})
 
             if not ok:
