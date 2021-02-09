@@ -15,13 +15,12 @@ from source.tools import ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
         super().__init__(name, log, provider_, storage, kw)
-        self.link: str = 'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     @property
     def catalog(self) -> api.CatalogType:
-        return api.CInterval(self.name, 5)
+        return api.CInterval(self.name, 120)
 
     def execute(
             self,
@@ -30,8 +29,15 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-
-            ok, response = self.provider.request(self.link, headers={'user-agent': generate_user_agent()})
+            result.append(api.TInterval('lamoda_1', self.name, ['https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'], 3))
+            result.append(api.TInterval('lamoda_2', self.name, [
+                'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=2047&sort=new'], 3))
+            result.append(api.TInterval('lamoda_3', self.name, [
+                'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=29193'], 3))
+            result.append(api.TInterval('lamoda_4', self.name, [
+                'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=2047'], 3))
+        if mode == 1:
+            ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()})
 
             if not ok:
                 if isinstance(response, exceptions.Timeout):
