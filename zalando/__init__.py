@@ -93,59 +93,62 @@ class Parser(api.Parser):
             result.append(api.TInterval('catalog_2', self.name, 2, 5))
             result.append(api.TInterval('catalog_3', self.name, 3, 5))
         if mode == 1:
-            result.append(content)
-            ok, response = self.provider.request(LINKS[content.data], headers=HEADERS[content.data])
+            try:
+                result.append(content)
+                ok, response = self.provider.request(LINKS[content.data], headers=HEADERS[content.data])
 
-            if not ok:
-                if response.args[0] == pycurl.E_OPERATION_TIMEOUTED:
-                    return result
-                else:
-                    raise response
-
-            catalog = response.json()
-
-            if len(catalog) == 0:
-                raise Exception('Catalog is empty')
-
-            for element in catalog['articles']:
-
-                link = f'https://en.zalando.de/{element["url_key"]}.html'
-                name = element["name"]
-                if self.kw.check(element["url_key"], div='-') or self.kw.check(element["name"]):
-                    if float(element['price']['original'].replace(' ', '').replace(',', '.').replace('€', '')) != \
-                            float(element['price']['promotional'].replace(' ', '').replace(',', '.').replace('€', '')):
-                        price = api.Price(api.CURRENCIES['EUR'],
-                                          float(element['price']['promotional'].replace(' ', '')
-                                                .replace(',', '.').replace('€', '')),
-                                          float(element['price']['original'].replace(' ', '').replace(',', '.')
-                                                .replace('€', '')))
+                if not ok:
+                    if response.args[0] == pycurl.E_OPERATION_TIMEOUTED:
+                        return result
                     else:
-                        price = api.Price(api.CURRENCIES['EUR'],
-                                          float(element['price']['original'].replace(' ', '')
-                                                .replace(',', '.').replace('€', '')))
-                    image = 'https://img01.ztat.net/article/' + element['media'][0]['path']
-                    sizes = api.Sizes(api.SIZE_TYPES[''],
-                                      [
-                                          api.Size(size)
-                                          for size in element['sizes']
-                                      ]
-                                      )
-                    result.append(
-                        IRelease(
-                            link + f'?shash={sizes.hash().hex()}&sprice={price.hash().hex()}',
-                            'zalando',
-                            name,
-                            image,
-                            'Russian IP can be blocked',
-                            price,
-                            sizes,
-                            [
-                                FooterItem('Cart', 'https://en.zalando.de/cart/'),
-                                FooterItem('Login', 'https://en.zalando.de/login?target=/myaccount/')
-                            ],
-                            {'Site': '[Zalando](https://en.zalando.de)'}
+                        raise response
+
+                catalog = response.json()
+
+                if len(catalog) == 0:
+                    raise Exception('Catalog is empty')
+
+                for element in catalog['articles']:
+
+                    link = f'https://en.zalando.de/{element["url_key"]}.html'
+                    name = element["name"]
+                    if self.kw.check(name.lower()):
+                        if float(element['price']['original'].replace(' ', '').replace(',', '.').replace('€', '')) != \
+                                float(element['price']['promotional'].replace(' ', '').replace(',', '.').replace('€', '')):
+                            price = api.Price(api.CURRENCIES['EUR'],
+                                              float(element['price']['promotional'].replace(' ', '')
+                                                    .replace(',', '.').replace('€', '')),
+                                              float(element['price']['original'].replace(' ', '').replace(',', '.')
+                                                    .replace('€', '')))
+                        else:
+                            price = api.Price(api.CURRENCIES['EUR'],
+                                              float(element['price']['original'].replace(' ', '')
+                                                    .replace(',', '.').replace('€', '')))
+                        image = 'https://img01.ztat.net/article/' + element['media'][0]['path']
+                        sizes = api.Sizes(api.SIZE_TYPES[''],
+                                          [
+                                              api.Size(size)
+                                              for size in element['sizes']
+                                          ]
+                                          )
+                        result.append(
+                            IRelease(
+                                link + f'?shash={sizes.hash().hex()}&sprice={price.hash().hex()}',
+                                'zalando',
+                                name,
+                                image,
+                                'Russian IP can be blocked',
+                                price,
+                                sizes,
+                                [
+                                    FooterItem('Cart', 'https://en.zalando.de/cart/'),
+                                    FooterItem('Login', 'https://en.zalando.de/login?target=/myaccount/')
+                                ],
+                                {'Site': '[Zalando](https://en.zalando.de)'}
+                            )
                         )
-                    )
+            except Exception:
+                result.extend([self.catalog, api.MAlert('Script is crashed', self.name)])
 
             if isinstance(content, api.TInterval):
                 if result or content.expired:
