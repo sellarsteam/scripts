@@ -1,5 +1,5 @@
 name: farfetch
 core: ^0.9
-version: 1.0.4rc1
+version: 1.0.5rc1
 keep: yes
 max-errors: 1
