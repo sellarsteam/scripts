@@ -36,6 +36,10 @@ class Parser(api.Parser):
                 'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=29193'], 3))
             result.append(api.TInterval('lamoda_4', self.name, [
                 'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=2047'], 3))
+            result.append(api.TInterval('lamoda_4', self.name, [
+                'https://www.lamoda.ru/catalogsearch/result/?ajax=1&q=dunk&from=button&submit=y&sort=price_asc'], 3))
+
+
         if mode == 1:
             ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()})
 
@@ -47,26 +51,11 @@ class Parser(api.Parser):
 
             html_response = etree.HTML(response.text)
 
-            counter = 0
+            for element in html_response.xpath('//div[@class="products-catalog__list"]/div'):
 
-            names = [name.text.replace('\n', '') for name in
-                     html_response.xpath('//span[@class="products-list-item__type"]')]
-            prices = [api.Price(api.CURRENCIES['RUB'], float(price.text.replace(' ', ''))) for price in
-                      html_response.xpath('//span[@class="price__action js-cd-discount" or @class="price__actual"]')]
-            images = ['https:' + image.get('data-image') for image in html_response.xpath('//div[@data-image]')]
-            data_links_for_sizes = []
-            for data_link in html_response.xpath('//a[@class="products-list-item__size-item link"]'):
-                data_link = data_link.get('data-link')
-                if data_link in data_links_for_sizes:
-                    pass
-                else:
-                    data_links_for_sizes.append(data_link)
-            links = ['https://www.lamoda.ru' + link.get('href')
-                     for link in html_response.xpath('//a[@class="products-list-item__link link"]')]
-            for element in range(len(names)):
-
-                link = links[counter]
-                name = names[counter]
+                link = 'https://www.lamoda.ru' + element.xpath('a[@class="products-list-item__link link"]')[0].get('href')
+                name = element.xpath('a[@class="products-list-item__link link"]'
+                                    '/div[@class="products-list-item__brand"]/span')[0].text
 
                 if self.kw.check(name.lower()):
                     target = api.Target(link, self.name, 0)
@@ -77,30 +66,31 @@ class Parser(api.Parser):
                     else:
                         additional_columns = {'Site': '[Lamoda](https://www.lamoda.ru)', 'Type': 'Restock'}
 
-                    price = prices[counter]
-                    image = images[counter]
-
-                    sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text)
+                    price = api.Price(api.CURRENCIES['RUB'],
+                                      float(element.xpath('a[@class="products-list-item__link link"]/div')[0]
+                                            .get('data-price')))
+                    image = 'https:' + element.get('data-src')
+                    sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text, f'https://www.lamoda.ru{size.get("data-link")}')
                                                            for size in
-                                                           html_response.xpath(
-                                                               f'//a[@data-link="{data_links_for_sizes[counter]}"]')])
-                    result.append(
-                        IRelease(
-                            link + f'?shas="{sizes.hash().hex()}"',
-                            'lamoda',
-                            name,
-                            image,
-                            '',
-                            price,
-                            sizes,
-                            [
-                                FooterItem('Cart', 'https://www.lamoda.ru/checkout/cart/'),
-                                FooterItem('Login', 'https://www.lamoda.ru/login/')
-                            ],
-                            additional_columns
+                                                           element.xpath(
+                                                               f'//div[@class="products-list-item__extra"]/div/div/span/a')])
+                    if True:
+                        result.append(
+                            IRelease(
+                                link + f'?shas="{sizes.hash().hex()}"',
+                                'lamoda',
+                                name,
+                                image,
+                                '',
+                                price,
+                                sizes,
+                                [
+                                    FooterItem('Cart', 'https://www.lamoda.ru/checkout/cart/'),
+                                    FooterItem('Login', 'https://www.lamoda.ru/login/')
+                                ],
+                                additional_columns
+                            )
                         )
-                    )
-                counter += 1
 
         result.append(content)
         return result
