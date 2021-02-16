@@ -32,12 +32,16 @@ class Parser(api.Parser):
 
         if mode == 0:
 
-            result.append(TInterval('catalog_1', self.name, ['yeezy', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&gender=Women|Men&pagetype=Shopping&designer=4968477&c-category=137174&page=2'], 5))
-            result.append(TInterval('catalog_2', self.name, ['yeezy', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&gender=Women|Men&pagetype=Shopping&designer=4968477&c-category=137174'], 5))
-            result.append(TInterval('catalog_3', self.name, ['nike_x_off-white', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&gender=Women|Men&pagetype=Shopping&pricetype=FullPrice&designer=12264703&c-category=135968'], 5))
-            result.append(TInterval('catalog_4', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=2'], 5))
-            result.append(TInterval('catalog_5', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=1'], 5))
-            result.append(TInterval('catalog_6', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=3'], 5))
+            result.append(TInterval('catalog_1', self.name, ['yeezy', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&gender=Women|Men&pagetype=Shopping&designer=4968477&c-category=137174&page=2&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_2', self.name, ['yeezy', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&gender=Women|Men&pagetype=Shopping&designer=4968477&c-category=137174&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_3', self.name, ['nike_x_off-white', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&gender=Women|Men&pagetype=Shopping&pricetype=FullPrice&designer=12264703&c-category=135968&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_4', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=2&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_5', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=1&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_6', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=3&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_7', self.name, ['jordan', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=200&scale=282&gender=Women|Men&pagetype=Shopping&designer=6687111&c-category=137174&page=4&pagetype=Search&pricetype=FullPrice'], 5))
+            result.append(TInterval('catalog_8', self.name, ['dunk', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&q=dunk&gender=Men|Women&pagetype=Search&pricetype=FullPrice&designer=1664'], 5))
+            result.append(TInterval('catalog_9', self.name, ['dunk', 'https://www.farfetch.com/ru/plpslice/listing-api/products-facets?view=90&scale=282&q=dunk&gender=Men|Women&pagetype=Search&pricetype=FullPrice&page=2&designer=1664'], 5))
+
             result.append(content)
             return result
         if mode == 1:
@@ -63,8 +67,8 @@ class Parser(api.Parser):
 
                     if availability:
                         price_limit = .0
-                        if content.data[1] == 'jordan':
-                            price_limit = 10000.0
+                        if content.data[0] == 'jordan' or content.data[0] == 'dunk':
+                            price_limit = 15000.0
                         else:
                             price_limit = 25000.0
                         raw_final_price = float(item['priceInfo']['finalPrice'])
@@ -86,7 +90,7 @@ class Parser(api.Parser):
                         if HashStorage.check_target(target.hash()):
                             name = f"{item['brand']['name']} {item['shortDescription']}"
 
-                            if content.data[0] != 'jordan' or self.kw.check(name.lower()):
+                            if content.data[0] != 'jordan' or content.data[0] != 'dunk' or self.kw.check(name.lower()):
                                 additional_columns = {'Regions': f'[[ES]({link.replace("ru", "es")}) 🇪🇸] | '
                                                                  f'[[IT]({link.replace("ru", "it")}) 🇮🇹] | '
                                                                  f'[[DE]({link.replace("ru", "de")}) 🇩🇪] | '
