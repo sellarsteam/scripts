@@ -4,19 +4,22 @@ from time import mktime, strptime, time
 from typing import List, Union
 
 from pycurl_requests import exceptions as excs
+from requests import get
 from user_agent import generate_user_agent
 
 from source import api
 from source.api import CURRENCIES, SIZE_TYPES, CatalogType, TargetType, RestockTargetType, TargetEndType, ItemType, \
     Price, Sizes, Size
 from source.cache import HashStorage
+from source.library import SubProvider, Keywords
 from source.logger import Logger
 from source.tools import ExponentialSmart
+from source.tools import LinearSmart, ScriptStorage
 
 
 class Parser(api.Parser):
-    def __init__(self, name: str, log: Logger, provider: api.SubProvider, storage: api.ScriptStorage):
-        super().__init__(name, log, provider, storage)
+    def __init__(self, name: str, log: Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
+        super().__init__(name, log, provider_, storage, kw)
         self.url = 'https://www.nike.com/ru/launch/t/'
         self.api = 'https://api.nike.com/product_feed/threads/v2/'
         self.filter: str = '&filter=marketplace(RU)&filter=language(ru)' \
@@ -40,32 +43,33 @@ class Parser(api.Parser):
         if mode == 0:
             result.append(content)
 
-            ok, resp = self.provider.request(f'{self.api}{self.catalog_filter}{self.filter}',
+            resp = get(f'{self.api}{self.catalog_filter}{self.filter}',
                                              headers={'user-agent': generate_user_agent()})
 
-            if ok:  # Checking for exception
-                result.extend([
-                    api.TInterval(i['publishedContent']['properties']['seo']['slug'], self.name, 0, 0) for i in
-                    resp.json()['objects'] if not i['publishedContent']['properties']['seo']['slug'].count('test')
-                ])
-                return result
-            else:  # Catching exception
-                if isinstance(resp, excs.Timeout):
-                    return result
-                else:
-                    raise resp
+            # if ok:  # Checking for exception
+            result.extend([
+                api.TInterval(i['publishedContent']['properties']['seo']['slug'], self.name, 0, 0) for i in
+                resp.json()['objects'] if not i['publishedContent']['properties']['seo']['slug'].count('test')
+            ])
+            return result
+            #     return result
+            # else:  # Catching exception
+            #     if isinstance(resp, excs.Timeout):
+            #         return result
+            #     else:
+            #         raise resp
         elif mode == 1:
             has_announce = False
 
             try:
-                ok, resp = self.provider.request(
+                resp = get(
                     f'{self.api}{self.item_filter}&filter=seoSlugs({content.name}){self.filter}',
                     headers={'user-agent': generate_user_agent()}
                 )
 
-                if not ok:
-                    result.append(content)
-                    return result
+                # if not ok:
+                #     result.append(content)
+                #     return result
 
                 try:
                     items = resp.json()['objects'][0]['productInfo']
@@ -93,11 +97,10 @@ class Parser(api.Parser):
                             ) for j, s in enumerate(i['skus'])
                         )),
                         [
-                            api.FooterLink('StockX', f'https://stockx.com/search/sneakers?s=' +
+                            api.FooterItem('StockX', f'https://stockx.com/search/sneakers?s=' +
                                            i['productContent']['title'].replace('"', '').replace("'", '')
                                            .replace('“', '').replace('”', '').replace(' ', '%20')),
-                            api.FooterLink('Cart', 'https://www.nike.com/cart'),
-                            api.FooterLink('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                            api.FooterItem('Cart', 'https://www.nike.com/cart')
                         ]
                     ]
 
