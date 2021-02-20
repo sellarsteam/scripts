@@ -37,7 +37,12 @@ class Parser(api.Parser):
 
             counter = 0
 
-            ok, resp = self.provider.request(self.link, headers={'user-agent': self.user_agent})
+            ok, resp = self.provider.request(self.link, headers={
+             'authority': 'sneaker-street.ru',
+             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+             'cookie': '__cfduid=d9a01863207abbcce699545a9b7b05e0a1612450592; language=ru-ru; currency=RUB; rrpvid=215717844730303; rcuid=601825c6879c1300010f138c; _fbp=fb.1.1612450595524.113975469; rrlevt=1612450595637; _gcl_au=1.1.1815891103.1612450597; _ym_uid=1612450597759136351; _ym_d=1612450597; OCSESSID=36c1c255e3b089caec1d0f8c3b; __cf_bm=078fe7cafb0217e064022e9a50ed067928e1680b-1613827735-1800-AZVIoQxNVOfccNrm4QHweyrsHFSNJijU5Qa0Oiv4pf1uAJnaQT6Dp0EbfnsT4Vd1ymHR3KTmLVI4yausjgiRx7z1RIz3CelX7Y3Y9Obv1khU/byl65VipHUvymHi5GOqmA==; _ym_isad=2; _gid=GA1.2.2115282813.1613827756; _gat_UA-26560353-3=1; _ga_0F22SN37CV=GS1.1.1613827752.2.1.1613827941.56; _ga=GA1.1.138548856.1612450595',
+             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36'
+            })
 
             if not ok:
                 if isinstance(resp, exceptions.Timeout):

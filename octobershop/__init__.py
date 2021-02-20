@@ -56,6 +56,7 @@ class Parser(api.Parser):
                 title = element['title']
                 handle = element['handle']
                 variants = element['variants']
+                sizes_data = [size for size in element['variants']]
                 image = element['images'][0]['src'] if len(element['images']) != 0 \
                     else 'http://via.placeholder.com/300/2A2A2A/FFF?text=No+image'
                 published_date = datetime.fromisoformat(element['published_at'])
@@ -82,12 +83,11 @@ class Parser(api.Parser):
                         additional_columns = {'Site': '[Oktyabr Skateshop](https://oktyabrskateshop.ru)',
                                               'Type': 'Restock'}
 
-                    sizes_data = Path.parse_str('$.variants.*').match(resp)
                     sizes = [
                         api.Size(
-                            str(size.current_value['option1']),
-                            f'https://oktyabrskateshop.ru/cart/{size.current_value["id"]}:1')
-                        for size in sizes_data if size.current_value['available'] is True
+                            str(size['option1']),
+                            f'https://oktyabrskateshop.ru/cart/{size["id"]}:1')
+                        for size in sizes_data if size['available'] is True
                     ]
 
                     if not sizes:

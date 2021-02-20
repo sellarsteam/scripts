@@ -15,8 +15,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
         super().__init__(name, log, provider_, storage, kw)
-        self.link: str = 'https://www.traektoria.ru/wear/?brand=adidas%7Enike&SORT=ACTIVE_FROM&ORDER=DESC&bxajaxid' \
-                         '=26cf383ee40d9f97469772becb6e86ca '
+        self.link: str = 'https://www.traektoria.ru/wear/?brand=adidas~nike~jordan&SORT=ACTIVE_FROM&ORDER=DESC&bxajaxid'
         self.user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0'
 
     @property
