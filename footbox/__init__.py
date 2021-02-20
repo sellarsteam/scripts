@@ -74,7 +74,7 @@ class Parser(api.Parser):
                         element_html = etree.HTML(response.text)
 
                         price = api.Price(api.CURRENCIES['RUB'],
-                                          float(element_html.xpath('//span[@class="item_sale_price mr-3"]')[0].text
+                                          float(element_html.xpath('//p[@class="item_price"]/span')[0].text
                                                 .replace('₽', '').replace(' ', '')))
                         image = 'https://www.footboxshop.ru' + \
                                 element_html.xpath('//img[@class="img-fluid open-gallery"]')[0].get('src')

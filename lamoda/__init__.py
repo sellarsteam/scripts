@@ -39,7 +39,6 @@ class Parser(api.Parser):
             result.append(api.TInterval('lamoda_4', self.name, [
                 'https://www.lamoda.ru/catalogsearch/result/?ajax=1&q=dunk&from=button&submit=y&sort=price_asc'], 3))
 
-
         if mode == 1:
             ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()})
 
@@ -51,12 +50,12 @@ class Parser(api.Parser):
 
             html_response = etree.HTML(response.text)
 
-            for element in html_response.xpath('//div[@class="products-catalog__list"]/div'):
+            for element in html_response.xpath('//div[@class="products-list-item"]'):
+                link = 'https://www.lamoda.ru' + element.xpath('a[@class="products-list-item__link link"]') \
+                [0].get('href')
 
-                link = 'https://www.lamoda.ru' + element.xpath('a[@class="products-list-item__link link"]')[0].get('href')
                 name = element.xpath('a[@class="products-list-item__link link"]'
                                     '/div[@class="products-list-item__brand"]/span')[0].text
-
                 if self.kw.check(name.lower()):
                     target = api.Target(link, self.name, 0)
 
