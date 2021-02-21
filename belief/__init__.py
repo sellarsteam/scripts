@@ -48,10 +48,8 @@ class Parser(api.Parser):
             ok, resp = self.provider.request(self.link, headers=self.headers)
 
             if not ok:
-                if isinstance(resp, exceptions.Timeout):
-                    return result
-                else:
-                    raise result
+                result.append(api.MAlert('Script is down', self.name))
+                return result
 
             try:
                 json = loads(resp.content)
