@@ -48,13 +48,14 @@ class Parser(api.Parser):
                 if isinstance(resp, exceptions.Timeout):
                     raise Exception('Timeout')
                 else:
-                    raise result
+                    result.append(content)
+                    return result
 
             lxml_resp = etree.HTML(resp.text)
             catalog = [element for element in lxml_resp.xpath('//div[@class="pli"]')]
 
             if not catalog:
-                raise Exception('Catalog is empty')
+                result.append(api.MAlert('Catalog is empty', self.name))
 
             for item in catalog:
                 link = item.xpath('a[@class="pli__main"]')[0].get('href')
