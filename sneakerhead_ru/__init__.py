@@ -46,14 +46,13 @@ class Parser(api.Parser):
             ok, response = self.provider.request(self.link, headers=self.headers)
 
             if not ok:
-                if isinstance(response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
-                else:
-                    raise response
-
-            catalog = [element for element in etree.HTML(response.text).xpath('//div[@class="product-cards__item"]')]
+                return [api.CInterval(self.name, 60.), api.MAlert('Script go to sleep', self.name)]
+            try:
+                catalog = [element for element in etree.HTML(response.text).xpath('//div[@class="product-cards__item"]')]
+            except AttributeError:
+                return [api.CInterval(self.name, 60.), api.MAlert('Script go to sleep', self.name)]
             if not catalog:
-                return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
+                return [api.CInterval(self.name, 60.), api.MAlert('Script go to sleep', self.name)]
 
             for element in catalog:
 
