@@ -17,14 +17,14 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
         super().__init__(name, log, provider_, storage, kw)
-        self.link: str = 'https://www.revolveclothing.ru/r/BrandsContent.jsp?&aliasURL=shoes-sneakers%2Fbr%2F2aec17&sc=Sneakers&s=c&c=Shoes&navsrc=subshoes&designer=Jordan&designer=Nike&filters=designer'
+        self.link: str = 'https://www.revolveclothing.ru/r/BrandsContent.jsp?&aliasURL=shoes-sneakers%2Fbr%2F2aec17&sc=Sneakers&s=c&c=Shoes&navsrc=subshoes&designer=Jordan&filters=designer'
 
         self.interval: int = 1
         self.user_agent = generate_user_agent()
 
     @property
     def catalog(self) -> CatalogType:
-        return api.CSmart(self.name, LinearSmart(self.time_gen(), 12, 5))
+        return api.CSmart(self.name, LinearSmart(self.time_gen(), 6, 10))
 
     @staticmethod
     def time_gen() -> float:
@@ -38,6 +38,7 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
+            result.append(content)
 
             ok, response = self.provider.request(self.link, headers={'user-agent': self.user_agent})
 
@@ -57,8 +58,7 @@ class Parser(api.Parser):
 
                 href = element.get('href')
                 link_to_request = f'https://www.revolveclothing.ru/r/dialog/QuickView.jsp?fmt=plp&code={href.split("/")[3]}'
-
-                if self.kw.check(href.lower(), div='-'):
+                if self.kw.check(href.lower() + f'-{href.split("/")[3].lower().replace("-", "+")}', div='-'):
                     result.append(result.append(api.TInterval(href.split("/")[3], self.name, [link_to_request, href], 1)))
         if mode == 1:
 
@@ -74,11 +74,13 @@ class Parser(api.Parser):
                         raise page_response
 
                 page_content = etree.HTML(page_response.text)
-
-                sizes = [api.Size(f"{size.get('value')} [{size.get('data-qty')}]")
-                         for size in page_content.xpath('//input[@class="size-options__radio '
-                                                        'size-clickable"]')
-                         if int(size.get('data-qty')) > 0]
+                try:
+                    sizes = [api.Size(f"{size.get('value')} [{size.get('data-qty')}]")
+                             for size in page_content.xpath('//input[@class="size-options__radio '
+                                                            'size-clickable"]')
+                             if int(size.get('data-qty')) > 0]
+                except AttributeError:
+                    sizes = []
 
                 if sizes:
                     sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
@@ -108,12 +110,14 @@ class Parser(api.Parser):
             except etree.XMLSyntaxError:
                 raise etree.XMLSyntaxError('XMLDecodeEroor')
 
-            if isinstance(content, api.CSmart):
-                if result or content.expired:
-                    content.gen.time = self.time_gen()
-                    content.expired = False
-                result.append(content)
-            else:
-                result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
+        if isinstance(content, api.CSmart):
+            if result or content.expired:
+                content.gen.time = self.time_gen()
+                content.expired = False
+            result.append(content)
+        elif isinstance(content, api.TInterval):
+            result.append(content)
+        else:
+            result.extend([self.catalog, api.MAlert('Script is awake', self.name)])
 
         return result
