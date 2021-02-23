@@ -1,0 +1,5 @@
+name: regards
+core: ^0.9
+version: 1.0.0
+keep: yes
+max-errors: 1
