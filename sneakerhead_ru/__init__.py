@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
 from lxml import etree
-from pycurl_requests import exceptions
 
 from source import api
 from source import logger
@@ -15,8 +14,8 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
         super().__init__(name, log, provider_, storage, kw)
-        self.link: str = 'https://sneakerhead.ru/shoes/adidas-originals-or-jordan-or-nike-or-nike-sb/?sort' \
-                         '=date_avail_desc '
+        self.link: str = 'https://sneakerhead.ru/shoes/adidas-originals-or-jordan-or-nike-or-nike-sb' \
+                         '/?sort=date_avail_desc'
         self.interval: int = 1
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',

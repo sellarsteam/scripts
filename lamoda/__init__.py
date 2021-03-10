@@ -1,7 +1,6 @@
 from typing import List, Union
 
 from lxml import etree
-from pycurl_requests import exceptions
 from user_agent import generate_user_agent
 
 from source import api
@@ -29,67 +28,77 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
-            result.append(api.TInterval('lamoda_1', self.name, ['https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'], 3))
+            result.append(api.TInterval('lamoda_1', self.name, [
+                'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'], 3))
             result.append(api.TInterval('lamoda_2', self.name, [
                 'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=2047&sort=new'], 3))
             result.append(api.TInterval('lamoda_3', self.name, [
                 'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=29193'], 3))
             result.append(api.TInterval('lamoda_4', self.name, [
                 'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=2047'], 3))
-            result.append(api.TInterval('lamoda_4', self.name, [
+            result.append(api.TInterval('lamoda_5', self.name, [
                 'https://www.lamoda.ru/catalogsearch/result/?ajax=1&q=dunk&from=button&submit=y&sort=price_asc'], 3))
+            result.append(api.TInterval('lamoda_6', self.name, [
+                'https://www.lamoda.ru/catalogsearch/result/?q=jordan%201%20%D0%BE%D0%B1%D1%83%D0%B2%D1%8C&from=button&submit=y&ajax=1'], 3))
 
         if mode == 1:
-            ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()})
+            try:
+                ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()})
 
-            if not ok:
-                if isinstance(response, exceptions.Timeout):
-                    return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
-                else:
-                    raise response
-
-            html_response = etree.HTML(response.text)
-
-            for element in html_response.xpath('//div[@class="products-list-item"]'):
-                link = 'https://www.lamoda.ru' + element.xpath('a[@class="products-list-item__link link"]') \
-                [0].get('href')
-
-                name = element.xpath('a[@class="products-list-item__link link"]'
-                                    '/div[@class="products-list-item__brand"]/span')[0].text
-                if self.kw.check(name.lower()):
-                    target = api.Target(link, self.name, 0)
-
-                    if HashStorage.check_target(target.hash()):
-                        HashStorage.add_target(target.hash())
-                        additional_columns = {'Site': '[Lamoda](https://www.lamoda.ru)'}
+                if not ok:
+                    if isinstance(response, TimeoutError):
+                        return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
                     else:
-                        additional_columns = {'Site': '[Lamoda](https://www.lamoda.ru)', 'Type': 'Restock'}
+                        raise response
 
-                    price = api.Price(api.CURRENCIES['RUB'],
-                                      float(element.xpath('a[@class="products-list-item__link link"]/div')[0]
-                                            .get('data-price')))
-                    image = 'https:' + element.get('data-src')
-                    sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text, f'https://www.lamoda.ru{size.get("data-link")}')
-                                                           for size in
-                                                           element.xpath(
-                                                               f'//div[@class="products-list-item__extra"]/div/div/span/a')])
-                    if True:
-                        result.append(
-                            IRelease(
-                                link + f'?shas="{sizes.hash().hex()}"',
-                                'lamoda',
-                                name,
-                                image,
-                                '',
-                                price,
-                                sizes,
-                                [
-                                    FooterItem('Cart', 'https://www.lamoda.ru/checkout/cart/'),
-                                    FooterItem('Login', 'https://www.lamoda.ru/login/')
-                                ],
-                                additional_columns
+                html_response = etree.HTML(response.text)
+
+                for element in html_response.xpath('//div[@class="products-list-item" or @class="products-list-item m_loading"]'):
+                    link = 'https://www.lamoda.ru' + element.xpath('a[@class="products-list-item__link link"]') \
+                    [0].get('href')
+
+                    name = element.xpath('a[@class="products-list-item__link link"]'
+                                        '/div[@class="products-list-item__brand"]/span')[0].text
+                    if self.kw.check(name.lower()):
+                        target = api.Target(link, self.name, 0)
+
+                        if HashStorage.check_target(target.hash()):
+                            HashStorage.add_target(target.hash())
+                            additional_columns = {'Site': '[Lamoda](https://www.lamoda.ru)'}
+                        else:
+                            additional_columns = {'Site': '[Lamoda](https://www.lamoda.ru)', 'Type': 'Restock'}
+                        try:
+                            price = api.Price(api.CURRENCIES['RUB'],
+                                          float(element.xpath('a[@class="products-list-item__link link"]/div')[0]
+                                                .get('data-price')))
+                        except TypeError:
+                            price = api.Price(api.CURRENCIES['RUB'], .0)
+                        image = 'https:' + element.get('data-src')
+
+                        sizes = api.Sizes(api.SIZE_TYPES[''], [api.Size(size.text, f'https://www.lamoda.ru{size.get("data-link")}')
+                                                               for size in
+                                                               element.xpath(
+                                                                   f'div[@class="products-list-item__extra"]/div/div[@class="products-list-item__sizes"]/a')])
+                        if True:
+                            result.append(
+                                IRelease(
+                                    link + f'?shas="{sizes.hash().hex()}"',
+                                    'lamoda',
+                                    name,
+                                    image,
+                                    '',
+                                    price,
+                                    sizes,
+                                    [
+                                        FooterItem('Cart', 'https://www.lamoda.ru/checkout/cart/'),
+                                        FooterItem('Login', 'https://www.lamoda.ru/login/')
+                                    ],
+                                    additional_columns
+                                )
                             )
-                        )
+            except Exception:
+                result.append(api.MAlert('Script is crashed!', self.name))
+                pass
 
         result.append(content)
         return result
