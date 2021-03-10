@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Union
 
-from pycurl_requests import exceptions
 from ujson import loads
 
 from source import api
@@ -15,7 +14,7 @@ from source.tools import LinearSmart, ScriptStorage
 class Parser(api.Parser):
     def __init__(self, name: str, log: logger.Logger, provider_: SubProvider, storage: ScriptStorage, kw: Keywords):
         super().__init__(name, log, provider_, storage, kw)
-        self.link: str = 'https://beliefmoscow.com/collection/all.json'
+        self.link: str = 'https://beliefmoscow.com/collection/obuv.json'
         self.interval: int = 1
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0',
@@ -49,15 +48,17 @@ class Parser(api.Parser):
 
             if not ok:
                 result.append(api.MAlert('Script is down', self.name))
-                return result
+                products = []
 
             try:
                 json = loads(resp.content)
+                products = json['products']
 
             except ValueError:
-                return [api.CInterval(self.name, 300), api.MAlert('Script go to sleep', self.name)]
+                result.append(api.MAlert('Script is down', self.name))
+                products = []
 
-            for product in json['products']:
+            for product in products:
 
                 if self.kw.check(product['permalink'].lower()) or self.kw.check(product['title'].lower()):
 
@@ -105,7 +106,7 @@ class Parser(api.Parser):
                                     'Urban QT',
                                     f'https://autofill.cc/api/v1/qt?storeId=beliefmoscow&monitor={url}'
                                 ),
-                                FooterItem('Feedback', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
+                                FooterItem('Cart', 'https://forms.gle/9ZWFdf1r1SGp9vDLA')
                             ],
                             additional_columns
                         )
