@@ -19,7 +19,7 @@ class Parser(api.Parser):
 
     @property
     def catalog(self) -> api.CatalogType:
-        return api.CInterval(self.name, 120)
+        return api.CInterval(self.name, 1200000)
 
     def execute(
             self,
@@ -29,27 +29,25 @@ class Parser(api.Parser):
         result = []
         if mode == 0:
             result.append(api.TInterval('lamoda_1', self.name, [
-                'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'], 3))
+                'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=29193&sort=default'], 5))
             result.append(api.TInterval('lamoda_2', self.name, [
-                'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=2047&sort=new'], 3))
+                'https://www.lamoda.ru/c/5972/shoes-muzhkedy/?ajax=1&brands=2047&sort=new'], 5))
             result.append(api.TInterval('lamoda_3', self.name, [
-                'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=29193'], 3))
+                'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=29193'], 5))
             result.append(api.TInterval('lamoda_4', self.name, [
-                'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=2047'], 3))
+                'https://www.lamoda.ru/c/5855/shoes-zhenkedy/?ajax=1&brands=2047'], 5))
             result.append(api.TInterval('lamoda_5', self.name, [
-                'https://www.lamoda.ru/catalogsearch/result/?ajax=1&q=dunk&from=button&submit=y&sort=price_asc'], 3))
+                'https://www.lamoda.ru/catalogsearch/result/?ajax=1&q=dunk&from=button&submit=y&sort=price_asc'], 5))
             result.append(api.TInterval('lamoda_6', self.name, [
-                'https://www.lamoda.ru/catalogsearch/result/?q=jordan%201%20%D0%BE%D0%B1%D1%83%D0%B2%D1%8C&from=button&submit=y&ajax=1'], 3))
+                'https://www.lamoda.ru/catalogsearch/result/?q=jordan%201%20%D0%BE%D0%B1%D1%83%D0%B2%D1%8C&from=button&submit=y&ajax=1'], 5))
 
         if mode == 1:
             try:
-                ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()})
+                ok, response = self.provider.request(content.data[0], headers={'user-agent': generate_user_agent()},
+                                                     proxy=True)
 
                 if not ok:
-                    if isinstance(response, TimeoutError):
-                        return [api.CInterval(self.name, 600.), api.MAlert('Script go to sleep', self.name)]
-                    else:
-                        raise response
+                    return [api.MAlert('Timeout: ' + content.name, self.name), content]
 
                 html_response = etree.HTML(response.text)
 
@@ -59,7 +57,8 @@ class Parser(api.Parser):
 
                     name = element.xpath('a[@class="products-list-item__link link"]'
                                         '/div[@class="products-list-item__brand"]/span')[0].text
-                    if self.kw.check(name.lower()):
+
+                    if self.kw.check(name.lower() + ' ' + link):
                         target = api.Target(link, self.name, 0)
 
                         if HashStorage.check_target(target.hash()):
