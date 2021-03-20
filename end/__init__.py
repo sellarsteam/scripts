@@ -25,26 +25,52 @@ class Parser(api.Parser):
             'Connection': 'keep-alive',
             'Referer': 'https://www.endclothing.com/ru'
         }
-        self.yeezy_data = '{"requests":[{"indexName":"catalog_products_en","params":"userToken=anonymous-b0733993-dde7-4de9' \
-                    '-b0cb-15bd8ac5ebfd&analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C' \
-                    '%22footwear_adidas%22%5D&page=0&facetFilters=%5B%5B%22categories%3AFootwear%20%2F%20adidas%22%5D' \
-                    '%2C%5B%22websites_available_at%3A13%22%5D%5D&filters=&facets=%5B%22*%22%5D&hitsPerPage=120&ruleC' \
-                    'ontexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22footwear_adidas%22%5D&' \
-                    'clickAnalytics=true"},{"indexName":"catalog_products_en","params":"userToken=anonymous-b0733993-' \
-                    'dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%2' \
-                    '2RU%22%2C%22footwear_adidas%22%5D&page=0&facetFilters=%5B%5B%22websites_available_at%3A13%22%5D%' \
-                    '2C%5B%22categories%3AFootwear%20%2F%20adidas%22%5D%5D&facets=%5B%22*%22%5D&hitsPerPage=120&ruleC' \
-                    'ontexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22footwear_adidas%22%5D&' \
-                    'clickAnalytics=true"},{"indexName":"catalog_products_en","params":"userToken=anonymous-b0733993-' \
-                    'dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%2' \
-                    '2RU%22%2C%22footwear_adidas%22%5D&page=0&facetFilters=%5B%5B%22websites_available_at%3A13%22%5D%' \
-                    '5D&filters=&facets=categories&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%2' \
-                    '2%2C%22ru%22%2C%22RU%22%2C%22footwear_adidas%22%5D&analytics=false"},{"indexName":"catalog_produ' \
-                    'cts_en","params":"userToken=anonymous-b0733993-dde7-4de9-b0cb-15bd8ac5ebfd&analyticsTags=%5B%22b' \
-                    'rowse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22footwear_adidas%22%5D&page=0&facetFil' \
-                    'ters=%5B%5B%22categories%3AFootwear%20%2F%20adidas%22%5D%5D&filters=&facets=websites_available_a' \
-                    't&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%2' \
-                    '2footwear_adidas%22%5D&analytics=false"}]}'
+        self.last_yeezy_data = '{"requests":[{"indexName":"catalog_products_en",' \
+                               '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                               '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B' \
+                               '%5B%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B' \
+                               '%22websites_available_at%3A13%22%5D%2C%5B%22brand%3AYEEZY%22%5D%5D&filters=&facets' \
+                               '=%5B%22*%22%5D&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C' \
+                               '%22ru%22%2C%22RU%22%5D&clickAnalytics=true"},{"indexName":"catalog_products_en",' \
+                               '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                               '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B' \
+                               '%5B%22websites_available_at%3A13%22%5D%2C%5B%22categories%3ALatest%20%2F%20Latest' \
+                               '%20Sneakers%22%5D%5D&facets=%5B%22*%22%5D&hitsPerPage=120&ruleContexts=%5B%22browse' \
+                               '%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&clickAnalytics=true"},' \
+                               '{"indexName":"catalog_products_en",' \
+                               '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                               '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B' \
+                               '%5B%22websites_available_at%3A13%22%5D%2C%5B%22brand%3AYEEZY%22%5D%5D&filters=&facets' \
+                               '=categories&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C' \
+                               '%22ru%22%2C%22RU%22%5D&analytics=false"},{"indexName":"catalog_products_en",' \
+                               '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                               '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B' \
+                               '%5B%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22brand%3AYEEZY%22%5D' \
+                               '%5D&filters=&facets=websites_available_at&hitsPerPage=120&ruleContexts=%5B%22browse' \
+                               '%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&analytics=false"},' \
+                               '{"indexName":"catalog_products_en",' \
+                               '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                               '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B' \
+                               '%5B%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B' \
+                               '%22websites_available_at%3A13%22%5D%5D&filters=&facets=brand&hitsPerPage=120' \
+                               '&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D' \
+                               '&analytics=false"}]} '
+        self.yeezy_data = '{"requests":[{"indexName":"catalog_products_en_search",' \
+                          '"params":"query=yeezy&query=yeezy&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead' \
+                          '&analyticsTags=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                          '&page=0&facetFilters=%5B%5B%22websites_available_at%3A13%22%5D%5D&filters=&facets=%5B%22' \
+                          '*%22%5D&hitsPerPage=120&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C' \
+                          '%22RU%22%2C%22%22%5D&clickAnalytics=true"},{"indexName":"catalog_products_en_search",' \
+                          '"params":"query=yeezy&query=yeezy&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead' \
+                          '&analyticsTags=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                          '&page=0&facetFilters=%5B%5B%22websites_available_at%3A13%22%5D%5D&facets=%5B%22*%22%5D' \
+                          '&hitsPerPage=120&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22' \
+                          '%2C%22%22%5D&clickAnalytics=true"},{"indexName":"catalog_products_en_search",' \
+                          '"params":"query=yeezy&query=yeezy&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead' \
+                          '&analyticsTags=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                          '&page=0&facetFilters=%5B%5D&filters=&facets=websites_available_at&hitsPerPage=120' \
+                          '&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                          '&analytics=false"}]} '
         self.jordan_data = '{"requests":[{"indexName":"catalog_products_en","params":"analytic' \
                            'sTags=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%5D&page=0&facetF' \
                            'ilters=%5B%5B%22categories%3AFootwear%22%5D%2C%5B%22websites_available_at' \
@@ -91,6 +117,86 @@ class Parser(api.Parser):
                          '&facetFilters=%5B%5B%22categories%3AFootwear%22%5D%2C%5B%22websites_available_at%3A13%22%5D' \
                          '%5D&filters=&facets=brand&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2' \
                          '%22%2C%22ru%22%5D&analytics=false"}]} '
+        self.last_nike = '{"requests":[{"indexName":"catalog_products_en",' \
+                         '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                         '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                         '%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22websites_available_at%3A13' \
+                         '%22%5D%2C%5B%22brand%3ANike%22%2C%22brand%3ANike%20SB%22%5D%5D&filters=&facets=%5B%22*%22' \
+                         '%5D&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU' \
+                         '%22%5D&clickAnalytics=true"},{"indexName":"catalog_products_en",' \
+                         '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                         '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                         '%22websites_available_at%3A13%22%5D%2C%5B%22categories%3ALatest%20%2F%20Latest%20Sneakers' \
+                         '%22%5D%5D&facets=%5B%22*%22%5D&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C' \
+                         '%22v2%22%2C%22ru%22%2C%22RU%22%5D&clickAnalytics=true"},{"indexName":"catalog_products_en",' \
+                         '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                         '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                         '%22websites_available_at%3A13%22%5D%2C%5B%22brand%3ANike%22%2C%22brand%3ANike%20SB%22%5D%5D' \
+                         '&filters=&facets=categories&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C' \
+                         '%22v2%22%2C%22ru%22%2C%22RU%22%5D&analytics=false"},{"indexName":"catalog_products_en",' \
+                         '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                         '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                         '%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22brand%3ANike%22%2C%22brand' \
+                         '%3ANike%20SB%22%5D%5D&filters=&facets=websites_available_at&hitsPerPage=120&ruleContexts' \
+                         '=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&analytics=false"},' \
+                         '{"indexName":"catalog_products_en",' \
+                         '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                         '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                         '%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22websites_available_at%3A13' \
+                         '%22%5D%5D&filters=&facets=brand&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C' \
+                         '%22v2%22%2C%22ru%22%2C%22RU%22%5D&analytics=false"}]} '
+        self.last_jordan = '{"requests":[{"indexName":"catalog_products_en",' \
+                           '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                           '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                           '%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22websites_available_at%3A13' \
+                           '%22%5D%2C%5B%22brand%3ANike%20Jordan%22%5D%5D&filters=&facets=%5B%22*%22%5D&hitsPerPage' \
+                           '=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D' \
+                           '&clickAnalytics=true"},{"indexName":"catalog_products_en",' \
+                           '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                           '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                           '%22websites_available_at%3A13%22%5D%2C%5B%22categories%3ALatest%20%2F%20Latest%20Sneakers' \
+                           '%22%5D%5D&facets=%5B%22*%22%5D&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22' \
+                           '%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&clickAnalytics=true"},' \
+                           '{"indexName":"catalog_products_en",' \
+                           '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                           '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                           '%22websites_available_at%3A13%22%5D%2C%5B%22brand%3ANike%20Jordan%22%5D%5D&filters' \
+                           '=&facets=categories&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22%2C%22v2%22' \
+                           '%2C%22ru%22%2C%22RU%22%5D&analytics=false"},{"indexName":"catalog_products_en",' \
+                           '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                           '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                           '%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22brand%3ANike%20Jordan%22' \
+                           '%5D%5D&filters=&facets=websites_available_at&hitsPerPage=120&ruleContexts=%5B%22browse%22' \
+                           '%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&analytics=false"},' \
+                           '{"indexName":"catalog_products_en",' \
+                           '"params":"userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                           '%22browse%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&page=0&facetFilters=%5B%5B' \
+                           '%22categories%3ALatest%20%2F%20Latest%20Sneakers%22%5D%2C%5B%22websites_available_at%3A13' \
+                           '%22%5D%5D&filters=&facets=brand&hitsPerPage=120&ruleContexts=%5B%22browse%22%2C%22web%22' \
+                           '%2C%22v2%22%2C%22ru%22%2C%22RU%22%5D&analytics=false"}]} '
+        self.dunk_data = '{"requests":[{"indexName":"catalog_products_en_search","params":"query=nike ' \
+                         'dunk&query=nike&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead&analyticsTags=%5B' \
+                         '%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D&page=0&facetFilters' \
+                         '=%5B%5B%22websites_available_at%3A13%22%5D%2C%5B%22department%3ASneakers%22%5D%5D&filters' \
+                         '=&facets=%5B%22*%22%5D&hitsPerPage=120&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22' \
+                         '%2C%22ru%22%2C%22RU%22%2C%22%22%5D&clickAnalytics=true"},' \
+                         '{"indexName":"catalog_products_en_search",' \
+                         '"params":"query=nike&query=nike&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead' \
+                         '&analyticsTags=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                         '&page=0&facetFilters=%5B%5B%22websites_available_at%3A13%22%5D%5D&facets=%5B%22*%22%5D' \
+                         '&hitsPerPage=120&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22' \
+                         '%2C%22%22%5D&clickAnalytics=true"},{"indexName":"catalog_products_en_search",' \
+                         '"params":"query=nike&query=nike&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead' \
+                         '&analyticsTags=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                         '&page=0&facetFilters=%5B%5B%22department%3ASneakers%22%5D%5D&filters=&facets' \
+                         '=websites_available_at&hitsPerPage=120&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22' \
+                         '%2C%22ru%22%2C%22RU%22%2C%22%22%5D&analytics=false"},' \
+                         '{"indexName":"catalog_products_en_search",' \
+                         '"params":"query=nike&query=nike&userToken=anonymous-9857eb1c-132e-4792-8703-ebf597c8cead' \
+                         '&analyticsTags=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22%2C%22RU%22%2C%22%22%5D' \
+                         '&page=0&facetFilters=%5B%5B%22websites_available_at%3A13%22%5D%5D&filters=&facets' \
+                         '=department&hitsPerPage=120&ruleContexts=%5B%22search%22%2C%22web%22%2C%22v2%22%2C%22ru%22' \
+                         '%2C%22RU%22%2C%22%22%5D&analytics=false"}]} '
 
     @property
     def catalog(self) -> api.CatalogType:
@@ -108,9 +214,14 @@ class Parser(api.Parser):
     ) -> List[Union[CatalogType, TargetType, RestockTargetType, ItemType, TargetEndType]]:
         result = []
         if mode == 0:
+            result.append(api.TInterval('last_yeezy', self.name, [self.last_yeezy_data], 3))
+            result.append(api.TInterval('yeezy', self.name, [self.yeezy_data], 3))
+            result.append(api.TInterval('jordan', self.name, [self.jordan_data], 3))
             result.append(api.TInterval('yeezy', self.name, [self.yeezy_data], 3))
             result.append(api.TInterval('nike', self.name, [self.nike_data], 3))
-            result.append(api.TInterval('jordan', self.name, [self.jordan_data], 3))
+            result.append(api.TInterval('last_nike', self.name, [self.last_nike], 3))
+            result.append(api.TInterval('last_jordan', self.name, [self.last_jordan], 3))
+            result.append(api.TInterval('dunk', self.name, [self.dunk_data], 3))
         if mode == 1:
             ok, response = self.provider.request(self.link, headers=self.headers, data=content.data[0], method='POST')
 
@@ -178,7 +289,7 @@ class Parser(api.Parser):
 
                 sizes = api.Sizes(api.SIZE_TYPES[''], sizes)
 
-                if self.kw.check(name):
+                if self.kw.check(name + ' ' + handle):
                     result.append(IRelease(
                         target.name + f'?shash={sizes.hash().hex()}',
                         'end',
