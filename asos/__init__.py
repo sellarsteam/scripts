@@ -131,7 +131,7 @@ class Parser(api.Parser):
 
         elif mode == 1:
             if content.data[0] == 'catalog':
-                ok, response = self.provider.request(content.data[1], headers=self.headers, proxy=True)
+                ok, response = self.provider.request(content.data[1], headers=self.headers)
                 try:
                     catalog = loads(response.text)
                 except (AttributeError, ValueError):
@@ -168,7 +168,7 @@ class Parser(api.Parser):
                     region = 'pl'
 
                 ok, response = self.provider.request(product_url.replace('PRODUCT_ID', content.name),
-                                                     headers=self.headers, proxy=True)
+                                                     headers=self.headers)
 
                 if not ok:
                     if response.args[0] == pycurl.E_OPERATION_TIMEOUTED:
