@@ -1,5 +1,5 @@
 name: asos
 core: ^0.9
-version: 1.0.3rc1
+version: 1.0.5rc1
 keep: yes
 max-errors: 1
