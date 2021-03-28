@@ -90,7 +90,7 @@ class Parser(api.Parser):
                         if HashStorage.check_target(target.hash()):
                             name = f"{item['brand']['name']} {item['shortDescription']}"
 
-                            if content.data[0] != 'jordan' or content.data[0] != 'dunk' or self.kw.check(name.lower()):
+                            if self.kw.check(name.lower()):
                                 additional_columns = {'Regions': f'[[ES]({link.replace("ru", "es")}) 🇪🇸] | '
                                                                  f'[[IT]({link.replace("ru", "it")}) 🇮🇹] | '
                                                                  f'[[DE]({link.replace("ru", "de")}) 🇩🇪] | '
@@ -105,7 +105,7 @@ class Parser(api.Parser):
                                         link,
                                         self.name,
                                         (
-                                            name, image, product_id, channel, stockx_link, price, additional_columns
+                                            name, image, product_id, channel, stockx_link, price, additional_columns, price_limit
                                         ),
                                         time()
                                     )
@@ -139,7 +139,7 @@ class Parser(api.Parser):
                     for size, size_data in json_sizes.items():
                         if size_data['available']:
 
-                            if min_price > 25000:
+                            if min_price > content.data[7]:
                                 if float(size_data["formattedFinalPrice"].replace('₽', '').replace('\xa0', '')) == min_price:
                                     raw_sizes.append(api.Size(f'**{size} US [{size_data["formattedFinalPrice"]}]**'))
                                 else:
