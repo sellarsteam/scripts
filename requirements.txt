@@ -3,7 +3,6 @@ user_agent==0.1.9
 cfscrape==2.1.1
 lxml==4.6.2
 jsonpath2==0.4.4
-scripts==2.0
 pytz==2020.5
 python-dotenv==0.15.0
 PyYAML==5.4.1
